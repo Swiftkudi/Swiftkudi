@@ -50,7 +50,7 @@ class DigitalProduct extends Model
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(TaskCategory::class, 'category_id');
+        return $this->belongsTo(MarketplaceCategory::class, 'category_id');
     }
 
     public function orders(): HasMany

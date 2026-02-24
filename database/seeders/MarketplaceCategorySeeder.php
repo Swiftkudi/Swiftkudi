@@ -19,8 +19,10 @@ class MarketplaceCategorySeeder extends Seeder
             return;
         }
 
-        // Clear existing categories to avoid duplicates
+        // Clear existing categories to avoid duplicates (disable FK checks temporarily)
+        \DB::statement('SET FOREIGN_KEY_CHECKS=0');
         MarketplaceCategory::truncate();
+        \DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         // =====================
         // TASK CATEGORIES

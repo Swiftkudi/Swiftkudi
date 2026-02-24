@@ -8,17 +8,30 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Drop the existing foreign key constraint
+        // Skip if marketplace_categories constraint already exists
+        if (!Schema::hasTable('digital_products')) {
+            return;
+        }
+
         Schema::table('digital_products', function (Blueprint $table) {
-            $table->dropForeign(['category_id']);
+            // Safely drop the old constraint if it exists (task_categories reference)
+            try {
+                $table->dropForeign(['category_id']);
+            } catch (\Exception $e) {
+                // Constraint might already be corrected or not exist
+            }
         });
 
-        // Add new foreign key constraint referencing marketplace_categories
+        // Add marketplace_categories constraint (safe if already exists)
         Schema::table('digital_products', function (Blueprint $table) {
-            $table->foreign('category_id')
-                ->references('id')
-                ->on('marketplace_categories')
-                ->onDelete('set null');
+            try {
+                $table->foreign('category_id')
+                    ->references('id')
+                    ->on('marketplace_categories')
+                    ->onDelete('set null');
+            } catch (\Exception $e) {
+                // Foreign key may already exist
+            }
         });
     }
 
