@@ -7,25 +7,17 @@ use Illuminate\Support\Facades\Schema;
 class CreateJobsTable extends Migration
 {
     /**
-     * Run the migrations.
-     *
-     * @return void
+     * DUPLICATE MIGRATION - Consolidated into 2026_02_20_150000_create_job_board_tables.php
+     * This file is kept for reference only and does nothing when run.
+     * The skeleton jobs table creation is superseded by the full job board implementation.
      */
     public function up()
     {
-        Schema::create('jobs', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+        // jobs, job_applications, and job_bookmarks are created in 2026_02_20_150000_create_job_board_tables.php
     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
     public function down()
     {
-        Schema::dropIfExists('jobs');
+        // All table drops are handled in 2026_02_20_150000_create_job_board_tables.php
     }
 }

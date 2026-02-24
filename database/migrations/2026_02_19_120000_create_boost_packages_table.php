@@ -6,24 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * DUPLICATE MIGRATION - Consolidated into 2026_02_20_140000_create_boost_tables.php
+     * This file is kept for reference only and does nothing when run.
+     * The more complete boost_packages (with slug, icon, color, position) is in the later migration.
+     */
     public function up(): void
     {
-        Schema::create('boost_packages', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->text('description')->nullable();
-            $table->decimal('price', 10, 2);
-            $table->integer('duration_days');
-            $table->json('features')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->boolean('is_featured')->default(false);
-            $table->float('boost_multiplier', 4, 2)->default(1.0);
-            $table->timestamps();
-        });
+        // boost_packages is created in 2026_02_20_140000_create_boost_tables.php
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('boost_packages');
+        // All table drops are handled in 2026_02_20_140000_create_boost_tables.php
     }
 };

@@ -6,30 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * DUPLICATE MIGRATION - Consolidated into 2026_02_19_200000_create_marketplace_tables.php
+     * This file is kept for reference only and does nothing when run.
+     * disputes creation is handled in the marketplace migration with a more complete schema.
+     */
     public function up(): void
     {
+        // disputes is created in 2026_02_19_200000_create_marketplace_tables.php
+        
+        /*
         Schema::create('disputes', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('order_id')->nullable();
-            $table->string('order_type')->nullable();
-            $table->foreignId('complainant_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('respondent_id')->constrained('users')->onDelete('cascade');
-            $table->string('title');
-            $table->text('description');
-            $table->enum('status', ['open', 'under_review', 'resolved', 'closed'])->default('open');
-            $table->enum('priority', ['low', 'medium', 'high', 'urgent'])->default('medium');
-            $table->text('resolution')->nullable();
-            $table->timestamp('resolved_at')->nullable();
-            $table->foreignId('resolved_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->timestamps();
-
-            $table->index(['order_id', 'order_type']);
-            $table->index('status');
-        });
+        })
+        */
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('disputes');
+        // All table drops are handled in 2026_02_19_200000_create_marketplace_tables.php
     }
 };

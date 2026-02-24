@@ -6,9 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * DUPLICATE MIGRATION - Consolidated into 2026_02_12_000000_create_earndesk_tables.php
+     * This file is kept for reference only and does nothing when run.
+     * task_bundles and task_bundle_items creation is handled in the earlier migration to prevent duplication.
+     */
     public function up()
     {
-        // Task bundles table (already exists in migration, ensuring structure)
+        // task_bundles is created in 2026_02_12_000000_create_earndesk_tables.php
+        
+        // All creation code below is consolidated into earlier migration
+        /*
         if (!Schema::hasTable('task_bundles')) {
             Schema::create('task_bundles', function (Blueprint $table) {
                 $table->id();
@@ -57,11 +65,22 @@ return new class extends Migration
 
     public function down()
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->dropForeign(['bundle_id']);
-            $table->dropColumn(['is_bundled', 'bundle_id']);
-        });
-        Schema::dropIfExists('task_bundle_items');
-        Schema::dropIfExists('task_bundles');
+        // All table drops are handled in 2026_02_12_000000_create_earndesk_tables.php
+        
+        // Additional cleanup if needed
+        if (Schema::hasTable('tasks')) {
+            Schema::table('tasks', function (Blueprint $table) {
+                if (Schema::hasColumn('tasks', 'bundle_id')) {
+                    try {
+                        $table->dropForeign(['bundle_id']);
+                    } catch (\Exception $e) {
+                        // Ignore if constraint doesn't exist
+                    }
+                    $table->dropColumn(['is_bundled', 'bundle_id']);
+                } elseif (Schema::hasColumn('tasks', 'is_bundled')) {
+                    $table->dropColumn('is_bundled');
+                }
+            });
+        }
     }
 };
