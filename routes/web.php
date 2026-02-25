@@ -10,6 +10,7 @@ use App\Http\Controllers\GrowthController;
 use App\Http\Controllers\DigitalProductController;
 use App\Http\Controllers\Admin\RevenueController;
 use App\Http\Controllers\WalletController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SettingsController;
@@ -31,6 +32,11 @@ use Illuminate\Support\Facades\Route;
 
 // Health check endpoint (for monitoring)
 Route::get('/health', [HealthController::class, 'check'])->name('health');
+
+// Payment gateway webhooks (public, verified by signature)
+Route::post('/webhooks/paystack', [PaymentController::class, 'paystackWebhook'])->name('webhooks.paystack');
+Route::post('/webhooks/kora', [PaymentController::class, 'koraWebhook'])->name('webhooks.kora');
+Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhooks.stripe');
 
 // Public routes
 Route::get('/', function () {
@@ -66,6 +72,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');
     Route::post('/referrals/register', [ReferralController::class, 'registerWithCode'])->name('referrals.register');
     Route::post('/referrals/check', [ReferralController::class, 'checkReferral'])->name('referrals.check');
+
+    // Payment routes
+    Route::prefix('payment')->name('payment.')->group(function () {
+        Route::get('/initialize', [PaymentController::class, 'initialize'])->name('initialize');
+        Route::get('/callback', [PaymentController::class, 'callback'])->name('callback');
+    });
 
     // Wallet routes
     Route::prefix('wallet')->name('wallet.')->group(function () {

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Currency;
+use App\Models\SystemSetting;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
@@ -47,8 +48,13 @@ class PaymentGatewayService
     /**
      * Constructor
      */
-    public function __construct($gateway = self::GATEWAY_PAYSTACK, $mode = self::MODE_SANDBOX)
+    public function __construct($gateway = null, $mode = self::MODE_LIVE)
     {
+        // Auto-detect gateway from SystemSettings if not provided
+        if (!$gateway) {
+            $gateway = $this->detectActiveGateway();
+        }
+
         $this->gateway = $gateway;
         $this->mode = $mode;
         $this->loadCredentials();
@@ -56,16 +62,40 @@ class PaymentGatewayService
     }
 
     /**
-     * Load gateway credentials
+     * Detect which payment gateway is currently active
+     */
+    protected function detectActiveGateway()
+    {
+        // Priority: Paystack -> Kora -> Stripe
+        if (SystemSetting::getBool('paystack_enabled', false)) {
+            return self::GATEWAY_PAYSTACK;
+        }
+
+        if (SystemSetting::getBool('kora_enabled', false)) {
+            return self::GATEWAY_KORA;
+        }
+
+        if (SystemSetting::getBool('stripe_enabled', false)) {
+            return self::GATEWAY_STRIPE;
+        }
+
+        // Default to Paystack even if not enabled (for initial setup)
+        return self::GATEWAY_PAYSTACK;
+    }
+
+    /**
+     * Load gateway credentials from SystemSettings or config
      */
     protected function loadCredentials()
     {
-        $prefix = $this->mode === self::MODE_SANDBOX ? 'SANDBOX_' : '';
-
+        // Try SystemSetting first (admin-configured), then fall back to config (env-based)
         $this->credentials = [
-            'public_key' => config('services.' . $this->gateway . '.' . $prefix . 'public_key'),
-            'secret_key' => config('services.' . $this->gateway . '.' . $prefix . 'secret_key'),
-            'merchant_id' => config('services.' . $this->gateway . '.merchant_id'),
+            'public_key' => SystemSetting::get($this->gateway . '_public_key') 
+                ?? config('services.' . $this->gateway . '.public_key'),
+            'secret_key' => SystemSetting::getDecrypted($this->gateway . '_secret_key') 
+                ?? config('services.' . $this->gateway . '.secret_key'),
+            'merchant_id' => SystemSetting::get($this->gateway . '_merchant_id') 
+                ?? config('services.' . $this->gateway . '.merchant_id'),
             'api_url' => $this->getApiUrl(),
         ];
     }

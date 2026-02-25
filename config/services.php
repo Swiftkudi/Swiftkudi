@@ -66,4 +66,32 @@ return [
         'enabled' => env('TURBOSMTP_ENABLED', !empty(env('TURBOSMTP_USERNAME')) && !empty(env('TURBOSMTP_PASSWORD'))),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Payment Gateways
+    |--------------------------------------------------------------------------
+    |
+    | Credentials for payment gateway integrations (Paystack, Kora, Stripe).
+    | These can be configured via admin settings UI or .env file.
+    |
+    */
+    'paystack' => [
+        'public_key' => env('PAYSTACK_PUBLIC_KEY'),
+        'secret_key' => env('PAYSTACK_SECRET_KEY'),
+        'enabled' => env('PAYSTACK_ENABLED', false),
+    ],
+
+    'kora' => [
+        'public_key' => env('KORA_PUBLIC_KEY'),
+        'secret_key' => env('KORA_SECRET_KEY'),
+        'enabled' => env('KORA_ENABLED', false),
+    ],
+
+    'stripe' => [
+        'public_key' => env('STRIPE_PUBLIC_KEY'),
+        'secret_key' => env('STRIPE_SECRET_KEY'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'enabled' => env('STRIPE_ENABLED', false),
+    ],
+
 ];

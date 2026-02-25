@@ -261,62 +261,21 @@ class WalletController extends Controller
             return view('wallet.deposit', compact('wallet'));
         }
 
-        // Handle POST request - process deposit
+        // Handle POST request - redirect to payment gateway
         $request->validate([
             'amount' => 'required|numeric|min:100',
         ]);
 
-        // For demo, simulate successful deposit
-        $wallet->addWithdrawable($request->amount, 'deposit');
-
-        // Create transaction
-        Transaction::create([
-            'wallet_id' => $wallet->id,
-            'user_id' => $user->id,
-            'type' => Transaction::TYPE_DEPOSIT,
-            'amount' => $request->amount,
-            'currency' => 'NGN',
-            'status' => 'completed',
-            'description' => 'Wallet deposit (Demo)',
-            'reference' => Transaction::generateReference('DEP'),
-        ]);
-
-        // Create ledger entry
-        WalletLedger::createEntry(
-            $wallet,
-            WalletLedger::TYPE_DEPOSIT,
-            $request->amount,
-            $wallet->withdrawable_balance - $request->amount,
-            $wallet->withdrawable_balance,
-            $wallet->promo_credit_balance,
-            $wallet->promo_credit_balance,
-            'Wallet deposit',
-            'deposit',
-            null
-        );
-
-        Log::info('Deposit processed', [
-            'user_id' => $user->id,
-            'amount' => $request->amount,
-        ]);
-
-        // Auto-aggregate revenue for today
-        RevenueAggregator::aggregateForDate(now()->toDateString());
-
-        // Check if user has a pending task creation (redirect after deposit success)
-        $redirectRoute = session('deposit_success_redirect');
-        
-        if ($redirectRoute && $redirectRoute === route('tasks.create.resume')) {
-            // Don't clear the task_creation_data here - the resume method needs it
-            // Only clear the redirect flag
-            session()->forget('deposit_success_redirect');
-            
-            return redirect($redirectRoute)
-                ->with('success', '💰 Deposit of ₦' . number_format($request->amount, 2) . ' successful! Your form is ready to submit.');
+        // Store deposit context for redirect after payment
+        if ($redirectRoute = session('deposit_success_redirect')) {
+            session(['payment_success_redirect' => $redirectRoute]);
         }
 
-        return redirect()->route('wallet.index')
-            ->with('success', 'Deposit of ₦' . number_format($request->amount, 2) . ' successful!');
+        // Redirect to payment initialization
+        return redirect()->route('payment.initialize', [
+            'amount' => $request->amount,
+            'currency' => $request->input('currency', 'NGN'),
+        ]);
     }
 
     /**
