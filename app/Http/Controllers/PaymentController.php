@@ -36,16 +36,27 @@ class PaymentController extends Controller
         $user = Auth::user();
         $amount = $request->input('amount');
         $currency = $request->input('currency', 'NGN');
+        $wallet = $user->wallet ?? Wallet::create([
+            'user_id' => $user->id,
+            'withdrawable_balance' => 0,
+            'promo_credit_balance' => 0,
+            'total_earned' => 0,
+            'total_spent' => 0,
+            'pending_balance' => 0,
+            'escrow_balance' => 0,
+        ]);
 
         // Generate unique reference
         $reference = 'DEP_' . strtoupper(uniqid());
 
         // Create pending transaction
         $transaction = Transaction::create([
+            'wallet_id' => $wallet->id,
             'user_id' => $user->id,
             'type' => 'deposit',
             'amount' => $amount,
             'currency' => $currency,
+            'payment_method' => 'gateway',
             'status' => 'pending',
             'reference' => $reference,
             'description' => 'Wallet deposit via payment gateway',
