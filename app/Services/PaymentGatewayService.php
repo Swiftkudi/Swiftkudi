@@ -89,15 +89,55 @@ class PaymentGatewayService
     protected function loadCredentials()
     {
         // Try SystemSetting first (admin-configured), then fall back to config (env-based)
+        $publicKey = SystemSetting::get($this->gateway . '_public_key');
+        $secretKey = SystemSetting::getDecrypted($this->gateway . '_secret_key');
+        $merchantId = SystemSetting::get($this->gateway . '_merchant_id');
+
+        if (!$this->hasCredentialValue($publicKey)) {
+            $publicKey = config('services.' . $this->gateway . '.public_key');
+        }
+
+        if (!$this->hasCredentialValue($secretKey)) {
+            $secretKey = config('services.' . $this->gateway . '.secret_key');
+        }
+
+        if (!$this->hasCredentialValue($merchantId)) {
+            $merchantId = config('services.' . $this->gateway . '.merchant_id');
+        }
+
+        $secretKey = $this->normalizeSecretKey($secretKey);
+
         $this->credentials = [
-            'public_key' => SystemSetting::get($this->gateway . '_public_key') 
-                ?? config('services.' . $this->gateway . '.public_key'),
-            'secret_key' => SystemSetting::getDecrypted($this->gateway . '_secret_key') 
-                ?? config('services.' . $this->gateway . '.secret_key'),
-            'merchant_id' => SystemSetting::get($this->gateway . '_merchant_id') 
-                ?? config('services.' . $this->gateway . '.merchant_id'),
+            'public_key' => $publicKey,
+            'secret_key' => $secretKey,
+            'merchant_id' => $merchantId,
             'api_url' => $this->getApiUrl(),
         ];
+    }
+
+    /**
+     * Check if credential has a usable value
+     */
+    protected function hasCredentialValue($value): bool
+    {
+        return is_string($value) ? trim($value) !== '' : !empty($value);
+    }
+
+    /**
+     * Normalize secret key by removing accidental Bearer prefix
+     */
+    protected function normalizeSecretKey($secretKey)
+    {
+        if (!is_string($secretKey)) {
+            return $secretKey;
+        }
+
+        $normalized = trim($secretKey);
+        if (stripos($normalized, 'Bearer ') === 0) {
+            $normalized = trim(substr($normalized, 7));
+        }
+
+        return $normalized;
     }
 
     /**
@@ -252,6 +292,13 @@ class PaymentGatewayService
     protected function processPaystack($data)
     {
         try {
+            if (!$this->hasCredentialValue($this->credentials['secret_key'] ?? null)) {
+                return [
+                    'success' => false,
+                    'message' => 'Paystack secret key is missing. Set it in admin settings or PAYSTACK_SECRET_KEY in .env.',
+                ];
+            }
+
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->credentials['secret_key'],
                 'Content-Type' => 'application/json',

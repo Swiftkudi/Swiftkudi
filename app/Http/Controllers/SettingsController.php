@@ -166,6 +166,9 @@ class SettingsController extends Controller
             if ($setting->type === 'encrypted') {
                 if ($request->filled($key)) {
                     $value = $request->input($key);
+                    if ($group === 'payment') {
+                        $value = $this->sanitizePaymentCredential($key, $value);
+                    }
                     SystemSetting::set($key, $value, $group, 'encrypted');
                 }
                 // skip if not filled
@@ -206,6 +209,25 @@ class SettingsController extends Controller
         }
 
         return redirect()->back()->with('success', ucfirst($group) . ' settings saved successfully.');
+    }
+
+    /**
+     * Normalize payment credential values before persisting.
+     */
+    protected function sanitizePaymentCredential(string $key, $value)
+    {
+        if (!is_string($value)) {
+            return $value;
+        }
+
+        $normalized = trim($value);
+        $isSecret = substr($key, -11) === '_secret_key' || substr($key, -15) === '_webhook_secret';
+
+        if ($isSecret && stripos($normalized, 'Bearer ') === 0) {
+            $normalized = trim(substr($normalized, 7));
+        }
+
+        return $normalized;
     }
 
     /**
