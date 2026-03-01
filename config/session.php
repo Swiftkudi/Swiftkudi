@@ -33,6 +33,19 @@ return [
 
     'lifetime' => env('SESSION_LIFETIME', 120),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Inactivity Auto Logout Timeout
+    |--------------------------------------------------------------------------
+    |
+    | This controls how many minutes of inactivity are allowed before an
+    | authenticated user is automatically logged out by middleware.
+    | If not set, the application falls back to SESSION_LIFETIME.
+    |
+    */
+
+    'inactivity_timeout' => env('INACTIVITY_TIMEOUT', env('SESSION_LIFETIME', 120)),
+
     'expire_on_close' => false,
 
     /*

@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Session\TokenMismatchException;
 use Throwable;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 
@@ -51,6 +52,21 @@ class Handler extends ExceptionHandler
             }
 
             return redirect()->back()->withInput()->with('error', "Uploaded file is too large. Max allowed: {$max}");
+        });
+
+        // Gracefully handle CSRF/session expiration cases.
+        $this->renderable(function (TokenMismatchException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your session has expired. Please refresh the page and try again.',
+                ], 419);
+            }
+
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')
+                ->with('warning', 'Your session expired for security reasons. Please sign in again to continue.');
         });
     }
 }

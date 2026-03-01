@@ -65,5 +65,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'admin' => \App\Http\Middleware\EnsureAdmin::class,
         'task.creation.gate' => \App\Http\Middleware\CheckTaskCreationGate::class,
+        'logout.inactive' => \App\Http\Middleware\LogoutOnInactivity::class,
     ];
 }
