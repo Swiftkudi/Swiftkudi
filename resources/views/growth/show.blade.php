@@ -173,6 +173,7 @@
 
 <script>
 async function createOrder() {
+    const form = document.querySelector('form');
     try {
         const response = await fetch('{{ route("growth.order", $listing->id) }}', {
             method: 'POST',
@@ -196,11 +197,25 @@ async function createOrder() {
                     window.location.href = '{{ route("wallet.deposit") }}';
                 }
             } else {
-                alert(data.message || 'Failed to place order');
+                if ((response.status === 422 || data.errors || data.error_list) && window.SwiftkudiFormFeedback && form) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                        boxId: 'growth-order-error-box',
+                    });
+                } else {
+                    alert(data.message || 'Failed to place order');
+                }
             }
         }
     } catch(err) {
-        alert('An error occurred. Please try again.');
+        if (window.SwiftkudiFormFeedback && form) {
+            window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                message: 'An error occurred while placing your order. Please try again.',
+            }, {
+                boxId: 'growth-order-error-box',
+            });
+        } else {
+            alert('An error occurred. Please try again.');
+        }
     }
 }
 
@@ -219,8 +234,8 @@ function hideContactModal() {
 // Handle contact form submission
 document.getElementById('contact-form').addEventListener('submit', function(e) {
     e.preventDefault();
-    
-    const formData = new FormData(this);
+    const form = this;
+    const formData = new FormData(form);
     
     fetch('{{ route("growth.contact") }}', {
         method: 'POST',
@@ -232,6 +247,13 @@ document.getElementById('contact-form').addEventListener('submit', function(e) {
     })
     .then(response => response.json())
     .then(data => {
+        if (!data.success && (data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
+            window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                boxId: 'growth-contact-error-box',
+            });
+            return;
+        }
+
         alert(data.message);
         if (data.success) {
             hideContactModal();
@@ -240,7 +262,15 @@ document.getElementById('contact-form').addEventListener('submit', function(e) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        if (window.SwiftkudiFormFeedback) {
+            window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                message: 'An error occurred while sending your message. Please try again.',
+            }, {
+                boxId: 'growth-contact-error-box',
+            });
+        } else {
+            alert('An error occurred. Please try again.');
+        }
     });
 });
 

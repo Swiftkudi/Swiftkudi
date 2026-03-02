@@ -105,5 +105,89 @@
             </div>
         </footer>
     </div>
+
+    <script>
+        // Shared helpers for user-friendly form validation feedback across AJAX forms.
+        (function () {
+            function normalizeErrors(payload) {
+                const allErrors = [];
+
+                if (!payload) {
+                    return allErrors;
+                }
+
+                if (Array.isArray(payload.error_list) && payload.error_list.length) {
+                    allErrors.push(...payload.error_list);
+                    return allErrors;
+                }
+
+                if (payload.errors && typeof payload.errors === 'object') {
+                    Object.entries(payload.errors).forEach(([field, messages]) => {
+                        const label = String(field).replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+                        if (Array.isArray(messages) && messages.length > 0) {
+                            allErrors.push(label + ': ' + messages[0]);
+                        }
+                    });
+                }
+
+                if (!allErrors.length && payload.message) {
+                    allErrors.push(payload.message);
+                }
+
+                return allErrors;
+            }
+
+            function showValidationErrors(form, payload, options) {
+                if (!form) {
+                    return;
+                }
+
+                const opts = Object.assign({
+                    boxId: 'global-form-error-box',
+                    title: 'Please correct the following and try again:',
+                }, options || {});
+
+                const existing = document.getElementById(opts.boxId);
+                if (existing) {
+                    existing.remove();
+                }
+
+                const errors = normalizeErrors(payload);
+                if (!errors.length) {
+                    errors.push('Some submitted data is invalid. Please review the form and try again.');
+                }
+
+                const box = document.createElement('div');
+                box.id = opts.boxId;
+                box.className = 'mb-4 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200';
+                box.innerHTML =
+                    '<div class="flex items-start">' +
+                        '<i class="fas fa-exclamation-circle mt-0.5 mr-3 flex-shrink-0"></i>' +
+                        '<div>' +
+                            '<p class="font-semibold mb-1">' + opts.title + '</p>' +
+                            '<ul class="list-disc pl-5">' + errors.map(function (err) { return '<li>' + err + '</li>'; }).join('') + '</ul>' +
+                        '</div>' +
+                    '</div>';
+
+                form.insertAdjacentElement('afterbegin', box);
+                box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                if (payload && payload.errors && typeof payload.errors === 'object') {
+                    const firstField = Object.keys(payload.errors)[0];
+                    if (firstField) {
+                        const input = form.querySelector('[name="' + firstField + '"]');
+                        if (input && typeof input.focus === 'function') {
+                            input.focus();
+                        }
+                    }
+                }
+            }
+
+            window.SwiftkudiFormFeedback = {
+                showValidationErrors: showValidationErrors,
+                normalizeErrors: normalizeErrors,
+            };
+        })();
+    </script>
 </body>
 </html>

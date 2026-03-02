@@ -105,7 +105,7 @@
 <script>
 document.getElementById('serviceForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+    const form = this;
     const formData = new FormData(this);
     const submitBtn = this.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
@@ -128,7 +128,13 @@ document.getElementById('serviceForm').addEventListener('submit', async function
             if (data.success) {
                 window.location.href = data.redirect;
             } else {
-                alert(data.message || 'Error creating service');
+                if ((response.status === 422 || data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                        boxId: 'service-create-error-box',
+                    });
+                } else {
+                    alert(data.message || 'We could not create your service. Please review your form and try again.');
+                }
             }
         } else {
             // Response is HTML (可能是错误页面或重定向)
@@ -138,12 +144,28 @@ document.getElementById('serviceForm').addEventListener('submit', async function
                 window.location.href = '{{ route("professional-services.my-services") }}';
             } else {
                 console.error('Error response:', text);
-                alert('Error: Server returned ' + response.status);
+                if (window.SwiftkudiFormFeedback) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                        message: 'We could not process your request. Please check the form and try again.',
+                    }, {
+                        boxId: 'service-create-error-box',
+                    });
+                } else {
+                    alert('Error: Server returned ' + response.status);
+                }
             }
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error: ' + error.message);
+        if (window.SwiftkudiFormFeedback) {
+            window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                message: 'Network error. Please check your internet connection and try again.',
+            }, {
+                boxId: 'service-create-error-box',
+            });
+        } else {
+            alert('Error: ' + error.message);
+        }
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Create Service';

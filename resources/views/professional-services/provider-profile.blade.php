@@ -206,8 +206,8 @@
     @auth
     document.getElementById('contact-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        const formData = new FormData(this);
+        const form = this;
+        const formData = new FormData(form);
         
         fetch('{{ route("professional-services.contact") }}', {
             method: 'POST',
@@ -224,12 +224,26 @@
                 hideContactModal();
                 document.getElementById('contact-form').reset();
             } else {
-                alert(data.message || 'Failed to send message');
+                if ((data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                        boxId: 'provider-contact-error-box',
+                    });
+                } else {
+                    alert(data.message || 'Failed to send message');
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            if (window.SwiftkudiFormFeedback) {
+                window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                    message: 'An error occurred while sending your message. Please try again.',
+                }, {
+                    boxId: 'provider-contact-error-box',
+                });
+            } else {
+                alert('An error occurred. Please try again.');
+            }
         });
     });
 

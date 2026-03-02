@@ -32,6 +32,16 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $redirectUrl = redirect()->intended(RouteServiceProvider::HOME)->getTargetUrl();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful. Redirecting to your dashboard...',
+                'redirect' => $redirectUrl,
+            ]);
+        }
+
         return redirect()->intended(RouteServiceProvider::HOME);
     }
 

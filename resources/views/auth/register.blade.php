@@ -6,21 +6,53 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
         function handleCredentialResponse(response) {
+            const form = document.getElementById('register-form');
+
             fetch('{{ route("auth.google.one-tap") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 },
                 body: JSON.stringify({ credential: response.credential })
             })
-            .then(response => response.json())
+            .then(async (res) => {
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    data = { success: false, message: 'Google sign-up failed. Please try again.' };
+                }
+                return { ok: res.ok, status: res.status, data };
+            })
             .then(data => {
-                if (data.success && data.redirect) {
-                    window.location.href = data.redirect;
+                if (data.data.success && data.data.redirect) {
+                    window.location.href = data.data.redirect;
+                    return;
+                }
+
+                const payload = data.data || { message: 'Google sign-up failed. Please try again.' };
+                if (window.SwiftkudiFormFeedback && form) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                        message: payload.message || payload.error || 'Google sign-up failed. Please try again.',
+                        errors: payload.errors || null,
+                        error_list: payload.error_list || null,
+                    }, {
+                        boxId: 'register-google-error-box',
+                    });
                 }
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                if (window.SwiftkudiFormFeedback && form) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                        message: 'Network error during Google sign-up. Please try again.',
+                    }, {
+                        boxId: 'register-google-error-box',
+                    });
+                }
+            });
         }
 
         window.onload = function () {
@@ -36,7 +68,7 @@
     </script>
     @endif
 
-    <form method="POST" action="{{ route('register') }}" class="space-y-5">
+    <form id="register-form" method="POST" action="{{ route('register') }}" class="space-y-5">
         @csrf
 
         <!-- Name -->
@@ -163,4 +195,65 @@
             </p>
         </div>
     </form>
+
+    <script>
+        (function () {
+            const form = document.getElementById('register-form');
+            if (!form) return;
+
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn ? submitBtn.innerHTML : '';
+
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating account...';
+                }
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        },
+                        credentials: 'same-origin',
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success && data.redirect) {
+                        window.location.href = data.redirect;
+                        return;
+                    }
+
+                    if ((response.status === 422 || data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
+                        window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                            boxId: 'register-error-box',
+                        });
+                    } else {
+                        alert(data.message || 'We could not create your account. Please check the form and try again.');
+                    }
+                } catch (error) {
+                    if (window.SwiftkudiFormFeedback) {
+                        window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                            message: 'Network error. Please check your internet connection and try again.',
+                        }, {
+                            boxId: 'register-error-box',
+                        });
+                    } else {
+                        alert('Network error. Please try again.');
+                    }
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                }
+            });
+        })();
+    </script>
 </x-guest-layout>

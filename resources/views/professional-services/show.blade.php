@@ -409,8 +409,8 @@
     // Handle order form submission
     document.getElementById('order-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        const formData = new FormData(this);
+        const form = this;
+        const formData = new FormData(form);
         
         fetch('{{ route("professional-services.order", $service->id) }}', {
             method: 'POST',
@@ -425,6 +425,12 @@
             if (data.redirect) {
                 window.location.href = data.redirect;
             } else if (data.message) {
+                if (!data.success && (data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                        boxId: 'service-order-error-box',
+                    });
+                    return;
+                }
                 alert(data.message);
                 if (data.success) {
                     hideOrderModal();
@@ -433,7 +439,15 @@
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            if (window.SwiftkudiFormFeedback) {
+                window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                    message: 'An error occurred while placing your order. Please try again.',
+                }, {
+                    boxId: 'service-order-error-box',
+                });
+            } else {
+                alert('An error occurred. Please try again.');
+            }
         });
     });
 
@@ -441,8 +455,8 @@
     @auth
     document.getElementById('contact-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        const formData = new FormData(this);
+        const form = this;
+        const formData = new FormData(form);
         
         fetch('{{ route("professional-services.contact") }}', {
             method: 'POST',
@@ -454,6 +468,13 @@
         })
         .then(response => response.json())
         .then(data => {
+            if (!data.success && (data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
+                window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                    boxId: 'service-contact-error-box',
+                });
+                return;
+            }
+
             alert(data.message);
             if (data.success) {
                 hideContactModal();
@@ -462,7 +483,15 @@
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            if (window.SwiftkudiFormFeedback) {
+                window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                    message: 'An error occurred while sending your message. Please try again.',
+                }, {
+                    boxId: 'service-contact-error-box',
+                });
+            } else {
+                alert('An error occurred. Please try again.');
+            }
         });
     });
     @endauth

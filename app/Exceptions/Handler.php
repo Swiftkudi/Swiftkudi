@@ -6,6 +6,7 @@ use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Session\TokenMismatchException;
 use Throwable;
 use Illuminate\Http\Exceptions\PostTooLargeException;
+use Illuminate\Validation\ValidationException;
 
 class Handler extends ExceptionHandler
 {
@@ -67,6 +68,33 @@ class Handler extends ExceptionHandler
 
             return redirect()->route('login')
                 ->with('warning', 'Your session expired for security reasons. Please sign in again to continue.');
+        });
+
+        // Return user-friendly validation details for all JSON form submissions.
+        $this->renderable(function (ValidationException $e, $request) {
+            if (!$request->expectsJson()) {
+                return null;
+            }
+
+            $errors = $e->errors();
+            $errorList = [];
+
+            foreach ($errors as $field => $messages) {
+                $label = ucwords(str_replace('_', ' ', $field));
+                $firstMessage = $messages[0] ?? 'This field is invalid.';
+                $errorList[] = "{$label}: {$firstMessage}";
+            }
+
+            $summary = count($errorList) > 0
+                ? 'Please correct the highlighted fields and submit again.'
+                : 'Some submitted data is invalid. Please review the form and try again.';
+
+            return response()->json([
+                'success' => false,
+                'message' => $summary,
+                'errors' => $errors,
+                'error_list' => $errorList,
+            ], 422);
         });
     }
 }

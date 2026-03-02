@@ -105,7 +105,10 @@ class GoogleAuthController extends Controller
     {
         // Check if Google OAuth is enabled
         if (!config('services.google.enabled', false)) {
-            return response()->json(['error' => 'Google login is not available'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'Google login is not available at the moment.',
+            ], 400);
         }
 
         $request->validate([
@@ -118,7 +121,10 @@ class GoogleAuthController extends Controller
             $payload = $this->decodeGoogleJWT($credential);
 
             if (!$payload || !isset($payload['email'])) {
-                return response()->json(['error' => 'Invalid credential'], 400);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Google sign-in failed. Please try again.',
+                ], 400);
             }
 
             // Check if user already exists
@@ -171,7 +177,10 @@ class GoogleAuthController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Google One Tap Error: ' . $e->getMessage());
-            return response()->json(['error' => 'Unable to login with Google'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to login with Google. Please try again.',
+            ], 500);
         }
     }
 

@@ -44,6 +44,15 @@
                 </div>
             @endif
 
+            @if(!empty($resumeMessage))
+                <div class="m-6 mb-0 p-4 rounded-lg {{ !empty($canProceed) ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-amber-50 text-amber-800 border border-amber-200' }}">
+                    <div class="flex items-start">
+                        <i class="fas {{ !empty($canProceed) ? 'fa-check-circle' : 'fa-exclamation-circle' }} mt-0.5 mr-3 flex-shrink-0"></i>
+                        <div>{{ $resumeMessage }}</div>
+                    </div>
+                </div>
+            @endif
+
             @if($errors && $errors->any())
                 <div class="m-6 mb-0 p-4 rounded-lg bg-yellow-50 text-yellow-800">
                     <ul class="list-disc pl-5">
@@ -63,6 +72,7 @@
                 $getValue = function($field, $default = '') {
                     if (old($field)) return old($field);
                     if (!empty($prefillData[$field])) return $prefillData[$field];
+                    if (!empty($draftData[$field])) return $draftData[$field];
                     return $default;
                 };
             @endphp
@@ -355,8 +365,58 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 
                 const data = await response.json();
+
+                const existingErrorBox = document.getElementById('task-create-error-box');
+                if (existingErrorBox) {
+                    existingErrorBox.remove();
+                }
+
+                const showValidationErrors = (payload) => {
+                    const allErrors = [];
+                    if (Array.isArray(payload?.error_list) && payload.error_list.length) {
+                        allErrors.push(...payload.error_list);
+                    } else if (payload?.errors && typeof payload.errors === 'object') {
+                        Object.entries(payload.errors).forEach(([field, messages]) => {
+                            const label = field.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                            if (Array.isArray(messages) && messages.length) {
+                                allErrors.push(`${label}: ${messages[0]}`);
+                            }
+                        });
+                    }
+
+                    if (!allErrors.length) {
+                        allErrors.push(payload?.message || 'Please check the form and try again.');
+                    }
+
+                    const box = document.createElement('div');
+                    box.id = 'task-create-error-box';
+                    box.className = 'm-6 mb-0 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200';
+                    box.innerHTML = `
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-circle mt-0.5 mr-3 flex-shrink-0"></i>
+                            <div>
+                                <p class="font-semibold mb-1">Please correct the following and try again:</p>
+                                <ul class="list-disc pl-5">${allErrors.map(err => `<li>${err}</li>`).join('')}</ul>
+                            </div>
+                        </div>
+                    `;
+
+                    form.insertAdjacentElement('afterbegin', box);
+                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    const firstField = payload?.errors ? Object.keys(payload.errors)[0] : null;
+                    if (firstField) {
+                        const input = form.querySelector(`[name="${firstField}"]`);
+                        if (input) {
+                            input.focus();
+                        }
+                    }
+                };
                 
                 if (data.success) {
+                    const successMessage = data.message || 'Task created successfully.';
+                    alert(successMessage);
+
                     // Success - redirect to my-tasks or show success
                     if (data.redirect) {
                         window.location.href = data.redirect;
@@ -378,7 +438,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // Show error message
-                    alert(data.message || 'An error occurred');
+                    if (response.status === 422 || data.errors || data.error_list) {
+                        showValidationErrors(data);
+                    } else {
+                        alert(data.message || 'We could not submit your task. Please review your details and try again.');
+                    }
                     if (submitBtn) {
                         submitBtn.disabled = false;
                         submitBtn.textContent = originalText;
@@ -773,8 +837,18 @@ document.addEventListener('DOMContentLoaded', function() {
             Object.keys(data).forEach(name => {
                 const el = form.querySelector('[name="' + name + '"]');
                 if (!el) return;
-                if (el.type === 'checkbox' || el.type === 'radio') el.checked = data[name];
-                else el.value = data[name];
+
+                // Do not overwrite values already prefixed by server/session resume data.
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    if (!el.checked) {
+                        el.checked = data[name];
+                    }
+                } else {
+                    const currentValue = (el.value || '').toString().trim();
+                    if (currentValue === '' && typeof data[name] !== 'undefined' && data[name] !== null) {
+                        el.value = data[name];
+                    }
+                }
             });
         }
     } catch (e) { /* ignore restore errors */ }

@@ -179,7 +179,8 @@ function hideRejectModal() {
 
 document.getElementById('reject-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const form = e.target;
+    const formData = new FormData(form);
     const submissionId = formData.get('submission_id');
     
     try {
@@ -198,10 +199,24 @@ document.getElementById('reject-form')?.addEventListener('submit', async (e) => 
         if(data.success) {
             window.location.reload();
         } else {
-            alert(data.message || 'Failed to reject submission');
+            if ((response.status === 422 || data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
+                window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                    boxId: 'new-task-reject-error-box',
+                });
+            } else {
+                alert(data.message || 'Failed to reject submission');
+            }
         }
     } catch(err) {
-        alert('An error occurred');
+        if (window.SwiftkudiFormFeedback) {
+            window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                message: 'An error occurred while rejecting this submission. Please try again.',
+            }, {
+                boxId: 'new-task-reject-error-box',
+            });
+        } else {
+            alert('An error occurred');
+        }
     }
 });
 </script>

@@ -98,6 +98,14 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Account created successfully. Welcome to SwiftKudi!',
+                'redirect' => RouteServiceProvider::HOME,
+            ]);
+        }
+
         return redirect(RouteServiceProvider::HOME);
     }
 }

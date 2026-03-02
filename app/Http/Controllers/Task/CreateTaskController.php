@@ -52,8 +52,8 @@ class CreateTaskController extends Controller
         $categoryConfig = $this->taskCreationService->getCategoryConfig();
         $categories = TaskCategory::getActiveCategories();
 
-        // Check for prefill data from bundle session
-        $prefillData = $this->getPrefillData($request);
+        // Check for prefill data from bundle session, then fall back to pending task data
+        $prefillData = $this->getPrefillData($request) ?? session('task_creation_data');
 
         // Check for saved draft
         $draftData = $this->taskCreationService->getDraft($user);
@@ -107,6 +107,12 @@ class CreateTaskController extends Controller
         // Clear draft if successful
         if ($result['success']) {
             $this->taskCreationService->clearDraft($user);
+            session()->forget([
+                'task_creation_data',
+                'insufficient_balance_required',
+                'deposit_success_redirect',
+                'payment_success_redirect',
+            ]);
         }
 
         $response = [
@@ -145,6 +151,16 @@ class CreateTaskController extends Controller
 
         $result = $this->taskCreationService->saveDraft($user, $request->validated());
 
+        // Ensure deposit flow returns user to resume page with preserved data
+        session([
+            'deposit_success_redirect' => route('tasks.create.resume'),
+            'task_creation_data' => $request->validated(),
+        ]);
+
+        if (!empty($request->input('budget'))) {
+            session(['insufficient_balance_required' => (float) $request->input('budget')]);
+        }
+
         return response()->json($result, $result['status']);
     }
 
@@ -179,11 +195,21 @@ class CreateTaskController extends Controller
         $user = Auth::user();
         
         // Get stored task creation data from session
-        $storedData = session('task_creation_data');
+        $storedData = session('task_creation_data') ?: $this->taskCreationService->getDraft($user);
         $requiredAmount = session('insufficient_balance_required');
-        
-        // Clear the session data after retrieving
-        session()->forget(['task_creation_data', 'insufficient_balance_required', 'deposit_success_redirect']);
+
+        if (!$storedData) {
+            return redirect()->route('tasks.create.new')
+                ->with('error', 'No saved task form was found. Please fill the form again.');
+        }
+
+        // Keep resume redirect active until task is successfully submitted
+        session(['deposit_success_redirect' => route('tasks.create.resume')]);
+
+        if (!$requiredAmount && !empty($storedData['budget'])) {
+            $requiredAmount = (float) $storedData['budget'];
+            session(['insufficient_balance_required' => $requiredAmount]);
+        }
         
         // Get categories for the form
         $categoryConfig = $this->taskCreationService->getCategoryConfig();

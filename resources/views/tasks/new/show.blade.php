@@ -149,6 +149,22 @@
             e.preventDefault();
             const formData = new FormData(form);
             const proofData = formData.get('proof_data');
+
+            let parsedProof = {};
+            try {
+                parsedProof = JSON.parse(proofData || '{}');
+            } catch (parseError) {
+                if (window.SwiftkudiFormFeedback && form) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                        message: 'Proof data must be valid JSON. Example: {"screenshot":"https://..."}',
+                    }, {
+                        boxId: 'new-task-submit-error-box',
+                    });
+                } else {
+                    alert('Please enter valid JSON for proof data');
+                }
+                return;
+            }
             
             try {
                 const response = await fetch('{{ route('new-tasks.submit', $task->id) }}', {
@@ -158,7 +174,7 @@
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     body: JSON.stringify({
-                        proof_data: JSON.parse(proofData || '{}'),
+                        proof_data: parsedProof,
                         notes: formData.get('notes')
                     })
                 });
@@ -168,10 +184,24 @@
                     alert('Work submitted successfully!');
                     window.location.reload();
                 } else {
-                    alert(data.message || 'Failed to submit work');
+                    if ((response.status === 422 || data.errors || data.error_list) && window.SwiftkudiFormFeedback && form) {
+                        window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                            boxId: 'new-task-submit-error-box',
+                        });
+                    } else {
+                        alert(data.message || 'Failed to submit work');
+                    }
                 }
             } catch(err) {
-                alert('Please enter valid JSON for proof data');
+                if (window.SwiftkudiFormFeedback && form) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                        message: 'An error occurred while submitting your work. Please try again.',
+                    }, {
+                        boxId: 'new-task-submit-error-box',
+                    });
+                } else {
+                    alert('An error occurred while submitting your work. Please try again.');
+                }
             }
         });
     </script>

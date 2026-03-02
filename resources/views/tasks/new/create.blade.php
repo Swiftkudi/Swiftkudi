@@ -307,6 +307,7 @@ function createAndFundTask() {
     const btn = document.getElementById('fund-btn');
     btn.disabled = true;
     btn.textContent = 'Processing...';
+    const form = document.getElementById('task-form') || document.querySelector('form');
     
     // First create the task
     fetch('{{ route("tasks.store") }}', {
@@ -321,7 +322,13 @@ function createAndFundTask() {
     .then(res => res.json())
     .then(data => {
         if (!data.success) {
-            alert(data.message);
+            if ((data.errors || data.error_list) && window.SwiftkudiFormFeedback && form) {
+                window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                    boxId: 'new-task-create-error-box',
+                });
+            } else {
+                alert(data.message || 'We could not create your task. Please review the form and try again.');
+            }
             btn.disabled = false;
             btn.textContent = 'Fund & Publish';
             return;
@@ -344,7 +351,13 @@ function createAndFundTask() {
                 alert('🎉 Task created and funded successfully!');
                 window.location.href = '{{ route("tasks.my-tasks") }}';
             } else {
-                alert(data.message);
+                if ((data.errors || data.error_list) && window.SwiftkudiFormFeedback && form) {
+                    window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
+                        boxId: 'new-task-create-error-box',
+                    });
+                } else {
+                    alert(data.message || 'Task was created but could not be funded. Please check your balance and try again.');
+                }
                 if (data.redirect) {
                     window.location.href = data.redirect;
                 }
@@ -353,7 +366,15 @@ function createAndFundTask() {
     })
     .catch(err => {
         console.error(err);
-        alert('An error occurred');
+        if (window.SwiftkudiFormFeedback && form) {
+            window.SwiftkudiFormFeedback.showValidationErrors(form, {
+                message: 'An unexpected error occurred while processing your request. Please try again.',
+            }, {
+                boxId: 'new-task-create-error-box',
+            });
+        } else {
+            alert('An error occurred');
+        }
     })
     .finally(() => {
         btn.disabled = false;
