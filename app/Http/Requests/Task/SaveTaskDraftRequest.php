@@ -3,8 +3,6 @@
 namespace App\Http\Requests\Task;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
-use App\Models\Task;
 
 /**
  * Form Request for saving task drafts (autosave functionality).
@@ -32,13 +30,13 @@ class SaveTaskDraftRequest extends FormRequest
             'idempotency_token' => ['nullable', 'uuid', 'max:36'],
 
             // Basic task information - all optional for drafts
-            'title' => ['nullable', 'string', 'min:3', 'max:255'],
-            'description' => ['nullable', 'string', 'min:10', 'max:5000'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
 
             // Category and type - optional for drafts
-            'category_id' => ['nullable', 'integer', Rule::exists('task_categories', 'id')],
-            'task_type' => ['nullable', 'string', Rule::in(array_keys(Task::TASK_TYPE_GROUPS))],
-            'platform' => ['nullable', 'string', Rule::in(array_keys(Task::PLATFORMS))],
+            'category_id' => ['nullable', 'integer'],
+            'task_type' => ['nullable', 'string', 'max:100'],
+            'platform' => ['nullable', 'string', 'max:100'],
 
             // Budget and quantity - optional for drafts
             'budget' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
@@ -46,12 +44,13 @@ class SaveTaskDraftRequest extends FormRequest
             'worker_reward_per_task' => ['nullable', 'numeric', 'min:0', 'max:100000'],
 
             // Target details
-            'target_url' => ['nullable', 'url', 'max:2048'],
-            'target_account' => ['nullable', 'string', 'max:100', 'regex:/^@?[a-zA-Z0-9_.]+$/'],
-            'hashtag' => ['nullable', 'string', 'max:100', 'regex:/^#?[a-zA-Z0-9_]+$/'],
+            'target_url' => ['nullable', 'string', 'max:2048'],
+            'target_account' => ['nullable', 'string', 'max:100'],
+            'hashtag' => ['nullable', 'string', 'max:100'],
 
             // Proof and instructions
-            'proof_type' => ['nullable', 'string', Rule::in(array_keys(Task::PROOF_TYPES))],
+            'proof_type' => ['nullable', 'string', 'max:100'],
+            'instructions' => ['nullable', 'string', 'max:2000'],
             'proof_instructions' => ['nullable', 'string', 'max:2000'],
 
             // Requirements
