@@ -14,10 +14,12 @@ use Illuminate\Support\Facades\Log;
 class TaskService
 {
     protected $earnDeskService;
+    protected $gateProgressService;
 
-    public function __construct(SwiftKudiService $earnDeskService)
+    public function __construct(SwiftKudiService $earnDeskService, TaskGateProgressService $gateProgressService)
     {
         $this->earnDeskService = $earnDeskService;
+        $this->gateProgressService = $gateProgressService;
     }
 
     /**
@@ -175,6 +177,9 @@ class TaskService
                     'status' => TaskNew::STATUS_ACTIVE,
                     'activated_at' => now(),
                 ]);
+
+                // Update user's task creation progress and check unlock status
+                $this->gateProgressService->updateProgress($user, $requiredAmount);
 
                 Log::info('Task funded', [
                     'task_id' => $task->id,

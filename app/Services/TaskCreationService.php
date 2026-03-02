@@ -9,6 +9,7 @@ use App\Models\TaskCreationLog;
 use App\Models\User;
 use App\Notifications\TaskApproved;
 use App\Repositories\TaskRepository;
+use App\Services\TaskGateProgressService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -33,17 +34,25 @@ class TaskCreationService
     private $earnDeskService;
 
     /**
+     * @var TaskGateProgressService
+     */
+    private $gateProgressService;
+
+    /**
      * Create a new service instance.
      *
      * @param TaskRepository $taskRepository
      * @param SwiftKudiService $earnDeskService
+     * @param TaskGateProgressService $gateProgressService
      */
     public function __construct(
         TaskRepository $taskRepository,
-        SwiftKudiService $earnDeskService
+        SwiftKudiService $earnDeskService,
+        TaskGateProgressService $gateProgressService
     ) {
         $this->taskRepository = $taskRepository;
         $this->earnDeskService = $earnDeskService;
+        $this->gateProgressService = $gateProgressService;
     }
 
     /**
@@ -196,6 +205,11 @@ class TaskCreationService
                 'budget' => $task->budget,
                 'quantity' => $task->quantity,
             ]);
+
+            // Update user's task creation progress and check unlock status
+            if (!$isDraft && isset($data['budget']) && $data['budget'] > 0) {
+                $this->gateProgressService->updateProgress($user, $data['budget']);
+            }
 
             // Send notification
             $this->sendTaskCreatedNotification($user, $task);

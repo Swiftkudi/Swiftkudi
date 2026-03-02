@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\SystemSetting;
 use App\Services\SwiftKudiService;
+use App\Services\TaskGateProgressService;
 use App\Notifications\EarningsUnlocked;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,10 +23,12 @@ use App\Notifications\TaskRejected;
 class TaskController extends Controller
 {
     protected $earnDeskService;
+    protected $gateProgressService;
 
-    public function __construct(SwiftKudiService $earnDeskService)
+    public function __construct(SwiftKudiService $earnDeskService, TaskGateProgressService $gateProgressService)
     {
         $this->earnDeskService = $earnDeskService;
+        $this->gateProgressService = $gateProgressService;
     }
 
     /**
@@ -298,6 +301,9 @@ class TaskController extends Controller
 
             return response()->json(['success' => true, 'task_id' => $task->id]);
         }
+
+        // Update user's task creation progress and check unlock status
+        $this->gateProgressService->updateProgress($user, $request->budget);
 
         // Success notification
         Notification::send($user, new TaskApproved($task));
