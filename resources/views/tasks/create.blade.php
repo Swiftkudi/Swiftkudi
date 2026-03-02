@@ -364,6 +364,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             try {
+                if (typeof ensurePlatformAndCategorySync === 'function') {
+                    ensurePlatformAndCategorySync();
+                }
                 const formData = new FormData(form);
                 const response = await fetch(form.action, {
                     method: 'POST',
@@ -488,6 +491,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const taskTypeSelect = document.getElementById('task_type');
     const platformSection = document.getElementById('platform-section');
     const categoryInfo = document.getElementById('category-info');
+
+    function ensurePlatformAndCategorySync() {
+        const selectedOption = taskTypeSelect && taskTypeSelect.selectedIndex >= 0
+            ? taskTypeSelect.options[taskTypeSelect.selectedIndex]
+            : null;
+
+        if (selectedOption && selectedOption.value) {
+            categoryIdInput.value = selectedOption.value;
+            if ((!platformInput.value || platformInput.value === '') && selectedOption.dataset?.platform) {
+                platformInput.value = selectedOption.dataset.platform;
+            }
+        }
+
+        if ((!platformInput.value || platformInput.value === '') && categoryIdInput.value) {
+            const selectedCategory = rawCategories.find(c => String(c.id) === String(categoryIdInput.value));
+            if (selectedCategory?.platform) {
+                platformInput.value = selectedCategory.platform;
+            }
+        }
+    }
 
     // Track the currently selected per-task total price (reward + fee). When >0 we use it to compute budget/quantity/reward.
     let selectedTaskPriceTotal = 0;
@@ -740,6 +763,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const formEl = document.querySelector('form[action="{{ route('tasks.create.store') }}"]');
             const data = {};
             if (!formEl) return window.location = '{{ route('wallet.deposit') }}';
+            ensurePlatformAndCategorySync();
             ['title','description','platform','task_type','category_id','target_url','target_account','hashtag','instructions','proof_type','budget','quantity','min_followers','expires_at'].forEach(name => {
                 const el = formEl.querySelector('[name="' + name + '"]');
                 if (!el) return;

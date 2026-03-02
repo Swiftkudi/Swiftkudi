@@ -224,5 +224,13 @@ class CreateTaskRequest extends FormRequest
                 ? (float) str_replace([',', ' '], '', $this->worker_reward_per_task) 
                 : null,
         ]);
+
+        // If category is selected but platform is missing, derive platform from category
+        if ((!$this->filled('platform')) && $this->filled('category_id')) {
+            $category = TaskCategory::find($this->input('category_id'));
+            if ($category && !empty($category->platform)) {
+                $this->merge(['platform' => $category->platform]);
+            }
+        }
     }
 }
