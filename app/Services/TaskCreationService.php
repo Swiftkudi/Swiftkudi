@@ -190,6 +190,16 @@ class TaskCreationService
             // Create the task using repository (transaction-safe)
             // Ensure required foreign key is always present.
             $resolvedPlatform = !empty($data['platform']) ? $data['platform'] : ($category->platform ?? null);
+            if (empty($resolvedPlatform)) {
+                $this->logFailure($creationLog, 'Unable to resolve platform from selected category');
+                return [
+                    'task' => null,
+                    'success' => false,
+                    'message' => 'We could not determine the platform for the selected task type. Please reselect the task category and try again.',
+                    'status' => Response::HTTP_UNPROCESSABLE_ENTITY,
+                ];
+            }
+
             $taskPayload = array_merge($data, [
                 'user_id' => $user->id,
                 'platform' => $resolvedPlatform,
@@ -239,13 +249,37 @@ class TaskCreationService
 
             $this->logFailure($creationLog, $e->getMessage());
 
+            $errorMessage = $this->mapTaskCreationExceptionMessage($e->getMessage());
+
             return [
                 'task' => null,
                 'success' => false,
-                'message' => 'An error occurred while creating the task. Please try again.',
+                'message' => $errorMessage,
                 'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
             ];
         }
+    }
+
+    /**
+     * Convert low-level exception text to clear user-facing messages.
+     */
+    protected function mapTaskCreationExceptionMessage(string $exceptionMessage): string
+    {
+        $message = strtolower($exceptionMessage);
+
+        if (str_contains($message, 'platform') && (str_contains($message, 'null') || str_contains($message, 'cannot be'))) {
+            return 'Please select a valid task type/category so we can detect the platform, then submit again.';
+        }
+
+        if (str_contains($message, 'category') && (str_contains($message, 'null') || str_contains($message, 'foreign key') || str_contains($message, 'constraint'))) {
+            return 'The selected task category is invalid or missing. Please reselect the task category and try again.';
+        }
+
+        if (str_contains($message, 'duplicate') || str_contains($message, 'unique')) {
+            return 'Your last submission was already received. Please refresh the page and submit again.';
+        }
+
+        return 'We could not create your task right now. Please review your details and try again.';
     }
 
     /**
