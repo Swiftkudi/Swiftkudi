@@ -116,7 +116,6 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
         Route::get('/create/resume', [CreateTaskController::class, 'resume'])->name('create.resume');
         Route::get('/create/saved', [TaskController::class, 'savedCreate'])->name('create.saved');
         Route::post('/create/pay', [TaskController::class, 'payCreate'])->name('create.pay');
-        Route::post('/create/save-draft', [TaskController::class, 'saveDraft'])->name('create.save-draft');
         Route::post('/tasks', [TaskController::class, 'store'])->name('store');
         Route::post('/tasks/suggest-bundles', [TaskController::class, 'suggestBundles'])->name('suggest-bundles');
         Route::get('/bundles', [TaskController::class, 'bundles'])->name('bundles');

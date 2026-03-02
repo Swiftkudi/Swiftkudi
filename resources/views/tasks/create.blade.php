@@ -137,8 +137,8 @@
                     <label class="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Task Category *</label>
                     
                     <!-- Hidden category ID field -->
-                    <input type="hidden" id="category_id" name="category_id" value="{{ old('category_id') }}">
-                    <input type="hidden" id="platform" name="platform" value="{{ old('platform') }}">
+                    <input type="hidden" id="category_id" name="category_id" value="{{ $getValue('category_id') }}">
+                    <input type="hidden" id="platform" name="platform" value="{{ $getValue('platform') }}">
                     
                     <!-- Step 1: Task Type Group -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -217,13 +217,13 @@
                         <label for="target_url" class="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Target URL</label>
                         <input type="url" id="target_url" name="target_url" placeholder="https://instagram.com/p/..."
                         class="w-full px-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all"
-                        value="{{ old('target_url') }}">
+                        value="{{ $getValue('target_url') }}">
                     </div>
                     <div>
                         <label for="target_account" class="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Target Account</label>
                         <input type="text" id="target_account" name="target_account" placeholder="@username"
                             class="w-full px-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all"
-                            value="{{ old('target_account') }}">
+                            value="{{ $getValue('target_account') }}">
                     </div>
                 </div>
 
@@ -232,13 +232,13 @@
                     <label for="hashtag" class="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Required Hashtag (optional)</label>
                     <input type="text" id="hashtag" name="hashtag" placeholder="#YourHashtag"
                         class="w-full px-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all"
-                        value="{{ old('hashtag') }}">
+                        value="{{ $getValue('hashtag') }}">
                 </div>
 
                 <div>
                     <label for="instructions" class="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Specific Instructions</label>
                     <textarea id="instructions" name="instructions" rows="2" placeholder="Any specific requirements for workers..."
-                         class="w-full px-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all resize-none">{{ old('instructions') }}</textarea>
+                         class="w-full px-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all resize-none">{{ $getValue('instructions') }}</textarea>
                 </div>
 
                 <!-- Budget & Quantity -->
@@ -282,7 +282,7 @@
                          class="w-full px-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 transition-all">
                         <option value="">Select proof type...</option>
                         @foreach($proofTypes as $proofType)
-                            <option value="{{ $proofType }}" {{ (string)$oldProof === (string)$proofType ? 'selected' : '' }}>{{ ucfirst($proofType) }}</option>
+                            <option value="{{ $proofType }}" {{ (string)$getValue('proof_type', $oldProof) === (string)$proofType ? 'selected' : '' }}>{{ ucfirst($proofType) }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -293,13 +293,13 @@
                         <label for="min_followers" class="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Min Followers (optional)</label>
                         <input type="number" id="min_followers" name="min_followers" min="0" placeholder="0"
                              class="w-full px-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all"
-                             value="{{ old('min_followers') }}">
+                                value="{{ $getValue('min_followers') }}">
                     </div>
                     <div>
                         <label for="expires_at" class="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Expires At (optional)</label>
                         <input type="datetime-local" id="expires_at" name="expires_at"
                              class="w-full px-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 transition-all"
-                             value="{{ old('expires_at') }}">
+                                value="{{ $getValue('expires_at') }}">
                     </div>
                 </div>
 

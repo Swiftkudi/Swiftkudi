@@ -292,6 +292,8 @@ class WalletController extends Controller
         // Store deposit context for redirect after payment
         if ($redirectRoute = session('deposit_success_redirect')) {
             session(['payment_success_redirect' => $redirectRoute]);
+        } elseif (session()->has('task_creation_data')) {
+            session(['payment_success_redirect' => route('tasks.create.resume')]);
         }
 
         // Redirect to payment initialization

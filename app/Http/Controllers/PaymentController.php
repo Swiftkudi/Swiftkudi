@@ -133,6 +133,16 @@ class PaymentController extends Controller
 
             // Check if already processed (idempotency)
             if ($transaction->status === 'completed') {
+                $redirectRoute = session('payment_success_redirect');
+                if (!$redirectRoute && session()->has('task_creation_data')) {
+                    $redirectRoute = route('tasks.create.resume');
+                }
+
+                if ($redirectRoute) {
+                    session()->forget('payment_success_redirect');
+                    return redirect($redirectRoute)->with('success', 'Payment already processed. Returning to your saved task form.');
+                }
+
                 return redirect()->route('wallet.index')->with('info', 'Payment already processed.');
             }
 
@@ -191,6 +201,9 @@ class PaymentController extends Controller
 
                 // Check for redirect after payment (e.g., task creation flow)
                 $redirectRoute = session('payment_success_redirect');
+                if (!$redirectRoute && session()->has('task_creation_data')) {
+                    $redirectRoute = route('tasks.create.resume');
+                }
                 if ($redirectRoute) {
                     session()->forget('payment_success_redirect');
                     return redirect($redirectRoute)->with('success', '💰 Payment successful! Your wallet has been credited.');
