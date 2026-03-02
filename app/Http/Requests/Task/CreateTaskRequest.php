@@ -231,11 +231,11 @@ class CreateTaskRequest extends FormRequest
             $this->merge(['category_id' => (int) $this->input('task_type')]);
         }
 
-        // Always derive platform from category when category is known.
-        // This prevents stale/empty hidden platform values from failing validation.
+        // Derive platform from category only when category has a concrete platform value.
+        // Do not overwrite a user-selected platform with null/empty category platform.
         if ($this->filled('category_id')) {
             $category = TaskCategory::find($this->input('category_id'));
-            if ($category) {
+            if ($category && !empty($category->platform)) {
                 $this->merge([
                     'platform' => $category->platform,
                 ]);
