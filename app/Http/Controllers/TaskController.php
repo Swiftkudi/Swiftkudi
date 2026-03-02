@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Schema;
 use App\Notifications\TaskAvailable;
 use App\Notifications\TaskApproved;
 use App\Notifications\TaskRejected;
@@ -319,7 +320,7 @@ class TaskController extends Controller
         $user = Auth::user();
 
         $rules = [
-            'proof_description' => 'required|string|max:2000',
+            'proof_description' => 'required|string|max:255',
             'notes' => 'nullable|string|max:1000',
         ];
 
@@ -346,6 +347,7 @@ class TaskController extends Controller
 
         try {
             $proofData = [];
+            $storedFilePath = null;
 
             if ($task->proof_type === 'link') {
                 $proofData = [
@@ -355,6 +357,7 @@ class TaskController extends Controller
             } else {
                 $file = $request->file('proof_data.file');
                 $path = $file->store('task-proofs', 'public');
+                $storedFilePath = $path;
 
                 $proofData = [
                     'type' => 'file',
@@ -365,17 +368,42 @@ class TaskController extends Controller
                 ];
             }
 
-            TaskCompletion::create([
+            $completionPayload = [
                 'task_id' => $task->id,
                 'user_id' => $user->id,
                 'status' => TaskCompletion::STATUS_PENDING,
-                'proof_data' => json_encode($proofData),
                 'proof_description' => $validated['proof_description'],
-                'worker_notes' => $validated['notes'] ?? null,
-                'submitted_at' => now(),
-                'ip_address' => $request->ip(),
-                'user_agent' => substr((string) $request->userAgent(), 0, 1000),
-            ]);
+            ];
+
+            if (Schema::hasColumn('task_completions', 'proof_data')) {
+                $completionPayload['proof_data'] = json_encode($proofData);
+            }
+
+            if ($storedFilePath && Schema::hasColumn('task_completions', 'proof_screenshot')) {
+                $completionPayload['proof_screenshot'] = $storedFilePath;
+            }
+
+            if (Schema::hasColumn('task_completions', 'worker_notes')) {
+                $completionPayload['worker_notes'] = $validated['notes'] ?? null;
+            }
+
+            if (Schema::hasColumn('task_completions', 'admin_note') && !Schema::hasColumn('task_completions', 'worker_notes')) {
+                $completionPayload['admin_note'] = $validated['notes'] ?? null;
+            }
+
+            if (Schema::hasColumn('task_completions', 'submitted_at')) {
+                $completionPayload['submitted_at'] = now();
+            }
+
+            if (Schema::hasColumn('task_completions', 'ip_address')) {
+                $completionPayload['ip_address'] = $request->ip();
+            }
+
+            if (Schema::hasColumn('task_completions', 'user_agent')) {
+                $completionPayload['user_agent'] = substr((string) $request->userAgent(), 0, 1000);
+            }
+
+            TaskCompletion::create($completionPayload);
 
             return redirect()->route('tasks.show', $task)->with('success', 'Task submitted successfully. Awaiting review.');
         } catch (\Exception $e) {
