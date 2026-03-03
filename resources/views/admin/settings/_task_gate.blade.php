@@ -10,6 +10,15 @@
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Configure mandatory task creation requirements for new users before they can earn.
             </p>
+            <div class="mt-3">
+                @php
+                    $taskGateEnabled = \App\Models\SystemSetting::isMandatoryTaskCreationEnabled();
+                @endphp
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $taskGateEnabled ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300' }}">
+                    <i class="fas {{ $taskGateEnabled ? 'fa-toggle-on' : 'fa-toggle-off' }} mr-1.5"></i>
+                    {{ $taskGateEnabled ? 'Enabled' : 'Disabled' }}
+                </span>
+            </div>
         </div>
 
         <form action="{{ route('admin.settings.update', 'task-gate') }}" method="POST" class="space-y-6">

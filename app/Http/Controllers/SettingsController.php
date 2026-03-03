@@ -16,6 +16,15 @@ class SettingsController extends Controller
 {
     protected $superAdminOnly = ['general', 'smtp', 'payment', 'security', 'cron', 'commission', 'currency', 'maintenance', 'audit', 'registration', 'task-gate'];
 
+    private const TASK_GATE_DEFAULTS = [
+        'mandatory_task_creation_enabled' => ['value' => true, 'type' => 'boolean'],
+        'minimum_required_budget' => ['value' => 2500, 'type' => 'number'],
+        'mandatory_budget_currency' => ['value' => 'NGN', 'type' => 'text'],
+        'active_workers_count' => ['value' => 1250, 'type' => 'number'],
+        'total_paid_out' => ['value' => 4500000, 'type' => 'number'],
+        'success_rate' => ['value' => 98, 'type' => 'number'],
+    ];
+
     public function __construct()
     {
         $this->middleware(function ($request, $next) {
@@ -53,7 +62,7 @@ class SettingsController extends Controller
             $settingsCounts[$key] = SystemSetting::where('group', $key)->count();
         }
 
-        return view('admin.settings.index', compact('groups', 'settingsCounts'));
+        return view('admin.settings', compact('groups', 'settingsCounts'));
     }
 
     /**
@@ -75,6 +84,7 @@ class SettingsController extends Controller
 
         // Special handling for task-gate group
         if ($group === 'task-gate') {
+            $this->ensureTaskGateSettingsExist();
             $settings = SystemSetting::where('group', 'task-gate')->get();
             $settingsByKey = [];
             foreach ($settings as $s) {
@@ -85,6 +95,10 @@ class SettingsController extends Controller
 
         if ($group === 'registration') {
             $this->ensureRegistrationSettingsExist();
+        }
+
+        if ($group === 'task-gate') {
+            $this->ensureTaskGateSettingsExist();
         }
 
         $settings = SystemSetting::where('group', $group)->get();
@@ -131,6 +145,10 @@ class SettingsController extends Controller
         if (!$this->canEditSettings($group)) {
             return redirect()->route('admin.index')
                 ->with('error', 'You do not have permission to edit these settings.');
+        }
+
+        if ($group === 'task-gate') {
+            return $this->updateTaskGateSettings($request);
         }
 
         if ($group === 'registration') {
@@ -241,6 +259,56 @@ class SettingsController extends Controller
                 SystemSetting::set($key, $meta['value'], 'registration', $meta['type']);
             }
         }
+    }
+
+    /**
+     * Ensure required task-gate settings rows exist.
+     */
+    protected function ensureTaskGateSettingsExist(): void
+    {
+        foreach (self::TASK_GATE_DEFAULTS as $key => $meta) {
+            $setting = SystemSetting::where('key', $key)->first();
+            if (!$setting) {
+                SystemSetting::set($key, $meta['value'], 'task-gate', $meta['type']);
+                continue;
+            }
+
+            if ($setting->group !== 'task-gate') {
+                $currentValue = SystemSetting::get($key, $meta['value']);
+                SystemSetting::set($key, $currentValue, 'task-gate', $setting->type ?: $meta['type']);
+            }
+        }
+    }
+
+    /**
+     * Persist task-gate settings explicitly so toggles always apply.
+     */
+    protected function updateTaskGateSettings(Request $request)
+    {
+        $this->ensureTaskGateSettingsExist();
+
+        $validated = $request->validate([
+            'minimum_required_budget' => ['nullable', 'numeric', 'min:0'],
+            'mandatory_budget_currency' => ['nullable', 'string', 'max:10'],
+            'active_workers_count' => ['nullable', 'numeric', 'min:0'],
+            'total_paid_out' => ['nullable', 'numeric', 'min:0'],
+            'success_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        SystemSetting::set(
+            'mandatory_task_creation_enabled',
+            $request->has('mandatory_task_creation_enabled') ? 'true' : 'false',
+            'task-gate',
+            'boolean'
+        );
+
+        SystemSetting::set('minimum_required_budget', $validated['minimum_required_budget'] ?? 2500, 'task-gate', 'number');
+        SystemSetting::set('mandatory_budget_currency', $validated['mandatory_budget_currency'] ?? 'NGN', 'task-gate', 'text');
+        SystemSetting::set('active_workers_count', $validated['active_workers_count'] ?? 1250, 'task-gate', 'number');
+        SystemSetting::set('total_paid_out', $validated['total_paid_out'] ?? 4500000, 'task-gate', 'number');
+        SystemSetting::set('success_rate', $validated['success_rate'] ?? 98, 'task-gate', 'number');
+
+        return redirect()->back()->with('success', 'Task-gate settings saved successfully.');
     }
 
     /**
