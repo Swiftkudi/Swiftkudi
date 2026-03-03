@@ -207,6 +207,46 @@ class Task extends Model
     }
 
     /**
+     * Relationship: Approved completions only
+     */
+    public function approvedCompletions()
+    {
+        return $this->hasMany(TaskCompletion::class)->where('status', TaskCompletion::STATUS_APPROVED);
+    }
+
+    /**
+     * Unified completed slots accessor used across views.
+     */
+    public function getCompletedSlotsAttribute(): int
+    {
+        return $this->task_completions_count;
+    }
+
+    /**
+     * Unified completion count accessor.
+     *
+     * Some controllers load `completions_count`, some load
+     * `task_completions_count`, and some rely on `completed_count`.
+     * This accessor normalizes all paths and falls back to live approved count.
+     */
+    public function getTaskCompletionsCountAttribute(): int
+    {
+        if (array_key_exists('task_completions_count', $this->attributes)) {
+            return (int) $this->attributes['task_completions_count'];
+        }
+
+        if (array_key_exists('completions_count', $this->attributes)) {
+            return (int) $this->attributes['completions_count'];
+        }
+
+        if (array_key_exists('completed_count', $this->attributes)) {
+            return (int) $this->attributes['completed_count'];
+        }
+
+        return (int) $this->approvedCompletions()->count();
+    }
+
+    /**
      * Relationship: Bundles containing this task
      */
     public function bundles()
@@ -239,7 +279,7 @@ class Task extends Model
      */
     public function hasAvailableSlots(): bool
     {
-        return $this->completed_count < $this->quantity;
+        return $this->task_completions_count < $this->quantity;
     }
 
     /**
@@ -247,7 +287,7 @@ class Task extends Model
      */
     public function getRemainingSlotsAttribute(): int
     {
-        return max(0, $this->quantity - $this->completed_count);
+        return max(0, $this->quantity - $this->task_completions_count);
     }
 
     /**
@@ -398,7 +438,7 @@ class Task extends Model
             return 100;
         }
         
-        return (int) (($this->completed_count / $this->quantity) * 100);
+        return (int) (($this->task_completions_count / $this->quantity) * 100);
     }
 
     /**

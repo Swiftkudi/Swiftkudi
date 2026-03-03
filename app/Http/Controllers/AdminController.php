@@ -175,7 +175,10 @@ class AdminController extends Controller
      */
     public function tasks(Request $request)
     {
-        $query = Task::with('user', 'category');
+        $query = Task::with('user', 'category')
+            ->withCount(['completions as task_completions_count' => function ($completionQuery) {
+                $completionQuery->where('status', TaskCompletion::STATUS_APPROVED);
+            }]);
 
         if ($request->has('status')) {
             if ($request->status === 'active') {

@@ -113,7 +113,9 @@ class DashboardController extends Controller
             ->get();
 
         // Recent tasks (created by user)
-        $myTasks = $user->tasks()->withCount('completions')->get();
+        $myTasks = $user->tasks()->withCount(['completions as completions_count' => function ($query) {
+            $query->where('status', TaskCompletion::STATUS_APPROVED);
+        }])->get();
 
         return view('dashboard', compact(
             'user',

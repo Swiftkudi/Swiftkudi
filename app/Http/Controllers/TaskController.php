@@ -103,7 +103,10 @@ class TaskController extends Controller
         
         $query->whereNotIn('id', $completedTaskIds);
 
-        $tasks = $query->orderBy('is_featured', 'desc')
+        $tasks = $query->withCount(['completions as task_completions_count' => function ($completionQuery) {
+                $completionQuery->where('status', TaskCompletion::STATUS_APPROVED);
+            }])
+            ->orderBy('is_featured', 'desc')
             ->orderBy('worker_reward_per_task', 'desc')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
@@ -152,7 +155,9 @@ class TaskController extends Controller
             ->withCount(['completions as pending_submissions_count' => function($q) {
                 $q->where('status', 'pending');
             }])
-            ->withCount('completions')
+            ->withCount(['completions as task_completions_count' => function($q) {
+                $q->where('status', TaskCompletion::STATUS_APPROVED);
+            }])
              ->orderBy('created_at', 'desc')
              ->paginate(10);
 
