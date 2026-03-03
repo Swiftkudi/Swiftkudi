@@ -268,6 +268,9 @@
 
             <!-- Task Creation Gate -->
             <a href="{{ route('admin.settings.task-gate') }}" class="group relative bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-l-4 border-l-indigo-500 p-6 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
+                @php
+                    $taskGateEnabled = \App\Models\SystemSetting::isMandatoryTaskCreationEnabled();
+                @endphp
                 <div class="absolute top-3 right-3">
                     <div class="relative">
                         <button type="button" class="w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-700 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help" data-tooltip-target="tooltip-taskgate">
@@ -286,6 +289,12 @@
                     <i class="fas fa-arrow-right text-gray-300 dark:text-gray-600 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all"></i>
                 </div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Task Creation Gate</h3>
+                <div class="mt-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $taskGateEnabled ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300' }}">
+                        <i class="fas {{ $taskGateEnabled ? 'fa-toggle-on' : 'fa-toggle-off' }} mr-1.5"></i>
+                        {{ $taskGateEnabled ? 'Enabled' : 'Disabled' }}
+                    </span>
+                </div>
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Mandatory task creation requirements</p>
             </a>
         </div>
