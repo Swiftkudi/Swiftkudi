@@ -18,6 +18,7 @@ use App\Models\ActivationLog;
 use App\Services\RevenueAggregator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class SwiftKudiService
 {
@@ -481,13 +482,31 @@ class SwiftKudiService
                 ];
             }
 
-            // Get the reward amount from completion or task
-            $rewardAmount = $completion->reward_amount ?? $completion->task->reward_amount ?? 0;
+            // Resolve reward amount from completion first, then known task reward columns (legacy + new)
+            $task = $completion->task;
+            $rewardAmount = (float) ($completion->reward_amount ?? 0);
+
+            if ($rewardAmount <= 0) {
+                $rewardAmount = (float) ($task->worker_reward_per_task ?? 0);
+            }
+
+            if ($rewardAmount <= 0 && Schema::hasColumn('tasks', 'reward_amount')) {
+                $rewardAmount = (float) ($task->reward_amount ?? 0);
+            }
+
+            if ($rewardAmount <= 0 && Schema::hasColumn('tasks', 'reward_per_user')) {
+                $rewardAmount = (float) ($task->reward_per_user ?? 0);
+            }
+
             if ($rewardAmount <= 0) {
                 return [
                     'success' => false,
                     'message' => 'No reward amount specified',
                 ];
+            }
+
+            if (Schema::hasColumn($completion->getTable(), 'reward_amount')) {
+                $completion->reward_amount = $rewardAmount;
             }
 
             // Calculate split (80% withdrawable, 20% promo credit)
@@ -516,6 +535,10 @@ class SwiftKudiService
             $completion->status = TaskCompletion::STATUS_APPROVED;
             $completion->reviewed_at = now();
             $completion->save();
+
+            if ($task) {
+                $task->increment('completed_count');
+            }
 
             Log::info('Task earnings awarded', [
                 'completion_id' => $completion->id,

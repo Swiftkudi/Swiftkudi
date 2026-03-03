@@ -344,9 +344,40 @@ class TaskController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $completion->approve($completion->reward_amount ?: ($task->worker_reward_per_task ?? 0), $request->input('notes'));
+        $resolvedReward = (float) ($completion->reward_amount ?? 0);
+        if ($resolvedReward <= 0) {
+            $resolvedReward = (float) ($task->worker_reward_per_task ?? 0);
+        }
 
-        return back()->with('success', 'Submission approved successfully.');
+        if ($resolvedReward <= 0 && Schema::hasColumn('tasks', 'reward_amount')) {
+            $resolvedReward = (float) ($task->reward_amount ?? 0);
+        }
+
+        if ($resolvedReward <= 0 && Schema::hasColumn('tasks', 'reward_per_user')) {
+            $resolvedReward = (float) ($task->reward_per_user ?? 0);
+        }
+
+        if ($resolvedReward <= 0) {
+            return back()->with('error', 'This task has no valid worker reward configured.');
+        }
+
+        if (Schema::hasColumn('task_completions', 'reward_amount')) {
+            $completion->reward_amount = $resolvedReward;
+        }
+
+        if ($request->filled('notes') && Schema::hasColumn('task_completions', 'admin_notes')) {
+            $completion->admin_notes = $request->input('notes');
+        }
+
+        $completion->save();
+
+        $result = $this->earnDeskService->awardTaskEarnings($completion->fresh(['task', 'user.wallet']));
+
+        if (!($result['success'] ?? false)) {
+            return back()->with('error', $result['message'] ?? 'Failed to approve submission.');
+        }
+
+        return back()->with('success', 'Submission approved and reward credited successfully.');
     }
 
     /**
