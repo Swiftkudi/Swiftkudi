@@ -276,4 +276,57 @@ class RevenueController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Refresh revenue dashboard data endpoint (supports both page and AJAX).
+     */
+    public function refresh(Request $request)
+    {
+        $startDate = $request->has('start_date')
+            ? Carbon::parse($request->start_date)->startOfDay()
+            : today()->startOfMonth();
+
+        $endDate = $request->has('end_date')
+            ? Carbon::parse($request->end_date)->endOfDay()
+            : today()->endOfDay();
+
+        $summary = $this->analyticsService->getDashboardSummary();
+        $revenueBySource = $this->analyticsService->getRevenueBySource($startDate, $endDate);
+        $expensesByCategory = $this->analyticsService->getExpensesByCategory($startDate, $endDate);
+        $activationStats = $this->analyticsService->getActivationStats($startDate, $endDate);
+        $dailyBreakdown = $this->analyticsService->getDailyBreakdown($startDate, $endDate);
+        $activationTrend = $this->analyticsService->getActivationTrend($startDate, $endDate);
+        $alerts = $this->analyticsService->checkForAnomalies();
+        $profitMargin = $this->analyticsService->getProfitMargin($startDate, $endDate);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Revenue dashboard refreshed successfully.',
+                'data' => [
+                    'summary' => $summary,
+                    'revenue_by_source' => $revenueBySource,
+                    'expenses_by_category' => $expensesByCategory,
+                    'activation_stats' => $activationStats,
+                    'daily_breakdown' => $dailyBreakdown,
+                    'activation_trend' => $activationTrend,
+                    'alerts' => $alerts,
+                    'profit_margin' => $profitMargin,
+                ],
+            ]);
+        }
+
+        return view('admin.revenue.index', compact(
+            'summary',
+            'revenueBySource',
+            'expensesByCategory',
+            'activationStats',
+            'dailyBreakdown',
+            'activationTrend',
+            'alerts',
+            'profitMargin',
+            'startDate',
+            'endDate'
+        ))->with('success', 'Revenue dashboard refreshed successfully.');
+    }
 }

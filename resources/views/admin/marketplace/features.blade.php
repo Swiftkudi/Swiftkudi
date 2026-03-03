@@ -76,7 +76,7 @@
 
         <!-- Quick Actions -->
         <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <a href="{{ route('admin.settings.index') }}" class="bg-white dark:bg-dark-900 rounded-xl p-4 text-center border border-gray-200 dark:border-dark-700 hover:border-indigo-500 transition-all">
+            <a href="{{ route('admin.settings') }}" class="bg-white dark:bg-dark-900 rounded-xl p-4 text-center border border-gray-200 dark:border-dark-700 hover:border-indigo-500 transition-all">
                 <i class="fas fa-cog text-indigo-600 text-2xl mb-2"></i>
                 <p class="font-medium text-gray-900 dark:text-white">Platform Settings</p>
             </a>

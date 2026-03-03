@@ -302,6 +302,14 @@ class SettingsController extends Controller
             'boolean'
         );
 
+        // Keep legacy key in sync for any older code paths still reading it.
+        SystemSetting::set(
+            'compulsory_task_creation_before_earning',
+            $request->has('mandatory_task_creation_enabled') ? 'true' : 'false',
+            'general',
+            'boolean'
+        );
+
         SystemSetting::set('minimum_required_budget', $validated['minimum_required_budget'] ?? 2500, 'task-gate', 'number');
         SystemSetting::set('mandatory_budget_currency', $validated['mandatory_budget_currency'] ?? 'NGN', 'task-gate', 'text');
         SystemSetting::set('active_workers_count', $validated['active_workers_count'] ?? 1250, 'task-gate', 'number');

@@ -427,6 +427,12 @@ class SystemSetting extends Model
      */
     public static function isCompulsoryTaskCreationEnabled(): bool
     {
+        // Canonical key for task gate control
+        if (self::keyExists('mandatory_task_creation_enabled')) {
+            return self::getBool('mandatory_task_creation_enabled', true);
+        }
+
+        // Backward compatibility for legacy key
         return self::getBool('compulsory_task_creation_before_earning', false);
     }
 
