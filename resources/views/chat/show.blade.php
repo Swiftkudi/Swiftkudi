@@ -29,6 +29,15 @@
 @section('content')
 <div class="py-6">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div
+            id="chat-config"
+            data-conversation-id="{{ $conversation->id }}"
+            data-last-message-id="{{ $conversation->messages->max('id') ?? 0 }}"
+            data-current-user-id="{{ auth()->id() }}"
+            data-send-url="{{ route('chat.send') }}"
+            data-messages-url="{{ route('chat.messages', $conversation) }}"
+        ></div>
+
         <!-- Header -->
         <div class="mb-6">
             <div class="flex items-center justify-between">
@@ -160,8 +169,13 @@
 
 @push('scripts')
 <script>
+    const chatConfig = document.getElementById('chat-config');
     let selectedFile = null;
-    const conversationId = {{ $conversation->id }};
+    const conversationId = Number(chatConfig?.dataset?.conversationId || 0);
+    let lastMessageId = Number(chatConfig?.dataset?.lastMessageId || 0);
+    const currentUserId = Number(chatConfig?.dataset?.currentUserId || 0);
+    const chatSendUrl = chatConfig?.dataset?.sendUrl || '/chat/send';
+    const chatMessagesUrl = chatConfig?.dataset?.messagesUrl || `/chat/${conversationId}/messages`;
 
     function autoResize(textarea) {
         textarea.style.height = 'auto';
@@ -203,7 +217,7 @@
         if (selectedFile) formData.append('attachment', selectedFile);
 
         try {
-            const response = await fetch('{{ route('chat.message') }}', {
+            const response = await fetch(chatSendUrl, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -217,13 +231,94 @@
                 input.value = '';
                 autoResize(input);
                 clearFile();
-                location.reload();
+                appendMessage(data.message);
+                lastMessageId = Math.max(lastMessageId, data.message.id || 0);
+                const container = document.getElementById('messages-container');
+                container.scrollTop = container.scrollHeight;
             }
         } catch (error) {
             console.error('Error sending message:', error);
             alert('Failed to send message. Please try again.');
         }
     });
+
+    function escapeHtml(value) {
+        return (value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function formatTime(dateString) {
+        try {
+            return new Date(dateString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function appendMessage(message) {
+        const container = document.getElementById('messages-container');
+        const isOwn = Number(message.sender_id) === Number(currentUserId);
+        const wrapper = document.createElement('div');
+        wrapper.className = `flex ${isOwn ? 'justify-end' : 'justify-start'} message-enter`;
+
+        const bubbleClass = isOwn
+            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl rounded-br-md'
+            : 'bg-gray-100 text-gray-900 rounded-2xl rounded-bl-md';
+
+        const timeClass = isOwn ? 'text-blue-100' : 'text-gray-400';
+        let attachmentHtml = '';
+        if (message.attachment_path) {
+            const url = `/storage/${message.attachment_path}`;
+            if ((message.attachment_type || '').startsWith('image/')) {
+                attachmentHtml = `<div class="mt-2"><img src="${url}" alt="Attachment" class="max-w-[200px] rounded-lg"></div>`;
+            } else {
+                attachmentHtml = `<div class="mt-2"><a href="${url}" target="_blank" class="flex items-center space-x-2 text-xs underline"><span>View Attachment</span></a></div>`;
+            }
+        }
+
+        wrapper.innerHTML = `
+            <div class="message-bubble ${bubbleClass} px-4 py-3">
+                ${message.message ? `<p class="text-sm">${escapeHtml(message.message)}</p>` : ''}
+                ${attachmentHtml}
+                <p class="text-xs mt-1 ${timeClass}">${formatTime(message.created_at)}</p>
+            </div>
+        `;
+
+        container.appendChild(wrapper);
+    }
+
+    async function pollMessages() {
+        try {
+            const response = await fetch(`${chatMessagesUrl}?since_id=${lastMessageId}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+            if (!data.success || !Array.isArray(data.messages) || data.messages.length === 0) {
+                return;
+            }
+
+            const container = document.getElementById('messages-container');
+            const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+
+            data.messages.forEach((message) => {
+                appendMessage(message);
+                lastMessageId = Math.max(lastMessageId, message.id || 0);
+            });
+
+            if (nearBottom) {
+                container.scrollTop = container.scrollHeight;
+            }
+        } catch (error) {
+            console.error('Message polling failed:', error);
+        }
+    }
 
     function closeConversation() {
         if (confirm('Are you sure you want to close this conversation?')) {
@@ -247,6 +342,8 @@
     window.addEventListener('load', function() {
         const container = document.getElementById('messages-container');
         container.scrollTop = container.scrollHeight;
+
+        setInterval(pollMessages, 5000);
     });
 </script>
 @endpush

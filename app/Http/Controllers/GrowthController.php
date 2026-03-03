@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\GrowthListing;
 use App\Models\GrowthOrder;
+use App\Models\MarketplaceConversation;
+use App\Models\MarketplaceMessage;
 use App\Services\GrowthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class GrowthController extends Controller
@@ -313,12 +316,29 @@ class GrowthController extends Controller
                 ]
             );
 
+            $conversation = MarketplaceConversation::findOrCreate(
+                'growth_service',
+                0,
+                $sender->id,
+                $recipient->id
+            );
+
+            MarketplaceMessage::create([
+                'conversation_id' => $conversation->id,
+                'sender_id' => $sender->id,
+                'message' => "Subject: {$validated['subject']}\n\n{$validated['message']}",
+                'is_read' => false,
+            ]);
+
+            $conversation->update(['last_message_at' => now()]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Message sent successfully!',
+                'chat_url' => route('chat.show', $conversation),
             ]);
         } catch (\Exception $e) {
-            \Log::error('Contact seller error: ' . $e->getMessage());
+            Log::error('Contact seller error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to send message: ' . $e->getMessage(),

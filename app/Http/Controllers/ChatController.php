@@ -169,19 +169,27 @@ class ChatController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $messages = $conversation->messages()
-            ->with('sender')
-            ->orderBy('created_at', 'desc')
-            ->paginate(50);
+        $query = $conversation->messages()->with('sender');
 
-        return response()->json($messages);
+        $sinceId = (int) $request->query('since_id', 0);
+        if ($sinceId > 0) {
+            $query->where('id', '>', $sinceId);
+        }
+
+        $messages = $query->orderBy('id', 'asc')->get();
+
+        return response()->json([
+            'success' => true,
+            'messages' => $messages,
+        ]);
     }
 
     public function apiSend(Request $request)
     {
         $request->validate([
             'conversation_id' => 'required|exists:marketplace_conversations,id',
-            'message' => 'required|string',
+            'message' => 'required_without:attachment|string|min:1',
+            'attachment' => 'nullable|file|max:10240',
         ]);
 
         $user = Auth::user();
@@ -191,10 +199,22 @@ class ChatController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        $attachmentType = null;
+        $attachmentPath = null;
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $attachmentType = $file->getMimeType();
+            $attachmentPath = $file->store('chat/attachments', 'public');
+        }
+
         $message = MarketplaceMessage::create([
             'conversation_id' => $conversation->id,
             'sender_id' => $user->id,
-            'message' => $request->message,
+            'message' => $request->message ?? '',
+            'attachment_type' => $attachmentType,
+            'attachment_path' => $attachmentPath,
+            'is_read' => false,
         ]);
 
         $conversation->update(['last_message_at' => now()]);

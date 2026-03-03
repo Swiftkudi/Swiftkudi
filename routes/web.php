@@ -307,6 +307,8 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
         Route::get('/', [ChatController::class, 'index'])->name('index');
         Route::get('/{conversation}', [ChatController::class, 'show'])->name('show');
         Route::post('/message', [ChatController::class, 'store'])->name('message');
+        Route::get('/{conversation}/messages', [ChatController::class, 'apiMessages'])->name('messages');
+        Route::post('/send', [ChatController::class, 'apiSend'])->name('send');
         Route::post('/start', [ChatController::class, 'startConversation'])->name('start');
         Route::get('/unread', [ChatController::class, 'getUnreadCount'])->name('unread');
         Route::post('/{conversation}/read', [ChatController::class, 'markAsRead'])->name('read');

@@ -1,4 +1,4 @@
-k mo@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Order Details - Growth Marketplace')
 
@@ -57,18 +57,18 @@ k mo@extends('layouts.app')
                 </div>
 
                 <!-- Order Requirements -->
-                @if($order->requirements)
+                @if($order->proof_notes)
                 <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 mb-6">
-                    <h3 class="font-semibold text-white mb-3">Requirements</h3>
-                    <p class="text-gray-400 text-sm whitespace-pre-line">{{ $order->requirements }}</p>
+                    <h3 class="font-semibold text-white mb-3">Proof / Notes</h3>
+                    <p class="text-gray-400 text-sm whitespace-pre-line">{{ $order->proof_notes }}</p>
                 </div>
                 @endif
 
-                <!-- Delivery/Result -->
-                @if($order->delivery_details)
+                <!-- Proof Data -->
+                @if($order->proof_data)
                 <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 mb-6">
-                    <h3 class="font-semibold text-white mb-3">Delivery Details</h3>
-                    <div class="text-gray-400 text-sm whitespace-pre-line">{{ $order->delivery_details }}</div>
+                    <h3 class="font-semibold text-white mb-3">Delivery Proof</h3>
+                    <pre class="text-gray-400 text-xs whitespace-pre-wrap">{{ json_encode($order->proof_data, JSON_PRETTY_PRINT) }}</pre>
                 </div>
                 @endif
             </div>
@@ -85,7 +85,7 @@ k mo@extends('layouts.app')
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-400">Platform Fee</span>
-                            <span class="text-white">₦{{ number_format($order->platform_fee ?? 0, 2) }}</span>
+                            <span class="text-white">₦{{ number_format($order->platform_commission ?? 0, 2) }}</span>
                         </div>
                         <div class="border-t border-dark-700 pt-3 flex justify-between font-semibold">
                             <span class="text-white">Total</span>
@@ -95,15 +95,15 @@ k mo@extends('layouts.app')
                 </div>
 
                 <!-- Seller Info -->
-                @if($order->listing && $order->listing->seller)
+                @if($order->seller)
                 <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 mb-6">
                     <h3 class="font-semibold text-white mb-4">Seller</h3>
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                            {{ strtoupper(substr($order->listing->seller->name ?? 'U', 0, 1)) }}
+                            {{ strtoupper(substr($order->seller->name ?? 'U', 0, 1)) }}
                         </div>
                         <div>
-                            <p class="font-medium text-white">{{ $order->listing->seller->name ?? 'Unknown' }}</p>
+                            <p class="font-medium text-white">{{ $order->seller->name ?? 'Unknown' }}</p>
                             <p class="text-sm text-gray-400">Seller</p>
                         </div>
                     </div>
@@ -111,15 +111,23 @@ k mo@extends('layouts.app')
                 @endif
 
                 <!-- Actions -->
-                @if($order->status === 'pending' || $order->status === 'in_progress')
+                @if(in_array($order->status, ['paid', 'in_progress', 'delivered', 'revision']))
                 <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6">
                     <h3 class="font-semibold text-white mb-4">Actions</h3>
                     <div class="space-y-3">
-                        @if($order->status === 'in_progress')
-                        <form action="{{ route('growth.orders.complete', $order) }}" method="POST">
+                        @if(in_array($order->status, ['delivered', 'revision']))
+                        <form action="{{ route('growth.orders.approve', $order) }}" method="POST">
                             @csrf
                             <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors">
-                                <i class="fas fa-check mr-2"></i>Mark as Complete
+                                <i class="fas fa-check mr-2"></i>Approve Delivery
+                            </button>
+                        </form>
+
+                        <form action="{{ route('growth.orders.revision', $order) }}" method="POST">
+                            @csrf
+                            <input type="text" name="notes" required placeholder="Revision notes" class="w-full mb-2 px-3 py-2 rounded bg-dark-800 border border-dark-700 text-gray-200 text-sm">
+                            <button type="submit" class="w-full bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-undo mr-2"></i>Request Revision
                             </button>
                         </form>
                         @endif

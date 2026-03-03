@@ -105,6 +105,7 @@ class DigitalProductService
             $order->license_type = $this->getLicenseTypeName($product->license_type);
             $order->max_downloads = $this->getMaxDownloads($product->license_type);
             $order->status = $product->is_free ? 'completed' : 'pending';
+            $order->save();
 
             if (!$product->is_free) {
                 // Deduct from buyer wallet
@@ -114,14 +115,28 @@ class DigitalProductService
                 }
 
                 // Deduct from withdrawable balance first, then promo credit
-                $remaining = $amount;
-                if ($wallet->withdrawable_balance >= $remaining) {
-                    $wallet->decrement('withdrawable_balance', $remaining);
-                } else {
-                    $deductFromWithdrawable = $wallet->withdrawable_balance;
-                    $wallet->withdrawable_balance = 0;
+                $remaining = (float) $amount;
+                $deductFromWithdrawable = min((float) $wallet->withdrawable_balance, $remaining);
+
+                if ($deductFromWithdrawable > 0) {
+                    $wallet->deductWithdrawable(
+                        $deductFromWithdrawable,
+                        'digital_product_purchase',
+                        "Purchase: {$product->title}"
+                    );
                     $remaining -= $deductFromWithdrawable;
-                    $wallet->decrement('promo_credit_balance', $remaining);
+                }
+
+                if ($remaining > 0) {
+                    $deducted = $wallet->deductPromoCredit(
+                        $remaining,
+                        'digital_product_purchase',
+                        "Purchase: {$product->title}"
+                    );
+
+                    if (!$deducted) {
+                        throw new \Exception('Insufficient balance');
+                    }
                 }
 
                 // Record transaction
@@ -149,8 +164,6 @@ class DigitalProductService
                 );
                 $sellerWallet->increment('pending_balance', $sellerEarnings);
             }
-
-            $order->save();
 
             // Update product sales count
             $product->increment('total_sales');
@@ -184,8 +197,13 @@ class DigitalProductService
                 ]
             );
 
-            $sellerWallet->decrement('pending_balance', $order->seller_earnings);
-            $sellerWallet->increment('balance', $order->seller_earnings);
+            $sellerWallet->pending_balance = max(0, (float) $sellerWallet->pending_balance - (float) $order->seller_earnings);
+            $sellerWallet->save();
+            $sellerWallet->addWithdrawable(
+                (float) $order->seller_earnings,
+                'digital_product_sale',
+                "Sale: {$product->title} (Order: {$order->order_number})"
+            );
 
             // Record seller earning transaction
             Transaction::create([
@@ -211,20 +229,21 @@ class DigitalProductService
 
     public function processDownload(DigitalProductOrder $order): ?string
     {
+        // First download finalizes pending paid purchase and releases seller payout
+        if ($order->status === 'pending') {
+            $this->completePurchase($order);
+            $order->refresh();
+        }
+
         if (!$order->can_download) {
             return null;
         }
 
         $order->incrementDownloadCount();
 
-        // If this is first download, complete the purchase
-        if ($order->download_count == 1 && $order->status === 'pending') {
-            $this->completePurchase($order);
-        }
-
         $product = $order->product;
 
-        return Storage::disk('public')->url($product->file_path);
+        return Storage::url($product->file_path);
     }
 
     public function addReview(DigitalProduct $product, int $userId, array $data): DigitalProductReview
