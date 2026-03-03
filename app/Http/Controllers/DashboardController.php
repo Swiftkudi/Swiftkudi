@@ -21,10 +21,15 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
+        /** @var \App\Models\User $user */
         $wallet = $user->wallet;
 
         // Check activation status
         $isActivated = $wallet && $wallet->is_activated;
+        
+        // Get activation fee settings
+        $activationFeeEnabled = \App\Models\SystemSetting::isCompulsoryActivationFee();
+        $activationFee = $activationFeeEnabled ? \App\Models\SystemSetting::getActivationFeeForUser(false) : 0;
 
         // Get stats based on role
         $stats = $this->getUserStats($user, $wallet);
@@ -126,7 +131,9 @@ class DashboardController extends Controller
             'availableTasks',
             'referralTask',
             'featuredBundles',
-            'myTasks'
+            'myTasks',
+            'activationFeeEnabled',
+            'activationFee'
         ));
     }
 
@@ -188,6 +195,7 @@ class DashboardController extends Controller
     public function worker()
     {
         $user = Auth::user();
+        /** @var \App\Models\User $user */
         $wallet = $user->wallet ?? Wallet::firstOrCreate(
             ['user_id' => $user->id],
             [
@@ -247,6 +255,7 @@ class DashboardController extends Controller
     public function client()
     {
         $user = Auth::user();
+        /** @var \App\Models\User $user */
         $wallet = $user->wallet;
 
         // My campaigns (tasks)
@@ -310,6 +319,7 @@ class DashboardController extends Controller
         }
 
         $currentUser = Auth::user();
+        /** @var \App\Models\User $currentUser */
         $currentUserRank = null;
 
         if ($type === 'earners') {
@@ -344,6 +354,7 @@ class DashboardController extends Controller
     public function profile()
     {
         $user = Auth::user();
+        /** @var \App\Models\User $user */
         $wallet = $user->wallet;
         $stats = [
             'tasks_completed' => TaskCompletion::where('user_id', $user->id)->approved()->count(),
@@ -363,6 +374,7 @@ class DashboardController extends Controller
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
+        /** @var \App\Models\User $user */
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',

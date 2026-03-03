@@ -28,15 +28,31 @@
                 <div class="text-center md:text-left">
                     <h2 class="text-2xl font-bold mb-2">Activate Your Account</h2>
                     <p class="text-indigo-100 mb-4">
-                        Pay ₦1,000 activation fee to unlock all features and start earning.
+                        @if($activationFeeEnabled)
+                            Pay ₦{{ number_format($activationFee, 0) }} activation fee to unlock all features and start earning.
+                        @else
+                            Activate your account for free to unlock all features and start earning.
+                        @endif
                     </p>
                     <a href="{{ route('wallet.activate') }}" class="inline-flex items-center px-6 py-3 bg-white text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition-all shadow-lg">
                         <i class="fas fa-rocket mr-2"></i>Activate Now
                     </a>
                 </div>
                 <div class="text-center">
-                    <div class="text-5xl font-bold">₦1,000</div>
-                    <div class="text-indigo-200 mt-1">One-time activation</div>
+                    <div class="text-5xl font-bold">
+                        @if($activationFeeEnabled)
+                            ₦{{ number_format($activationFee, 0) }}
+                        @else
+                            Free
+                        @endif
+                    </div>
+                    <div class="text-indigo-200 mt-1">
+                        @if($activationFeeEnabled)
+                            One-time activation
+                        @else
+                            No charge required
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>

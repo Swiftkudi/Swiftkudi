@@ -37,7 +37,7 @@
                     <div class="ml-4 flex-shrink-0">
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" name="mandatory_task_creation_enabled" class="sr-only peer"
-                                   {{ SystemSetting::get('mandatory_task_creation_enabled', true) ? 'checked' : '' }}>
+                                {{ \App\Models\SystemSetting::get('mandatory_task_creation_enabled', true) ? 'checked' : '' }}>
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
                         </label>
                     </div>
@@ -60,7 +60,7 @@
                         </label>
                         <input type="number" id="minimum_required_budget" name="minimum_required_budget"
                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
-                               value="{{ SystemSetting::get('minimum_required_budget', 1000) }}"
+                               value="{{ \App\Models\SystemSetting::get('minimum_required_budget', 1000) }}"
                                min="100" step="100">
                     </div>
 
@@ -70,9 +70,9 @@
                         </label>
                         <select id="mandatory_budget_currency" name="mandatory_budget_currency"
                                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white">
-                            <option value="NGN" {{ SystemSetting::get('mandatory_budget_currency', 'NGN') === 'NGN' ? 'selected' : '' }}>NGN (Naira)</option>
-                            <option value="USD" {{ SystemSetting::get('mandatory_budget_currency', 'NGN') === 'USD' ? 'selected' : '' }}>USD (Dollar)</option>
-                            <option value="EUR" {{ SystemSetting::get('mandatory_budget_currency', 'NGN') === 'EUR' ? 'selected' : '' }}>EUR (Euro)</option>
+                            <option value="NGN" {{ \App\Models\SystemSetting::get('mandatory_budget_currency', 'NGN') === 'NGN' ? 'selected' : '' }}>NGN (Naira)</option>
+                            <option value="USD" {{ \App\Models\SystemSetting::get('mandatory_budget_currency', 'NGN') === 'USD' ? 'selected' : '' }}>USD (Dollar)</option>
+                            <option value="EUR" {{ \App\Models\SystemSetting::get('mandatory_budget_currency', 'NGN') === 'EUR' ? 'selected' : '' }}>EUR (Euro)</option>
                         </select>
                     </div>
                 </div>
@@ -114,7 +114,7 @@
                         </label>
                         <input type="number" id="active_workers_count" name="active_workers_count"
                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
-                               value="{{ SystemSetting::get('active_workers_count', 1250) }}"
+                               value="{{ \App\Models\SystemSetting::get('active_workers_count', 1250) }}"
                                min="0">
                     </div>
 
@@ -124,7 +124,7 @@
                         </label>
                         <input type="number" id="total_paid_out" name="total_paid_out"
                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
-                               value="{{ SystemSetting::get('total_paid_out', 4500000) }}"
+                               value="{{ \App\Models\SystemSetting::get('total_paid_out', 4500000) }}"
                                min="0">
                     </div>
 
@@ -134,7 +134,7 @@
                         </label>
                         <input type="number" id="success_rate" name="success_rate"
                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
-                               value="{{ SystemSetting::get('success_rate', 98) }}"
+                               value="{{ \App\Models\SystemSetting::get('success_rate', 98) }}"
                                min="0" max="100">
                     </div>
                 </div>
@@ -159,15 +159,15 @@
             <div class="flex items-center gap-4 text-sm">
                 <span class="px-3 py-1 bg-primary-100 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300 rounded-full">
                     <i class="fas fa-user-check mr-1"></i>
-                    {{ SystemSetting::get('active_workers_count', 1250) }}+ Active Workers
+                    {{ \App\Models\SystemSetting::get('active_workers_count', 1250) }}+ Active Workers
                 </span>
                 <span class="px-3 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 rounded-full">
                     <i class="fas fa-naira-sign mr-1"></i>
-                    ₦{{ number_format(SystemSetting::get('total_paid_out', 4500000) / 1000000, 1) }}M+ Paid Out
+                    ₦{{ number_format(\App\Models\SystemSetting::get('total_paid_out', 4500000) / 1000000, 1) }}M+ Paid Out
                 </span>
                 <span class="px-3 py-1 bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 rounded-full">
                     <i class="fas fa-chart-line mr-1"></i>
-                    {{ SystemSetting::get('success_rate', 98) }}% Success Rate
+                    {{ \App\Models\SystemSetting::get('success_rate', 98) }}% Success Rate
                 </span>
             </div>
         </div>

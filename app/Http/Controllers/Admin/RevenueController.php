@@ -9,7 +9,6 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\FinancialReportExport;
 
 /**
@@ -193,7 +192,11 @@ class RevenueController extends Controller
         ];
 
         if ($format === 'excel') {
-            return Excel::download(new FinancialReportExport($data), $filename . '.xlsx');
+            try {
+                return app('excel')->download(new FinancialReportExport($data), $filename . '.xlsx');
+            } catch (\Throwable $exception) {
+                return $this->exportCsv($data, $filename);
+            }
         }
 
         // CSV export
