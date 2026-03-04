@@ -92,6 +92,15 @@
                             <span class="text-green-400">₦{{ number_format($order->amount, 2) }}</span>
                         </div>
                     </div>
+
+                    @if(auth()->id() === $order->seller_id)
+                    <div class="mt-4 pt-4 border-t border-dark-700">
+                        <a href="{{ route('chat.open', ['type' => 'growth_service', 'referenceId' => $order->listing_id, 'participantId' => $order->buyer_id]) }}"
+                           class="w-full inline-flex items-center justify-center bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 py-2 rounded-lg transition-colors">
+                            <i class="fas fa-comments mr-2"></i>Go to Messages
+                        </a>
+                    </div>
+                    @endif
                 </div>
 
                 <!-- Seller Info -->
