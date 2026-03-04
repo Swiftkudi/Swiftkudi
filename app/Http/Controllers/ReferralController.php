@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Referral;
+use App\Models\SystemSetting;
 use App\Models\Transaction;
-use App\Services\SwiftKudiService;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,33 +15,39 @@ class ReferralController extends Controller
 {
     public function index()
     {
-        $referrals = Referral::where('user_id', Auth::id())
-            ->with('referred')
+        $userId = Auth::id();
+
+        $referrals = Referral::where('user_id', $userId)
+            ->where(function ($query) {
+                $query->whereNotNull('referred_user_id')
+                    ->orWhereNotNull('referred_email');
+            })
+            ->with('referredUser')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
+        $baseStatsQuery = Referral::where('user_id', $userId)
+            ->where(function ($query) {
+                $query->whereNotNull('referred_user_id')
+                    ->orWhereNotNull('referred_email');
+            });
+
         $stats = [
-            'total_referrals' => Referral::where('user_id', Auth::id())->count(),
-            'registered' => Referral::where('user_id', Auth::id())->where('is_registered', true)->count(),
-            'activated' => Referral::where('user_id', Auth::id())->where('is_activated', true)->count(),
-            'total_earned' => Referral::where('user_id', Auth::id())->sum('reward_earned'),
+            'total_referrals' => (clone $baseStatsQuery)->count(),
+            'registered' => (clone $baseStatsQuery)->where('is_registered', true)->count(),
+            'activated' => (clone $baseStatsQuery)->where('is_activated', true)->count(),
+            'total_earned' => (clone $baseStatsQuery)->sum('reward_earned'),
         ];
 
-        // Get or create referral code
-        $referralCode = Referral::where('user_id', Auth::id())->first();
-        if (!$referralCode) {
-            $referralCode = Referral::create([
-                'user_id' => Auth::id(),
-                'referral_code' => Referral::generateReferralCode(Auth::id()),
-            ]);
-        } else {
-            // Ensure code exists
-            if (!$referralCode->referral_code) {
-                $referralCode->update(['referral_code' => Referral::generateReferralCode(Auth::id())]);
-            }
+        $authUser = User::find($userId);
+        if ($authUser && empty($authUser->referral_code)) {
+            $authUser->referral_code = User::generateReferralCode($authUser->name ?? $authUser->email ?? (string) $authUser->id);
+            $authUser->save();
         }
+        $referralCode = $authUser?->referral_code;
+        $bonusAmount = SystemSetting::getReferralBonusAmount();
 
-        return view('referrals.index', compact('referrals', 'stats', 'referralCode'));
+        return view('referrals.index', compact('referrals', 'stats', 'referralCode', 'bonusAmount'));
     }
 
     public function registerWithCode(Request $request)
@@ -63,20 +70,31 @@ class ReferralController extends Controller
             'code' => 'required|string',
         ]);
 
-        $referral = Referral::where('referral_code', $request->code)->first();
+        $code = trim((string) $request->code);
 
-        if (!$referral) {
+        $referrer = User::where('referral_code', $code)->first();
+
+        if (!$referrer) {
+            $legacyReferral = Referral::where('referral_code', $code)->first();
+            if ($legacyReferral) {
+                $referrer = $legacyReferral->user;
+            }
+        }
+
+        if (!$referrer) {
             return response()->json(['success' => false, 'message' => 'Invalid referral code']);
         }
 
-        if ($referral->user_id === Auth::id()) {
+        if ($referrer->id === Auth::id()) {
             return response()->json(['success' => false, 'message' => 'Cannot refer yourself']);
         }
 
+        $rewardAmount = SystemSetting::getReferralBonusAmount();
+
         return response()->json([
             'success' => true,
-            'user' => $referral->user->name,
-            'reward' => '₦' . number_format(SwiftKudiService::REFERRER_BONUS, 2),
+            'user' => $referrer->name,
+            'reward' => '₦' . number_format($rewardAmount, 2),
         ]);
     }
 
@@ -89,8 +107,8 @@ class ReferralController extends Controller
         }
 
         DB::transaction(function () use ($referral) {
-            // Use configured bonus from service constants
-            $bonus = SwiftKudiService::REFERRER_BONUS;
+            // Use admin-configured referral bonus amount
+            $bonus = SystemSetting::getReferralBonusAmount();
 
             $referrerWallet = $referral->user->wallet;
             if (!$referrerWallet) {

@@ -61,30 +61,41 @@ class RegisteredUserController extends Controller
 
         // If a referral code was provided (query/session or input), link it to this new user
         $appliedReferral = null;
-        if ($request->filled('referral_code')) {
-            $ref = Referral::where('referral_code', $request->referral_code)->first();
-            if ($ref && $ref->user_id !== $user->id) {
+        $incomingReferralCode = $request->filled('referral_code')
+            ? trim((string) $request->referral_code)
+            : trim((string) session('referral_code', ''));
+
+        if ($incomingReferralCode !== '') {
+            $referrer = User::where('referral_code', $incomingReferralCode)->first();
+
+            if (!$referrer) {
+                $legacyReferral = Referral::where('referral_code', $incomingReferralCode)->first();
+                $referrer = $legacyReferral?->user;
+            }
+
+            if ($referrer && $referrer->id !== $user->id) {
+                $ref = Referral::where('user_id', $referrer->id)
+                    ->where(function ($query) use ($user) {
+                        $query->where('referred_user_id', $user->id)
+                            ->orWhere('referred_email', $user->email);
+                    })
+                    ->first();
+
+                if (!$ref) {
+                    $ref = new Referral();
+                    $ref->user_id = $referrer->id;
+                    $ref->referral_code = $incomingReferralCode;
+                }
+
                 $ref->referred_user_id = $user->id;
                 $ref->referred_email = $user->email;
                 $ref->is_registered = true;
                 $ref->save();
                 $appliedReferral = $ref;
             }
-        } else {
-            // Also check session-stored referral code (in case prefilling happened via link)
-            $sessionRef = session('referral_code');
-            if ($sessionRef) {
-                $ref = Referral::where('referral_code', $sessionRef)->first();
-                if ($ref && $ref->user_id !== $user->id) {
-                    $ref->referred_user_id = $user->id;
-                    $ref->referred_email = $user->email;
-                    $ref->is_registered = true;
-                    $ref->save();
-                    $appliedReferral = $ref;
-                }
-                // clear it after use
-                session()->forget('referral_code');
-            }
+
+            // clear session-stored code after registration attempt
+            session()->forget('referral_code');
         }
 
         // store who referred this user for traceability

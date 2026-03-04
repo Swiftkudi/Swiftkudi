@@ -8,7 +8,7 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
                 <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Referral Program</h1>
-                <p class="text-gray-600 dark:text-gray-400 mt-1">Invite friends and earn ₦500 for each activation</p>
+                <p class="text-gray-600 dark:text-gray-400 mt-1">Invite friends and earn ₦{{ number_format($bonusAmount ?? 0, 2) }} for each activation</p>
             </div>
             <a href="{{ route('dashboard') }}" class="inline-flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-all">
                 <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
@@ -69,9 +69,9 @@
         <!-- Referral Link Card -->
         <div class="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-xl shadow-indigo-500/30 p-8 mb-8 text-white">
             <h2 class="text-xl font-bold mb-4">Your Referral Link</h2>
-            <p class="text-indigo-100 mb-6">Share this link with your friends. When they activate their account, you earn ₦500!</p>
+            <p class="text-indigo-100 mb-6">Share this link with your friends. When they activate their account, you earn ₦{{ number_format($bonusAmount ?? 0, 2) }}!</p>
             <div class="flex flex-col sm:flex-row gap-4">
-                <input type="text" readonly value="{{ route('register', ['ref' => Auth::id()]) }}" class="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-indigo-200">
+                <input type="text" readonly value="{{ route('ref.redirect', ['code' => $referralCode]) }}" class="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-indigo-200">
                 <button onclick="copyReferralLink()" class="px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl hover:bg-indigo-50 transition-all shadow-lg">
                     <i class="fas fa-copy mr-2"></i>Copy
                 </button>
@@ -101,7 +101,7 @@
                         <i class="fas fa-gift text-purple-600 dark:text-purple-400 text-2xl"></i>
                     </div>
                     <h3 class="font-bold text-gray-900 dark:text-gray-100 mb-2">3. Get Paid</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Earn ₦500 when they activate their account</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Earn ₦{{ number_format($bonusAmount ?? 0, 2) }} when they activate their account</p>
                 </div>
             </div>
         </div>
@@ -126,11 +126,11 @@
                             <td class="py-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                                        {{ strtoupper(substr(optional($referral->referred)->name ?? ($referral->referred_email ?? '--'), 0, 2)) }}
+                                        {{ strtoupper(substr(optional($referral->referredUser)->name ?? ($referral->referred_email ?? '--'), 0, 2)) }}
                                     </div>
                                     <div>
-                                        <p class="font-medium text-gray-900 dark:text-gray-100">{{ optional($referral->referred)->name ?? ($referral->referred_email ?? 'Unknown') }}</p>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ optional($referral->referred)->email ?? ($referral->referred_email ?? '') }}</p>
+                                        <p class="font-medium text-gray-900 dark:text-gray-100">{{ optional($referral->referredUser)->name ?? ($referral->referred_email ?? 'Unknown') }}</p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ optional($referral->referredUser)->email ?? ($referral->referred_email ?? '') }}</p>
                                     </div>
                                 </div>
                             </td>
@@ -144,8 +144,8 @@
                                 @endif
                             </td>
                             <td class="py-4">
-                                @if($referral->status === 'activated')
-                                <span class="font-bold text-green-600 dark:text-green-400">₦500</span>
+                                @if((float) $referral->reward_earned > 0)
+                                <span class="font-bold text-green-600 dark:text-green-400">₦{{ number_format($referral->reward_earned, 2) }}</span>
                                 @else
                                 <span class="text-gray-400 dark:text-gray-500">₦0</span>
                                 @endif

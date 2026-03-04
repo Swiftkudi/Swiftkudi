@@ -209,7 +209,7 @@ class SwiftKudiService
             $wallet->save();
 
             // Create activation log (wrap in try-catch in case table doesn't exist)
-            $referralBonusAmount = $isReferred ? SystemSetting::getNumber('referrer_bonus', self::REFERRER_BONUS) : 0;
+            $referralBonusAmount = $isReferred ? SystemSetting::getReferralBonusAmount() : 0;
             $platformRevenue = max(0, $activationFee - $referralBonusAmount);
             
             try {
@@ -235,7 +235,7 @@ class SwiftKudiService
 
             // Credit referrer if applicable
             if ($isReferred && $referrer) {
-                $referrerBonus = SystemSetting::getNumber('referrer_bonus', self::REFERRER_BONUS);
+                $referrerBonus = SystemSetting::getReferralBonusAmount();
                 if ($referrer->wallet) {
                     try {
                         $referrer->wallet->addWithdrawable($referrerBonus, 'referral_bonus', 'Referral bonus for activating ' . $user->name);
@@ -246,14 +246,20 @@ class SwiftKudiService
 
                 // Create referral record if not exists
                 try {
-                    $referral = Referral::where('referrer_id', $referrer->id)
-                        ->where('referred_user_id', $user->id)
-                        ->first();
-                    if ($referral) {
-                        $referral->reward_earned = ($referral->reward_earned ?? 0) + $referrerBonus;
-                        $referral->is_activated = true;
-                        $referral->save();
+                    $referral = Referral::firstOrNew([
+                        'user_id' => $referrer->id,
+                        'referred_user_id' => $user->id,
+                    ]);
+
+                    if (!$referral->exists) {
+                        $referral->referral_code = $referrer->referral_code ?: Referral::generateReferralCode($referrer->id);
+                        $referral->referred_email = $user->email;
                     }
+
+                    $referral->is_registered = true;
+                    $referral->is_activated = true;
+                    $referral->reward_earned = ($referral->reward_earned ?? 0) + $referrerBonus;
+                    $referral->save();
                 } catch (\Exception $e) {
                     Log::warning('Failed to update referral record', ['error' => $e->getMessage()]);
                 }
@@ -265,7 +271,7 @@ class SwiftKudiService
                 'data' => [
                     'wallet' => $wallet,
                     'activation_fee' => $activationFee,
-                    'referral_bonus' => $isReferred ? SystemSetting::getNumber('referrer_bonus', self::REFERRER_BONUS) : 0,
+                    'referral_bonus' => $isReferred ? SystemSetting::getReferralBonusAmount() : 0,
                 ],
             ];
         });
@@ -568,7 +574,7 @@ class SwiftKudiService
      */
     public static function isCompulsoryTaskCreationEnabled(): bool
     {
-        return self::getBool('compulsory_task_creation_before_earning', false);
+        return SystemSetting::getBool('compulsory_task_creation_before_earning', false);
     }
 
     /**
