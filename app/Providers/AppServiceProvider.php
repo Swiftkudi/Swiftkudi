@@ -5,7 +5,13 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use App\Models\Transaction;
+use App\Models\Task;
+use App\Models\Job;
+use App\Models\GrowthListing;
+use App\Models\ProfessionalService;
+use App\Models\DigitalProduct;
 use App\Observers\TransactionObserver;
 use App\Services\TaskCreationService;
 use App\Services\TaskService;
@@ -62,6 +68,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        Relation::morphMap([
+            'task' => Task::class,
+            'tasks' => Task::class,
+            'job' => Job::class,
+            'jobs' => Job::class,
+            'growth_service' => GrowthListing::class,
+            'growth' => GrowthListing::class,
+            'professional_service' => ProfessionalService::class,
+            'service' => ProfessionalService::class,
+            'digital_product' => DigitalProduct::class,
+            'product' => DigitalProduct::class,
+        ]);
+
         // Force HTTPS in production (for Render and other cloud providers)
         if ($this->app->environment('production')) {
             \Illuminate\Support\Facades\URL::forceScheme('https');
