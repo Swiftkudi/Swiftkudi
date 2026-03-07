@@ -65,6 +65,11 @@ class DashboardController extends Controller
 
         // Referral info
         $referralCode = $user->referral_code;
+        if (empty($referralCode)) {
+            $referralCode = User::generateReferralCode($user->name ?? $user->email ?? (string) $user->id);
+            $user->referral_code = $referralCode;
+            $user->save();
+        }
         $referrals = Referral::where('user_id', $user->id)->count();
         $activatedReferrals = Referral::where('user_id', $user->id)
             ->where('is_activated', true)

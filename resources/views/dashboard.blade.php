@@ -262,10 +262,14 @@
                 <div class="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-500/10 dark:to-purple-500/10 rounded-xl">
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Your referral link:</p>
                     <div class="flex items-center gap-2">
-                        <input type="text" readonly value="{{ route('ref.redirect', ['code' => $referralCode]) }}" class="flex-1 px-3 py-2 bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-lg text-sm text-gray-900 dark:text-gray-100">
-                        <button onclick="copyReferralLink()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
-                            <i class="fas fa-copy"></i>
-                        </button>
+                        @if(!empty($referralCode))
+                            <input type="text" readonly value="{{ route('ref.redirect', ['code' => $referralCode]) }}" class="flex-1 px-3 py-2 bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-lg text-sm text-gray-900 dark:text-gray-100">
+                            <button onclick="copyReferralLink()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        @else
+                            <div class="flex-1 px-3 py-2 bg-gray-100 dark:bg-dark-700 border border-gray-300 dark:border-dark-600 rounded-lg text-sm text-gray-500 dark:text-gray-400">Generating referral code...</div>
+                        @endif
                     </div>
                 </div>
             </div>
