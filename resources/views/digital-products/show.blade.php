@@ -227,6 +227,9 @@
                             <a href="{{ route('digital-products.edit', $product) }}" class="block w-full text-center px-4 py-3 bg-gray-800 dark:bg-dark-800 text-white rounded-xl hover:bg-gray-700 dark:hover:bg-dark-700 mb-3 font-medium transition-colors">
                                 <i class="fas fa-edit mr-2"></i> Edit Product
                             </a>
+                            <a href="{{ route('chat.index') }}" class="block w-full text-center px-4 py-3 border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/20 mb-3 font-medium transition-colors">
+                                <i class="fas fa-comments mr-2"></i> Open Messages
+                            </a>
                         @else
                             <form method="POST" action="{{ route('digital-products.purchase', $product) }}">
                                 @csrf
@@ -234,6 +237,9 @@
                                     {{ $product->is_free ? 'Download Now' : 'Buy Now' }}
                                 </button>
                             </form>
+                            <a href="{{ route('chat.open', ['type' => 'digital_product', 'referenceId' => $product->id, 'participantId' => $product->user_id]) }}" class="block w-full text-center px-4 py-3 border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/20 mb-3 font-medium transition-colors">
+                                <i class="fas fa-comments mr-2"></i> Chat with Seller
+                            </a>
                         @endif
                     @else
                         <a href="{{ route('login') }}" class="block w-full text-center px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all">

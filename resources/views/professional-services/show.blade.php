@@ -187,6 +187,18 @@
                                     <i class="fas fa-comment-dots"></i>
                                     Contact Seller
                                 </button>
+
+                                @if(auth()->id() !== $service->user_id)
+                                    <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $service->id, 'participantId' => $service->user_id]) }}" class="mt-3 w-full py-3 border-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                                        <i class="fas fa-comments"></i>
+                                        Open Chat
+                                    </a>
+                                @else
+                                    <a href="{{ route('chat.index') }}" class="mt-3 w-full py-3 border-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                                        <i class="fas fa-comments"></i>
+                                        Open Messages
+                                    </a>
+                                @endif
                             @else
                                 <a href="{{ route('login') }}" class="mt-3 w-full py-3 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                                     <i class="fas fa-sign-in-alt"></i>

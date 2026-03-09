@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MarketplaceConversation;
 use App\Models\MarketplaceMessage;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -106,6 +107,23 @@ class ChatController extends Controller
 
         // Update conversation last_message_at
         $conversation->update(['last_message_at' => now()]);
+
+        $recipientId = $conversation->buyer_id === $user->id ? $conversation->seller_id : $conversation->buyer_id;
+        $recipient = User::find($recipientId);
+        if ($recipient) {
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $recipient,
+                'New Chat Message',
+                $user->name . ' sent you a new message.',
+                \App\Models\Notification::TYPE_SYSTEM,
+                [
+                    'conversation_id' => $conversation->id,
+                    'action_url' => route('chat.show', $conversation),
+                ],
+                'notify_chat_messages',
+                true
+            );
+        }
 
         // Load sender relationship
         $message->load('sender');
@@ -245,6 +263,23 @@ class ChatController extends Controller
 
         $conversation->update(['last_message_at' => now()]);
         $message->load('sender');
+
+        $recipientId = $conversation->buyer_id === $user->id ? $conversation->seller_id : $conversation->buyer_id;
+        $recipient = User::find($recipientId);
+        if ($recipient) {
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $recipient,
+                'New Chat Message',
+                $user->name . ' sent you a new message.',
+                \App\Models\Notification::TYPE_SYSTEM,
+                [
+                    'conversation_id' => $conversation->id,
+                    'action_url' => route('chat.show', $conversation),
+                ],
+                'notify_chat_messages',
+                true
+            );
+        }
 
         // TODO: Broadcast to WebSocket
 

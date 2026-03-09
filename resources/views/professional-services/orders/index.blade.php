@@ -33,10 +33,14 @@
                                     </span>
                                 </div>
                             </div>
-                            <div class="mt-3">
+                            <div class="mt-3 flex items-center gap-4">
                                 <a href="{{ route('professional-services.orders.show', $order->id) }}" 
                                     class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300">
                                     View Details →
+                                </a>
+                                <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $order->service_id, 'participantId' => $order->seller_id]) }}"
+                                   class="px-3 py-1.5 text-xs font-medium rounded-lg border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                                    Chat
                                 </a>
                             </div>
                         </div>
@@ -67,10 +71,14 @@
                                     </span>
                                 </div>
                             </div>
-                            <div class="mt-3">
+                            <div class="mt-3 flex items-center gap-4">
                                 <a href="{{ route('professional-services.orders.show', $order->id) }}" 
                                     class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300">
                                     View Details →
+                                </a>
+                                <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $order->service_id, 'participantId' => $order->seller_id]) }}"
+                                   class="px-3 py-1.5 text-xs font-medium rounded-lg border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                                    Chat
                                 </a>
                             </div>
                         </div>

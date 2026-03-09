@@ -596,6 +596,9 @@
                 <a href="{{ route('wallet.index') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('wallet.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
                     <i class="fas fa-wallet mr-3 w-5"></i>Wallet
                 </a>
+                <a href="{{ route('chat.index') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('chat.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
+                    <i class="fas fa-comments mr-3 w-5"></i>Chat
+                </a>
                 @if(Auth::check() && Auth::user()->is_admin)
                 <a href="{{ route('admin.index') }}" class="flex items-center px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition-all">
                     <i class="fas fa-cog mr-3 w-5"></i>Admin
@@ -654,6 +657,9 @@
                         </a>
                         <a href="{{ route('wallet.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('wallet.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
                             <i class="fas fa-wallet mr-2"></i>Wallet
+                        </a>
+                        <a href="{{ route('chat.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('chat.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
+                            <i class="fas fa-comments mr-2"></i>Chat
                         </a>
                         @if(Auth::check() && Auth::user()->is_admin)
                         <a href="{{ route('admin.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-indigo-400 hover:bg-dark-800 transition-all">

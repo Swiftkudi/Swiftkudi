@@ -133,6 +133,16 @@ class DigitalProductController extends Controller
 
         $product = $this->service->createProduct($data, Auth::id());
 
+        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            Auth::user(),
+            'Product Created',
+            'Your digital product "' . $product->title . '" has been created successfully.',
+            \App\Models\Notification::TYPE_SYSTEM,
+            ['product_id' => $product->id, 'action_url' => route('digital-products.show', $product)],
+            'notify_product_orders',
+            true
+        );
+
         return redirect()->route('digital-products.show', $product)
             ->with('success', 'Product created successfully!');
     }
@@ -220,6 +230,25 @@ class DigitalProductController extends Controller
         try {
             $order = $this->service->purchaseProduct($product, Auth::id());
 
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $product->user,
+                'New Product Purchase',
+                'Your product "' . $product->title . '" was purchased. Order: ' . $order->order_number . '.',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $order->id, 'product_id' => $product->id, 'action_url' => route('digital-products.my-purchases')],
+                'notify_product_orders',
+                true
+            );
+
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                Auth::user(),
+                'Purchase Successful',
+                'You purchased "' . $product->title . '" successfully. Order: ' . $order->order_number . '.',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $order->id, 'product_id' => $product->id, 'action_url' => route('digital-products.my-purchases')],
+                'notify_product_orders'
+            );
+
             try {
                 $conversation = MarketplaceConversation::findOrCreate(
                     'digital_product',
@@ -287,6 +316,16 @@ class DigitalProductController extends Controller
 
         try {
             $order = $this->service->purchaseProduct($product, Auth::id());
+
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $product->user,
+                'Product Checkout Resumed',
+                'A buyer resumed checkout and purchased "' . $product->title . '". Order: ' . $order->order_number . '.',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $order->id, 'product_id' => $product->id, 'action_url' => route('digital-products.my-purchases')],
+                'notify_product_orders',
+                true
+            );
 
             try {
                 $conversation = MarketplaceConversation::findOrCreate(

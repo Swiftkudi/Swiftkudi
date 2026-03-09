@@ -18,6 +18,7 @@ use App\Services\SwiftKudiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
@@ -506,7 +507,15 @@ class AdminController extends Controller
         $activation->update(['status' => 'pending']);
 
         // Notify user to try again
-        $activation->user->notify(new \App\Notifications\ActivationReminder($activation));
+        if ($activation->user) {
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $activation->user,
+                'Activation Retry Required',
+                'Your activation attempt failed earlier and has been re-queued. Please retry your activation to continue.',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['activation_id' => $activation->id, 'action_url' => route('wallet.activate')]
+            );
+        }
 
         return redirect()->back()
             ->with('success', 'Activation marked for reprocessing.');
@@ -598,10 +607,16 @@ class AdminController extends Controller
      */
     public function runCronJobs()
     {
-        $expiredTasks = $this->earnDeskService->processExpiredTasks();
+        $result = $this->earnDeskService->processExpiredTaskCompletions();
+
+        if (!($result['success'] ?? false)) {
+            return redirect()->back()->with('error', $result['message'] ?? 'Failed to process cron jobs.');
+        }
+
+        $processed = (int) ($result['processed'] ?? 0);
 
         return redirect()->back()
-            ->with('success', "Processed {$expiredTasks} expired tasks.");
+            ->with('success', "Processed {$processed} expired task completions.");
     }
 
     /**
@@ -659,21 +674,25 @@ class AdminController extends Controller
         foreach ($users as $user) {
             try {
                 // Send via selected channels
-                if (in_array('email', $sendVia) && $user->email) {
-                    $user->notify(new \App\Notifications\CustomNotification($title, $message, 'push'));
-                } elseif (in_array('database', $sendVia)) {
-                    \App\Models\Notification::create([
-                        'user_id' => $user->id,
-                        'type' => 'admin_push',
-                        'title' => $title,
-                        'message' => $message,
-                        'data' => json_encode(['source' => 'admin_push']),
-                        'is_read' => false,
-                    ]);
+                $sendEmail = in_array('email', $sendVia, true) && !empty($user->email);
+                $sendDatabase = in_array('database', $sendVia, true);
+
+                if ($sendEmail || $sendDatabase) {
+                    app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                        $user,
+                        $title,
+                        $message,
+                        \App\Models\Notification::TYPE_SYSTEM,
+                        ['source' => 'admin_push'],
+                        null,
+                        false,
+                        $sendDatabase,
+                        $sendEmail
+                    );
                 }
                 $sent++;
             } catch (\Exception $e) {
-                \Log::error('Failed to send notification to user ' . $user->id, ['error' => $e->getMessage()]);
+                Log::error('Failed to send notification to user ' . $user->id, ['error' => $e->getMessage()]);
                 $failed++;
             }
         }
@@ -740,14 +759,17 @@ class AdminController extends Controller
         // Notify the seller
         if ($service->seller) {
             try {
-                $service->seller->notify(new \App\Notifications\CustomNotification(
+                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $service->seller,
                     'Service Approved',
                     "Your service '{$service->title}' has been approved and is now live!",
-                    'service_approval'
-                ));
+                    \App\Models\Notification::TYPE_SYSTEM,
+                    ['service_id' => $service->id, 'action_url' => route('professional-services.my-services')],
+                    'notify_service_orders'
+                );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
-                \Log::error('Failed to send service approval notification: ' . $e->getMessage());
+                Log::error('Failed to send service approval notification: ' . $e->getMessage());
             }
         }
 
@@ -777,14 +799,17 @@ class AdminController extends Controller
         // Notify the seller
         if ($service->seller) {
             try {
-                $service->seller->notify(new \App\Notifications\CustomNotification(
+                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $service->seller,
                     'Service Rejected',
                     "Your service '{$service->title}' was not approved. Reason: {$request->rejection_reason}",
-                    'service_rejection'
-                ));
+                    \App\Models\Notification::TYPE_SYSTEM,
+                    ['service_id' => $service->id, 'action_url' => route('professional-services.my-services')],
+                    'notify_service_orders'
+                );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
-                \Log::error('Failed to send service rejection notification: ' . $e->getMessage());
+                Log::error('Failed to send service rejection notification: ' . $e->getMessage());
             }
         }
 
@@ -850,14 +875,17 @@ class AdminController extends Controller
         // Notify the seller
         if ($listing->seller) {
             try {
-                $listing->seller->notify(new \App\Notifications\CustomNotification(
+                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $listing->seller,
                     'Listing Approved',
                     "Your growth listing '{$listing->title}' has been approved and is now live!",
-                    'listing_approval'
-                ));
+                    \App\Models\Notification::TYPE_SYSTEM,
+                    ['listing_id' => $listing->id, 'action_url' => route('growth.my-listings')],
+                    'notify_growth_orders'
+                );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
-                \Log::error('Failed to send listing approval notification: ' . $e->getMessage());
+                Log::error('Failed to send listing approval notification: ' . $e->getMessage());
             }
         }
 
@@ -887,14 +915,17 @@ class AdminController extends Controller
         // Notify the seller
         if ($listing->seller) {
             try {
-                $listing->seller->notify(new \App\Notifications\CustomNotification(
+                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $listing->seller,
                     'Listing Rejected',
                     "Your growth listing '{$listing->title}' was not approved. Reason: {$request->rejection_reason}",
-                    'listing_rejection'
-                ));
+                    \App\Models\Notification::TYPE_SYSTEM,
+                    ['listing_id' => $listing->id, 'action_url' => route('growth.my-listings')],
+                    'notify_growth_orders'
+                );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
-                \Log::error('Failed to send listing rejection notification: ' . $e->getMessage());
+                Log::error('Failed to send listing rejection notification: ' . $e->getMessage());
             }
         }
 
@@ -967,14 +998,17 @@ class AdminController extends Controller
         // Notify the seller
         if ($product->user) {
             try {
-                $product->user->notify(new \App\Notifications\CustomNotification(
+                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $product->user,
                     'Product Approved',
                     "Your digital product '{$product->title}' has been approved and is now live!",
-                    'product_approval'
-                ));
+                    \App\Models\Notification::TYPE_SYSTEM,
+                    ['product_id' => $product->id, 'action_url' => route('digital-products.my-products')],
+                    'notify_product_orders'
+                );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
-                \Log::error('Failed to send product approval notification: ' . $e->getMessage());
+                Log::error('Failed to send product approval notification: ' . $e->getMessage());
             }
         }
 
@@ -1003,14 +1037,17 @@ class AdminController extends Controller
         // Notify the seller
         if ($product->user) {
             try {
-                $product->user->notify(new \App\Notifications\CustomNotification(
+                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $product->user,
                     'Product Rejected',
                     "Your digital product '{$product->title}' was not approved. Reason: {$request->rejection_reason}",
-                    'product_rejection'
-                ));
+                    \App\Models\Notification::TYPE_SYSTEM,
+                    ['product_id' => $product->id, 'action_url' => route('digital-products.my-products')],
+                    'notify_product_orders'
+                );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
-                \Log::error('Failed to send product rejection notification: ' . $e->getMessage());
+                Log::error('Failed to send product rejection notification: ' . $e->getMessage());
             }
         }
 

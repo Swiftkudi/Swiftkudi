@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\SystemSetting;
 use App\Models\User;
-use App\Notifications\EarningsUnlocked;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -44,7 +43,13 @@ class TaskGateProgressService
 
                     // Send unlock notification
                     try {
-                        $user->notify(new EarningsUnlocked());
+                        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                            $user,
+                            'Earnings Unlocked',
+                            'Congratulations! You have unlocked earnings access after meeting the required task creation budget.',
+                            \App\Models\Notification::TYPE_SYSTEM,
+                            ['action_url' => route('start-journey.unlock-success')]
+                        );
                     } catch (\Exception $e) {
                         Log::warning('Failed to send earnings unlocked notification', [
                             'user_id' => $user->id,

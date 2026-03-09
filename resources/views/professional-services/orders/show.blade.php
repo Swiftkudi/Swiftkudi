@@ -106,9 +106,9 @@
                         </div>
                     </div>
 
-                    @if(auth()->id() === $order->seller_id)
+                    @if(auth()->id() === $order->seller_id || auth()->id() === $order->buyer_id)
                     <div class="mt-4 pt-4 border-t border-dark-700">
-                        <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $order->service_id, 'participantId' => $order->buyer_id]) }}"
+                        <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $order->service_id, 'participantId' => auth()->id() === $order->seller_id ? $order->buyer_id : $order->seller_id]) }}"
                            class="w-full inline-flex items-center justify-center bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 py-2 rounded-lg transition-colors">
                             <i class="fas fa-comments mr-2"></i>Go to Messages
                         </a>

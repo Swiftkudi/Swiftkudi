@@ -106,6 +106,71 @@
                             <div class="w-11 h-6 bg-gray-200 dark:bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                         </label>
                     </div>
+
+                    <div class="flex items-center justify-between py-3 border-t border-gray-100 dark:border-dark-700">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">Task Created</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Notify users when task creation is successful</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="notify_task_created" value="true"
+                                {{ (data_get($settingsByKey, 'notify_task_created', true) === 'true' || data_get($settingsByKey, 'notify_task_created', true)) ? 'checked' : '' }}
+                                class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 dark:bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-3 border-t border-gray-100 dark:border-dark-700">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">Service Orders</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Notify buyer and seller on professional service order activity</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="notify_service_orders" value="true"
+                                {{ (data_get($settingsByKey, 'notify_service_orders', true) === 'true' || data_get($settingsByKey, 'notify_service_orders', true)) ? 'checked' : '' }}
+                                class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 dark:bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-3 border-t border-gray-100 dark:border-dark-700">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">Growth Orders</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Notify buyer and seller on growth order activity</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="notify_growth_orders" value="true"
+                                {{ (data_get($settingsByKey, 'notify_growth_orders', true) === 'true' || data_get($settingsByKey, 'notify_growth_orders', true)) ? 'checked' : '' }}
+                                class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 dark:bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-3 border-t border-gray-100 dark:border-dark-700">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">Product Orders</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Notify buyer and seller on digital product purchases</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="notify_product_orders" value="true"
+                                {{ (data_get($settingsByKey, 'notify_product_orders', true) === 'true' || data_get($settingsByKey, 'notify_product_orders', true)) ? 'checked' : '' }}
+                                class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 dark:bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-3 border-t border-gray-100 dark:border-dark-700">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">Chat Messages</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Notify users for new marketplace chat messages</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="notify_chat_messages" value="true"
+                                {{ (data_get($settingsByKey, 'notify_chat_messages', true) === 'true' || data_get($settingsByKey, 'notify_chat_messages', true)) ? 'checked' : '' }}
+                                class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 dark:bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -144,6 +209,19 @@
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" name="admin_fraud_alerts" value="true"
                                 {{ (data_get($settingsByKey, 'admin_fraud_alerts', true) === 'true' || data_get($settingsByKey, 'admin_fraud_alerts', true)) ? 'checked' : '' }}
+                                class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 dark:bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-3 border-t border-gray-100 dark:border-dark-700">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">All Marketplace Activity</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Notify admins for task creation, orders, purchases, and chat activity</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="notify_admin_all_activity" value="true"
+                                {{ (data_get($settingsByKey, 'notify_admin_all_activity', true) === 'true' || data_get($settingsByKey, 'notify_admin_all_activity', true)) ? 'checked' : '' }}
                                 class="sr-only peer">
                             <div class="w-11 h-6 bg-gray-200 dark:bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                         </label>

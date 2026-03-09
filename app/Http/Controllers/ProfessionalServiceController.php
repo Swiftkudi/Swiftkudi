@@ -109,6 +109,16 @@ class ProfessionalServiceController extends Controller
             return response()->json($result, 400);
         }
 
+        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $user,
+            'Service Created',
+            'Your service "' . ($result['service']->title ?? $validated['title']) . '" has been submitted successfully.',
+            \App\Models\Notification::TYPE_SYSTEM,
+            ['service_id' => $result['service']->id ?? null, 'action_url' => route('professional-services.my-services')],
+            'notify_service_orders',
+            true
+        );
+
         return response()->json([
             'success' => true,
             'message' => $result['message'],
@@ -190,6 +200,25 @@ class ProfessionalServiceController extends Controller
                 $result['order']->seller_id
             );
 
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $result['order']->seller,
+                'New Service Order Received',
+                'You received a new order for "' . ($result['order']->service->title ?? 'Professional Service') . '".',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $result['order']->id, 'action_url' => route('professional-services.orders.show', $result['order']->id)],
+                'notify_service_orders',
+                true
+            );
+
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $result['order']->buyer,
+                'Service Order Confirmed',
+                'Your order for "' . ($result['order']->service->title ?? 'Professional Service') . '" has been placed successfully.',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $result['order']->id, 'action_url' => route('professional-services.orders.show', $result['order']->id)],
+                'notify_service_orders'
+            );
+
             MarketplaceMessage::create([
                 'conversation_id' => $conversation->id,
                 'sender_id' => $result['order']->buyer_id,
@@ -251,6 +280,16 @@ class ProfessionalServiceController extends Controller
                 $result['order']->service_id,
                 $result['order']->buyer_id,
                 $result['order']->seller_id
+            );
+
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $result['order']->seller,
+                'Service Checkout Resumed',
+                'A buyer resumed checkout and confirmed order for "' . ($result['order']->service->title ?? 'Professional Service') . '".',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $result['order']->id, 'action_url' => route('professional-services.orders.show', $result['order']->id)],
+                'notify_service_orders',
+                true
             );
 
             MarketplaceMessage::create([
@@ -425,7 +464,7 @@ class ProfessionalServiceController extends Controller
 
         $conversation = MarketplaceConversation::findOrCreate(
             'professional_service',
-            $order->id,
+            $order->service_id,
             $order->buyer_id,
             $order->seller_id
         );

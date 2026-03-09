@@ -44,7 +44,7 @@
             </div>
             
             <div class="p-6">
-                <form action="{{ route('admin.settings.update', 'notifications') }}" method="POST">
+                <form action="{{ route('admin.settings.update', 'notification') }}" method="POST">
                     @csrf
                     @method('PUT')
 

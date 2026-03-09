@@ -95,6 +95,18 @@
                             <i class="fas fa-comment-dots"></i>
                             Contact Seller
                         </button>
+
+                        @if(auth()->id() !== $listing->user_id)
+                            <a href="{{ route('chat.open', ['type' => 'growth_service', 'referenceId' => $listing->id, 'participantId' => $listing->user_id]) }}" class="mt-3 w-full py-3 border-2 border-purple-500/30 text-purple-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-purple-500/10 transition-colors">
+                                <i class="fas fa-comments"></i>
+                                Open Chat
+                            </a>
+                        @else
+                            <a href="{{ route('chat.index') }}" class="mt-3 w-full py-3 border-2 border-purple-500/30 text-purple-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-purple-500/10 transition-colors">
+                                <i class="fas fa-comments"></i>
+                                Open Messages
+                            </a>
+                        @endif
                     @else
                         <a href="{{ route('login') }}" class="mt-3 w-full py-3 border-2 border-indigo-500/30 text-indigo-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-500/10 transition-colors">
                             <i class="fas fa-sign-in-alt"></i>

@@ -16,7 +16,7 @@ $sampleCount = 0;
 if (Schema::hasColumn('tasks', 'is_sample')) {
     $sampleCount = DB::table('tasks')->where('is_sample', true)->count();
 } else {
-    $demoEmails = ['client@swiftkudi.com', 'admin@swiftkudi.com', 'worker@swiftkudi.com'];
+    $demoEmails = ['client@swiftkudi.com', 'worker@swiftkudi.com'];
     $sampleCount = DB::table('tasks')
         ->join('users', 'users.id', '=', 'tasks.user_id')
         ->whereIn('users.email', $demoEmails)

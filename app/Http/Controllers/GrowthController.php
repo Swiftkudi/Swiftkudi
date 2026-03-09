@@ -104,6 +104,16 @@ class GrowthController extends Controller
             return response()->json($result, 400);
         }
 
+        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $user,
+            'Growth Listing Created',
+            'Your listing "' . ($result['listing']->title ?? $validated['title']) . '" has been submitted successfully.',
+            \App\Models\Notification::TYPE_SYSTEM,
+            ['listing_id' => $result['listing']->id ?? null, 'action_url' => route('growth.my-listings')],
+            'notify_growth_orders',
+            true
+        );
+
         return response()->json([
             'success' => true,
             'message' => $result['message'],
@@ -163,6 +173,25 @@ class GrowthController extends Controller
                 $result['order']->seller_id
             );
 
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $result['order']->seller,
+                'New Growth Order Received',
+                'You received a new growth order for "' . ($result['order']->listing->title ?? 'Growth Listing') . '".',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $result['order']->id, 'action_url' => route('growth.orders.show', $result['order']->id)],
+                'notify_growth_orders',
+                true
+            );
+
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $result['order']->buyer,
+                'Growth Order Confirmed',
+                'Your order for "' . ($result['order']->listing->title ?? 'Growth Listing') . '" has been placed successfully.',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $result['order']->id, 'action_url' => route('growth.orders.show', $result['order']->id)],
+                'notify_growth_orders'
+            );
+
             MarketplaceMessage::create([
                 'conversation_id' => $conversation->id,
                 'sender_id' => $result['order']->buyer_id,
@@ -194,6 +223,7 @@ class GrowthController extends Controller
             return redirect()->route('growth.index')->with('error', 'No pending growth order found to resume.');
         }
 
+
         $result = $this->service->createOrder(Auth::user(), (int) $pending['listing_id']);
 
         if (!$result['success']) {
@@ -219,6 +249,25 @@ class GrowthController extends Controller
                 $result['order']->listing_id,
                 $result['order']->buyer_id,
                 $result['order']->seller_id
+            );
+
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $result['order']->seller,
+                'Growth Checkout Resumed',
+                'A buyer resumed checkout and confirmed order for "' . ($result['order']->listing->title ?? 'Growth Listing') . '".',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $result['order']->id, 'action_url' => route('growth.orders.show', $result['order']->id)],
+                'notify_growth_orders',
+                true
+            );
+
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $result['order']->buyer,
+                'Growth Order Confirmed',
+                'Your order for "' . ($result['order']->listing->title ?? 'Growth Listing') . '" has been placed successfully.',
+                \App\Models\Notification::TYPE_SYSTEM,
+                ['order_id' => $result['order']->id, 'action_url' => route('growth.orders.show', $result['order']->id)],
+                'notify_growth_orders'
             );
 
             MarketplaceMessage::create([

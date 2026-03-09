@@ -540,8 +540,15 @@ class TaskController extends Controller
         // Update user's task creation progress and check unlock status
         $this->gateProgressService->updateProgress($user, $request->budget);
 
-        // Success notification
-        Notification::send($user, new TaskApproved($task));
+        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $user,
+            'Task Created Successfully',
+            'Your task "' . $task->title . '" has been created.',
+            \App\Models\Notification::TYPE_NEW_TASK,
+            ['task_id' => $task->id, 'action_url' => route('tasks.show', $task)],
+            'notify_task_created',
+            true
+        );
 
         return response()->json(['success' => true, 'task_id' => $task->id]);
     }
@@ -680,8 +687,13 @@ class TaskController extends Controller
             'status' => 'pending',
         ]);
 
-        // Success notification
-        Notification::send($user, new EarningsUnlocked($completion));
+        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $user,
+            'Task Submission Received',
+            'Your submission for "' . $task->title . '" is pending review.',
+            \App\Models\Notification::TYPE_SYSTEM,
+            ['task_id' => $task->id, 'completion_id' => $completion->id, 'action_url' => route('tasks.show', $task)]
+        );
 
         return response()->json(['success' => true, 'completion_id' => $completion->id]);
     }
@@ -699,6 +711,19 @@ class TaskController extends Controller
         $completion->status = 'approved';
         $completion->admin_notes = $request->notes;
         $completion->save();
+
+        $worker = User::find($completion->user_id);
+        if ($worker) {
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $worker,
+                'Task Submission Approved',
+                'Great job! Your task submission has been approved.',
+                \App\Models\Notification::TYPE_TASK_APPROVED,
+                ['completion_id' => $completion->id, 'task_id' => $completion->task_id],
+                'notify_task_approval',
+                true
+            );
+        }
 
         // Find the associated task
         $task = Task::find($completion->task_id);
@@ -724,6 +749,19 @@ class TaskController extends Controller
         $completion->admin_notes = $request->notes;
         $completion->save();
 
+        $worker = User::find($completion->user_id);
+        if ($worker) {
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $worker,
+                'Task Submission Rejected',
+                'Your task submission was rejected. Reason: ' . ($request->notes ?: 'Please review and resubmit.'),
+                \App\Models\Notification::TYPE_TASK_REJECTED,
+                ['completion_id' => $completion->id, 'task_id' => $completion->task_id],
+                'notify_task_rejection',
+                true
+            );
+        }
+
         return response()->json(['success' => true]);
     }
 
@@ -735,8 +773,14 @@ class TaskController extends Controller
         // Find the user associated with the completion
         $user = User::find($completion->user_id);
 
-        // Send notification
-        Notification::send($user, new EarningsUnlocked($completion));
+        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $user,
+            'Task Approval Reminder',
+            'Your task submission status was updated. Please check your dashboard for details.',
+            \App\Models\Notification::TYPE_SYSTEM,
+            ['completion_id' => $completion->id, 'task_id' => $completion->task_id],
+            'notify_task_approval'
+        );
 
         return response()->json(['success' => true]);
     }

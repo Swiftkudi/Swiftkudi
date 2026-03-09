@@ -237,16 +237,6 @@ class StartJourneyController extends Controller
             return redirect()->route('dashboard');
         }
 
-        // Send notification if just unlocked (within last minute)
-        if ($user->task_creation_unlocked_at->diffInMinutes(now()) < 1) {
-            try {
-                $user->notify(new \App\Notifications\EarningsUnlocked());
-            } catch (\Exception $e) {
-                // Log notification error but don't fail
-                logger()->error('Failed to send earnings unlocked notification: ' . $e->getMessage());
-            }
-        }
-
         return view('start-journey.unlock-success');
     }
 }

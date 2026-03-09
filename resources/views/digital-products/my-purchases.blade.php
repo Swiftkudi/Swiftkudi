@@ -149,6 +149,11 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                             </svg>
                                         </a>
+                                        @if($order->product && auth()->id() !== $order->product->user_id)
+                                            <a href="{{ route('chat.open', ['type' => 'digital_product', 'referenceId' => $order->product_id, 'participantId' => $order->product->user_id]) }}" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors" title="Chat">
+                                                Chat
+                                            </a>
+                                        @endif
                                         @if($order->status === 'completed')
                                             <a href="#" class="p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors" title="Download">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

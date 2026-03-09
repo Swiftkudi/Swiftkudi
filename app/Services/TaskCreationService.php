@@ -576,7 +576,15 @@ class TaskCreationService
     protected function sendTaskCreatedNotification(User $user, Task $task): void
     {
         try {
-            $user->notify(new TaskApproved($task));
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $user,
+                'Task Created Successfully',
+                'Your task "' . $task->title . '" was created and is now being processed.',
+                \App\Models\Notification::TYPE_NEW_TASK,
+                ['task_id' => $task->id, 'action_url' => route('tasks.show', $task)],
+                'notify_task_created',
+                true
+            );
         } catch (\Exception $e) {
             Log::warning('Failed to send task creation notification', [
                 'user_id' => $user->id,

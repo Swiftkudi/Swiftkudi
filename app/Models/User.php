@@ -8,7 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -61,6 +61,11 @@ class User extends Authenticatable
         'trial_ends_at' => 'datetime',
         'is_admin' => 'boolean',
     ];
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new \App\Notifications\VerifyEmailNotification());
+    }
 
     /**
      * Level thresholds for experience points
@@ -510,12 +515,19 @@ class User extends Authenticatable
      */
     public function sendNotification(string $title, string $message, string $type = 'info', array $data = []): Notification
     {
+        $notification = app(\App\Services\NotificationDispatchService::class)
+            ->createInAppNotification($this, $title, $message, $type, $data);
+
+        if ($notification instanceof Notification) {
+            return $notification;
+        }
+
         return Notification::create([
             'user_id' => $this->id,
             'title' => $title,
             'message' => $message,
             'type' => $type,
-            'data' => json_encode($data),
+            'data' => $data,
             'is_read' => false,
         ]);
     }

@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Notifications\ActivationReminder;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -65,7 +64,13 @@ class SendActivationReminders extends Command
 
         foreach ($users as $user) {
             try {
-                $user->notify(new ActivationReminder('first'));
+                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $user,
+                    'Complete Your Registration - Tasks Await! 🎯',
+                    'You registered on SwiftKudi but haven\'t completed your activation yet. Activate now to start completing tasks and earning real money.',
+                    'activation_reminder',
+                    ['reminder_type' => 'first', 'action_url' => route('wallet.activate')]
+                );
                 Log::info("First activation reminder sent to user {$user->id}");
             } catch (\Exception $e) {
                 Log::error("Failed to send first reminder to user {$user->id}: {$e->getMessage()}");
@@ -97,7 +102,13 @@ class SendActivationReminders extends Command
 
         foreach ($users as $user) {
             try {
-                $user->notify(new ActivationReminder('second'));
+                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $user,
+                    'High-Paying Tasks Available Now! 💰',
+                    'We noticed you haven\'t activated your account yet. High-paying tasks are available now—activate and start earning.',
+                    'activation_reminder',
+                    ['reminder_type' => 'second', 'action_url' => route('wallet.activate')]
+                );
                 Log::info("Second activation reminder sent to user {$user->id}");
             } catch (\Exception $e) {
                 Log::error("Failed to send second reminder to user {$user->id}: {$e->getMessage()}");
@@ -129,7 +140,13 @@ class SendActivationReminders extends Command
 
         foreach ($users as $user) {
             try {
-                $user->notify(new ActivationReminder('third'));
+                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $user,
+                    'Join Thousands Earning on SwiftKudi - Last Chance! 🚀',
+                    'Last reminder before you miss out. Activate your account now and start earning from available tasks.',
+                    'activation_reminder',
+                    ['reminder_type' => 'third', 'action_url' => route('wallet.activate')]
+                );
                 Log::info("Third activation reminder sent to user {$user->id}");
             } catch (\Exception $e) {
                 Log::error("Failed to send third reminder to user {$user->id}: {$e->getMessage()}");

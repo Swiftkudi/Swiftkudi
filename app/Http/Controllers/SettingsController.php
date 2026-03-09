@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
 use App\Models\AdminRole;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
@@ -34,6 +37,10 @@ class SettingsController extends Controller
             }
 
             $user = Auth::user();
+            if (!$user instanceof User) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'You do not have permission to access settings.');
+            }
 
             // Super-admin bypasses permission checks
             if ($user->isSuperAdmin()) {
@@ -97,6 +104,10 @@ class SettingsController extends Controller
             $this->ensureRegistrationSettingsExist();
         }
 
+        if ($group === 'notification') {
+            $this->ensureNotificationSettingsExist();
+        }
+
         if ($group === 'task-gate') {
             $this->ensureTaskGateSettingsExist();
         }
@@ -118,6 +129,9 @@ class SettingsController extends Controller
     protected function canAccessSettings(string $group): bool
     {
         $user = auth()->user();
+        if (!$user instanceof User) {
+            return false;
+        }
 
         // Super admin can access all settings
         if ($user->isSuperAdmin()) {
@@ -153,6 +167,10 @@ class SettingsController extends Controller
 
         if ($group === 'registration') {
             $this->ensureRegistrationSettingsExist();
+        }
+
+        if ($group === 'notification') {
+            $this->ensureNotificationSettingsExist();
         }
 
         $settings = SystemSetting::where('group', $group)->get();
@@ -276,6 +294,37 @@ class SettingsController extends Controller
             if ($setting->group !== 'task-gate') {
                 $currentValue = SystemSetting::get($key, $meta['value']);
                 SystemSetting::set($key, $currentValue, 'task-gate', $setting->type ?: $meta['type']);
+            }
+        }
+    }
+
+    /**
+     * Ensure required notification settings rows exist.
+     */
+    protected function ensureNotificationSettingsExist(): void
+    {
+        $defaults = [
+            'notify_task_approval' => ['value' => true, 'type' => 'boolean'],
+            'notify_task_rejection' => ['value' => true, 'type' => 'boolean'],
+            'notify_task_bundle' => ['value' => true, 'type' => 'boolean'],
+            'notify_referral_bonus' => ['value' => true, 'type' => 'boolean'],
+            'notify_withdrawal' => ['value' => true, 'type' => 'boolean'],
+            'notify_task_created' => ['value' => true, 'type' => 'boolean'],
+            'notify_service_orders' => ['value' => true, 'type' => 'boolean'],
+            'notify_growth_orders' => ['value' => true, 'type' => 'boolean'],
+            'notify_product_orders' => ['value' => true, 'type' => 'boolean'],
+            'notify_chat_messages' => ['value' => true, 'type' => 'boolean'],
+            'notify_admin_all_activity' => ['value' => true, 'type' => 'boolean'],
+            'admin_fraud_alerts' => ['value' => true, 'type' => 'boolean'],
+            'large_withdrawal_threshold' => ['value' => 50000, 'type' => 'number'],
+            'notif_email_verify_subject' => ['value' => 'Verify Your Email Address', 'type' => 'text'],
+            'notif_email_verify_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_email_verify_body' => ['value' => "Hello {{user_name}},\n\nPlease verify your email address by clicking the link below:\n\n{{verify_link}}\n\nIf you did not create an account, please ignore this email.", 'type' => 'text'],
+        ];
+
+        foreach ($defaults as $key => $meta) {
+            if (!SystemSetting::keyExists($key)) {
+                SystemSetting::set($key, $meta['value'], 'notification', $meta['type']);
             }
         }
     }
@@ -440,6 +489,9 @@ class SettingsController extends Controller
     protected function canEditSettings(string $group): bool
     {
         $user = auth()->user();
+        if (!$user instanceof User) {
+            return false;
+        }
         
         // Super admin can edit all settings
         if ($user->isSuperAdmin()) {
@@ -469,7 +521,7 @@ class SettingsController extends Controller
         $this->applyMailConfigFromSettings();
 
         try {
-            \Mail::to($email)->send(new \App\Mail\TestEmail());
+            Mail::to($email)->send(new \App\Mail\TestEmail());
             return redirect()->back()->with('success', 'Test email sent successfully to ' . $email);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to send test email: ' . $e->getMessage());
@@ -482,7 +534,8 @@ class SettingsController extends Controller
     public function testGateway(Request $request, string $gateway)
     {
         // Permission check
-        if (!auth()->user() || !auth()->user()->hasPermission(AdminRole::PERMISSION_SETTINGS_EDIT)) {
+        $user = auth()->user();
+        if (!$user instanceof User || !$user->hasPermission(AdminRole::PERMISSION_SETTINGS_EDIT)) {
             return redirect()->back()->with('error', 'You do not have permission to test gateways.');
         }
 
@@ -569,16 +622,16 @@ class SettingsController extends Controller
         try {
             switch ($cronType) {
                 case 'task_expiry':
-                    \Artisan::call('tasks:expire');
+                    Artisan::call('tasks:expire');
                     break;
                 case 'referral_bonus':
-                    \Artisan::call('referrals:distribute');
+                    Artisan::call('referrals:distribute');
                     break;
                 case 'daily_streak':
-                    \Artisan::call('streaks:reset');
+                    Artisan::call('streaks:reset');
                     break;
                 case 'fraud_scan':
-                    \Artisan::call('fraud:scan');
+                    Artisan::call('fraud:scan');
                     break;
             }
 
@@ -703,7 +756,7 @@ class SettingsController extends Controller
      */
     public function notificationMessages()
     {
-        $settingsByKey = SystemSetting::getAllGrouped('notifications');
+        $settingsByKey = SystemSetting::getByGroup('notification');
         
         return view('admin.settings.notifications', [
             'settingsByKey' => $settingsByKey,
@@ -724,7 +777,7 @@ class SettingsController extends Controller
             // Apply mail config from settings
             $this->applyMailConfigFromSettings();
 
-            \Mail::raw('This is a test email from ' . config('app.name'), function ($message) use ($request) {
+            Mail::raw('This is a test email from ' . config('app.name'), function ($message) use ($request) {
                 $message->from(config('mail.from.address'), config('mail.from.name'))
                     ->to($request->test_email)
                     ->subject('Test Email - ' . config('app.name'));

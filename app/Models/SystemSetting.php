@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 
 class SystemSetting extends Model
 {
@@ -634,7 +635,7 @@ class SystemSetting extends Model
     public static function isMaintenanceModeEnabled(): bool
     {
         return Cache::remember('maintenance_mode', 60, function () {
-            return \DB::table('maintenance_mode')->first()->is_enabled ?? false;
+            return DB::table('maintenance_mode')->first()->is_enabled ?? false;
         });
     }
 
@@ -643,7 +644,7 @@ class SystemSetting extends Model
      */
     public static function enableMaintenanceMode(string $message = '', int $adminId = null): void
     {
-        \DB::table('maintenance_mode')->updateOrInsert(
+        DB::table('maintenance_mode')->updateOrInsert(
             ['id' => 1],
             [
                 'is_enabled' => true,
@@ -660,7 +661,7 @@ class SystemSetting extends Model
      */
     public static function disableMaintenanceMode(): void
     {
-        \DB::table('maintenance_mode')->where('id', 1)->update([
+        DB::table('maintenance_mode')->where('id', 1)->update([
             'is_enabled' => false,
             'enabled_at' => null,
             'enabled_by' => null,
@@ -785,6 +786,14 @@ class SystemSetting extends Model
             'notify_task_bundle' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_referral_bonus' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_withdrawal' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_created' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_orders' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_orders' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_orders' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_chat_messages' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_admin_all_activity' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'admin_fraud_alerts' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'large_withdrawal_threshold' => ['value' => 50000, 'group' => self::GROUP_NOTIFICATION, 'type' => 'number'],
 
             // Email Templates
             'email_welcome_enabled' => ['value' => true, 'group' => self::GROUP_EMAIL_TEMPLATES, 'type' => 'boolean'],

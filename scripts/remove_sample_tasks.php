@@ -48,7 +48,7 @@ if (Schema::hasColumn('tasks', 'is_sample')) {
     $ids = DB::table('tasks')->where('is_sample', true)->pluck('id')->toArray();
 } else {
     // Fallback: delete tasks owned by seeded demo emails
-    $demoEmails = ['client@swiftkudi.com', 'admin@swiftkudi.com', 'worker@swiftkudi.com'];
+    $demoEmails = ['client@swiftkudi.com', 'worker@swiftkudi.com'];
     $ids = DB::table('tasks')
         ->join('users', 'users.id', '=', 'tasks.user_id')
         ->whereIn('users.email', $demoEmails)

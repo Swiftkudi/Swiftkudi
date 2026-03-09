@@ -266,6 +266,9 @@
             <x-responsive-nav-link :href="route('growth.my-listings')" :active="request()->routeIs('growth.my-listings')">
                 Growth My Listings
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('chat.index')" :active="request()->routeIs('chat.*')">
+                Messages
+            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->
@@ -300,6 +303,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('growth.my-listings')">
                     <i class="fas fa-chart-line mr-2"></i> My Growth Listings
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('chat.index')">
+                    <i class="fas fa-comments mr-2"></i> Messages
                 </x-responsive-nav-link>
 
                 @if(Auth::user()->email === 'admin@swiftkudi.com')

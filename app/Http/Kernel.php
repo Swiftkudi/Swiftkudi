@@ -62,7 +62,7 @@ class Kernel extends HttpKernel
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
-        'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        'verified' => \App\Http\Middleware\EnsureEmailIsVerifiedWhenRequired::class,
         'admin' => \App\Http\Middleware\EnsureAdmin::class,
         'task.creation.gate' => \App\Http\Middleware\CheckTaskCreationGate::class,
         'logout.inactive' => \App\Http\Middleware\LogoutOnInactivity::class,
