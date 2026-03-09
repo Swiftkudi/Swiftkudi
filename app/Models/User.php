@@ -12,6 +12,21 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $user): void {
+            if ($user->isAdmin() && empty($user->email_verified_at)) {
+                $user->email_verified_at = now();
+            }
+        });
+
+        static::updating(function (self $user): void {
+            if ($user->isAdmin() && empty($user->email_verified_at)) {
+                $user->email_verified_at = now();
+            }
+        });
+    }
+
     /**
      * The attributes that are mass assignable.
      *

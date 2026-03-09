@@ -18,7 +18,16 @@ class EnsureEmailIsVerifiedWhenRequired
             return $next($request);
         }
 
-        if (method_exists($request->user(), 'hasVerifiedEmail') && $request->user()->hasVerifiedEmail()) {
+        $user = $request->user();
+        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+            if (method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
+                $user->forceFill(['email_verified_at' => now()])->saveQuietly();
+            }
+
+            return $next($request);
+        }
+
+        if (method_exists($user, 'hasVerifiedEmail') && $user->hasVerifiedEmail()) {
             return $next($request);
         }
 
