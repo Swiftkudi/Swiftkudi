@@ -736,20 +736,23 @@ class TaskController extends Controller
         $completion->save();
 
         $worker = User::find($completion->user_id);
+        $task = Task::find($completion->task_id);
         if ($worker) {
             app(\App\Services\NotificationDispatchService::class)->sendToUser(
                 $worker,
                 'Task Submission Approved',
                 'Great job! Your task submission has been approved.',
                 \App\Models\Notification::TYPE_TASK_APPROVED,
-                ['completion_id' => $completion->id, 'task_id' => $completion->task_id],
+                [
+                    'completion_id' => $completion->id,
+                    'task_id' => $completion->task_id,
+                    'task_title' => $task ? $task->title : '',
+                    'action_url' => $task ? route('tasks.show', $task) : '',
+                ],
                 'notify_task_approval',
                 true
             );
         }
-
-        // Find the associated task
-        $task = Task::find($completion->task_id);
 
         // Optionally, update task status or other logic
         // $task->status = 'completed';
@@ -773,13 +776,20 @@ class TaskController extends Controller
         $completion->save();
 
         $worker = User::find($completion->user_id);
+        $task   = Task::find($completion->task_id);
         if ($worker) {
             app(\App\Services\NotificationDispatchService::class)->sendToUser(
                 $worker,
                 'Task Submission Rejected',
                 'Your task submission was rejected. Reason: ' . ($request->notes ?: 'Please review and resubmit.'),
                 \App\Models\Notification::TYPE_TASK_REJECTED,
-                ['completion_id' => $completion->id, 'task_id' => $completion->task_id],
+                [
+                    'completion_id' => $completion->id,
+                    'task_id' => $completion->task_id,
+                    'task_title' => $task ? $task->title : '',
+                    'reason' => $request->notes ?: 'Please review and resubmit.',
+                    'action_url' => $task ? route('tasks.show', $task) : '',
+                ],
                 'notify_task_rejection',
                 true
             );

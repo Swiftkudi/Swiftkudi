@@ -348,6 +348,12 @@ class SettingsController extends Controller
             'notif_referral_bonus_subject' => ['value' => 'You Earned a Referral Bonus!', 'type' => 'text'],
             'notif_referral_bonus_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
             'notif_referral_bonus_body' => ['value' => "Hello {{user_name}},\n\nCongratulations! You earned a referral bonus of {{bonus_amount}}!\n\nYour referral {{referred_user}} has completed their first task.\n\nShare your referral code to earn more: {{referral_code}}", 'type' => 'text'],
+            'notif_task_created_subject' => ['value' => 'Your Task Has Been Created Successfully!', 'type' => 'text'],
+            'notif_task_created_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_task_created_body' => ['value' => "Hello {{user_name}},\n\nYour task \"{{task_title}}\" has been created successfully and is now being processed.\n\nWorkers will start picking it up shortly. You will be notified as submissions come in.\n\nView your task: {{task_url}}", 'type' => 'text'],
+            'notif_task_bundle_subject' => ['value' => 'New Task Available - Earn Now!', 'type' => 'text'],
+            'notif_task_bundle_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_task_bundle_body' => ['value' => "Hello {{user_name}},\n\nA new task bundle is now available on {{site_name}}: \"{{task_title}}\".\n\nLog in now to complete it and earn your reward.\n\nView task: {{task_url}}", 'type' => 'text'],
         ];
 
         foreach ($defaults as $key => $meta) {

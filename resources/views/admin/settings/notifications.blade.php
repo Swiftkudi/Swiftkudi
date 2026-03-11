@@ -105,6 +105,18 @@
                             'Your referral ' . $templateVar('referred_user') . ' has completed their first task.',
                             'Share your referral code to earn more: ' . $templateVar('referral_code'),
                         ]),
+                        'task_created_body' => implode("\n\n", [
+                            'Hello ' . $templateVar('user_name') . ',',
+                            'Your task "' . $templateVar('task_title') . '" has been created successfully and is now being processed.',
+                            'Workers will start picking it up shortly. You will be notified as submissions come in.',
+                            'View your task: ' . $templateVar('task_url'),
+                        ]),
+                        'task_bundle_body' => implode("\n\n", [
+                            'Hello ' . $templateVar('user_name') . ',',
+                            'A new task bundle is now available on ' . $templateVar('site_name') . ': "' . $templateVar('task_title') . '".',
+                            'Log in now to complete it and earn your reward.',
+                            'View task: ' . $templateVar('task_url'),
+                        ]),
                     ];
                 @endphp
                 <form action="{{ route('admin.settings.update', 'notification') }}" method="POST">
@@ -186,6 +198,56 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Message Body</label>
                             <textarea name="notif_task_rejected_body" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-indigo-500 focus:border-indigo-500">{{ old('notif_task_rejected_body', $settingsByKey['notif_task_rejected_body'] ?? $notificationDefaults['task_rejected_body']) }}</textarea>
                             <p class="text-xs text-gray-500 mt-1">Available variables: @{{site_name}}, @{{user_name}}, @{{task_title}}, @{{rejection_reason}}</p>
+                        </div>
+                    </div>
+
+                    <!-- Task Created (creator confirmation) -->
+                    <div class="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <h4 class="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
+                            <i class="fas fa-plus-circle mr-2 text-blue-500"></i>
+                            Task Created (Creator)
+                            <span class="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">Task Management</span>
+                        </h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Confirmation email sent to the user who created a task</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Subject</label>
+                                <input type="text" name="notif_task_created_subject" value="{{ old('notif_task_created_subject', $settingsByKey['notif_task_created_subject'] ?? 'Your Task Has Been Created Successfully!') }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Sender Name</label>
+                                <input type="text" name="notif_task_created_from_name" value="{{ old('notif_task_created_from_name', $settingsByKey['notif_task_created_from_name'] ?? config('app.name', 'SwiftKudi')) }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Message Body</label>
+                            <textarea name="notif_task_created_body" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-indigo-500 focus:border-indigo-500">{{ old('notif_task_created_body', $settingsByKey['notif_task_created_body'] ?? $notificationDefaults['task_created_body']) }}</textarea>
+                            <p class="text-xs text-gray-500 mt-1">Available variables: @{{site_name}}, @{{user_name}}, @{{task_title}}, @{{task_url}}</p>
+                        </div>
+                    </div>
+
+                    <!-- Task Bundle (worker notification) -->
+                    <div class="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <h4 class="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
+                            <i class="fas fa-layer-group mr-2 text-purple-500"></i>
+                            New Task Bundle (Workers)
+                            <span class="ml-2 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded">Task Management</span>
+                        </h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Email sent to workers when a new task bundle becomes available</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Subject</label>
+                                <input type="text" name="notif_task_bundle_subject" value="{{ old('notif_task_bundle_subject', $settingsByKey['notif_task_bundle_subject'] ?? 'New Task Available - Earn Now!') }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Sender Name</label>
+                                <input type="text" name="notif_task_bundle_from_name" value="{{ old('notif_task_bundle_from_name', $settingsByKey['notif_task_bundle_from_name'] ?? config('app.name', 'SwiftKudi')) }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Message Body</label>
+                            <textarea name="notif_task_bundle_body" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:ring-indigo-500 focus:border-indigo-500">{{ old('notif_task_bundle_body', $settingsByKey['notif_task_bundle_body'] ?? $notificationDefaults['task_bundle_body']) }}</textarea>
+                            <p class="text-xs text-gray-500 mt-1">Available variables: @{{site_name}}, @{{user_name}}, @{{task_title}}, @{{task_url}}</p>
                         </div>
                     </div>
 

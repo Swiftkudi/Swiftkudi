@@ -108,11 +108,12 @@ class NotificationDispatchService
         }
 
         $templateMap = [
-            'notify_task_approval' => ['subject' => 'notif_task_approved_subject', 'body' => 'notif_task_approved_body'],
-            'notify_task_rejection' => ['subject' => 'notif_task_rejected_subject', 'body' => 'notif_task_rejected_body'],
+            'notify_task_approval'  => ['subject' => 'notif_task_approved_subject',  'body' => 'notif_task_approved_body'],
+            'notify_task_rejection' => ['subject' => 'notif_task_rejected_subject',  'body' => 'notif_task_rejected_body'],
             'notify_referral_bonus' => ['subject' => 'notif_referral_bonus_subject', 'body' => 'notif_referral_bonus_body'],
-            'notify_withdrawal' => ['subject' => 'notif_withdrawal_subject', 'body' => 'notif_withdrawal_body'],
-            'notify_task_bundle' => ['subject' => 'notif_welcome_subject', 'body' => 'notif_welcome_body'],
+            'notify_withdrawal'     => ['subject' => 'notif_withdrawal_subject',      'body' => 'notif_withdrawal_body'],
+            'notify_task_bundle'    => ['subject' => 'notif_task_bundle_subject',    'body' => 'notif_task_bundle_body'],
+            'notify_task_created'   => ['subject' => 'notif_task_created_subject',   'body' => 'notif_task_created_body'],
         ];
 
         $mapping = $templateMap[$settingKey] ?? null;
@@ -129,7 +130,7 @@ class NotificationDispatchService
             '{{email}}' => (string) ($user->email ?? ''),
             '{{amount}}' => (string) ($data['amount'] ?? ''),
             '{{wallet_balance}}' => (string) ($data['wallet_balance'] ?? ''),
-            '{{task_title}}' => (string) ($data['task_title'] ?? $data['title'] ?? ''),
+            '{{task_title}}' => (string) ($data['task_title'] ?? $data['title'] ?? $data['task_name'] ?? ''),
             '{{earnings}}' => (string) ($data['earnings'] ?? ''),
             '{{rejection_reason}}' => (string) ($data['reason'] ?? ''),
             '{{method}}' => (string) ($data['method'] ?? ''),

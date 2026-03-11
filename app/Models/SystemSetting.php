@@ -795,6 +795,12 @@ class SystemSetting extends Model
             'notify_chat_messages' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_admin_all_activity' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_large_withdrawal' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notif_task_created_subject' => ['value' => 'Your Task Has Been Created Successfully!', 'group' => self::GROUP_NOTIFICATION, 'type' => 'text'],
+            'notif_task_created_from_name' => ['value' => 'SwiftKudi', 'group' => self::GROUP_NOTIFICATION, 'type' => 'text'],
+            'notif_task_created_body' => ['value' => "Hello {{user_name}},\n\nYour task \"{{task_title}}\" has been created successfully and is now being processed.", 'group' => self::GROUP_NOTIFICATION, 'type' => 'text'],
+            'notif_task_bundle_subject' => ['value' => 'New Task Available - Earn Now!', 'group' => self::GROUP_NOTIFICATION, 'type' => 'text'],
+            'notif_task_bundle_from_name' => ['value' => 'SwiftKudi', 'group' => self::GROUP_NOTIFICATION, 'type' => 'text'],
+            'notif_task_bundle_body' => ['value' => "Hello {{user_name}},\n\nA new task bundle is now available: \"{{task_title}}\".\n\nLog in now to complete it and earn your reward.\n\nView task: {{task_url}}", 'group' => self::GROUP_NOTIFICATION, 'type' => 'text'],
             'admin_fraud_alerts' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'large_withdrawal_threshold' => ['value' => 50000, 'group' => self::GROUP_NOTIFICATION, 'type' => 'number'],
 
