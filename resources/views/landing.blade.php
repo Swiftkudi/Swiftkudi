@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftKudi - Nigeria's #1 Micro-Task Platform | Earn Money Completing Tasks</title>
-    <meta name="description" content="SwiftKudi is Nigeria's leading micro-task marketplace. Complete simple tasks like likes, follows, shares, and reviews to earn ₦30 - ₦5,000 per task. Start earning today!">
-    <meta name="keywords" content="earn money online Nigeria, micro-tasks, freelance Nigeria, side hustle, work from home Nigeria, task marketplace">
+    <title>SwiftKudi - Hire Top Freelancers & Get Quality Work Done | Post Tasks, Manage Projects, Pay Securely</title>
+    <meta name="description" content="The premier task posting marketplace for businesses. Post tasks, hire vetted freelancers, manage projects with secure escrow payments. Scale your workforce on-demand with quality guarantees.">
+    <meta name="keywords" content="hire freelancers Nigeria, post tasks, task marketplace, freelance platform, escrow payments, business outsourcing, hire workers, project management,Milestone payments, workforce scaling">
     <meta name="author" content="SwiftKudi">
-    <meta property="og:title" content="SwiftKudi - Nigeria's #1 Micro-Task Platform">
-    <meta property="og:description" content="Complete tasks. Earn money. Join thousands of Nigerians earning on SwiftKudi.">
+    <meta property="og:title" content="SwiftKudi - Hire Top Freelancers & Get Quality Work Done">
+    <meta property="og:description" content="Post tasks, hire skilled freelancers, and manage your projects with secure escrow payments. The reliable platform for businesses who need results.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://swiftkudi.com">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="SwiftKudi - Nigeria's #1 Micro-Task Platform">
-    <meta name="twitter:description" content="Complete tasks. Earn money. Join thousands of Nigerians earning on SwiftKudi.">
+    <meta name="twitter:title" content="SwiftKudi - Hire Top Freelancers & Get Quality Work Done">
+    <meta name="twitter:description" content="Post tasks, hire skilled freelancers, and manage your projects with secure escrow payments.">
     <link rel="canonical" href="https://swiftkudi.com">
     
     {{-- Laravel Mix Assets - Tailwind CSS compiled via Mix --}}
@@ -23,7 +23,7 @@
     {{-- External Libraries --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
+    
     <style>
         :root {
             --font-heading-name: 'Plus Jakarta Sans';
@@ -120,6 +120,9 @@
             </div>
         </div>
         <nav class="p-4 space-y-2">
+            <a href="#why-businesses" onclick="closeMobileMenu()" class="flex items-center px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition-all">
+                <i class="fas fa-briefcase mr-3 w-5"></i>Why Businesses
+            </a>
             <a href="#features" onclick="closeMobileMenu()" class="flex items-center px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition-all">
                 <i class="fas fa-star mr-3 w-5"></i>Features
             </a>
@@ -137,8 +140,8 @@
             <a href="{{ route('login') }}" class="w-full flex items-center justify-center px-4 py-3 rounded-xl bg-dark-800 text-gray-300 hover:text-white transition-all">
                 <i class="fas fa-sign-in-alt mr-2"></i>Sign In
             </a>
-            <a href="{{ route('register') }}" class="w-full flex items-center justify-center px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold transition-all">
-                <i class="fas fa-rocket mr-2"></i>Get Started
+            <a href="{{ route('register') }}?type=advertiser" class="w-full flex items-center justify-center px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold transition-all">
+                <i class="fas fa-briefcase mr-2"></i>Post a Task
             </a>
         </div>
     </div>
@@ -161,6 +164,7 @@
                     </a>
                 </div>
                 <nav class="hidden md:flex items-center gap-6 lg:gap-8">
+                    <a href="#why-businesses" class="text-sm font-medium text-gray-400 hover:text-indigo-400 transition-all">Why Businesses</a>
                     <a href="#features" class="text-sm font-medium text-gray-400 hover:text-indigo-400 transition-all">Features</a>
                     <a href="#how-it-works" class="text-sm font-medium text-gray-400 hover:text-indigo-400 transition-all">How It Works</a>
                     <a href="#marketplace" class="text-sm font-medium text-gray-400 hover:text-indigo-400 transition-all">Marketplace</a>
@@ -170,9 +174,10 @@
                     <a href="{{ route('login') }}" class="hidden sm:inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-400 hover:text-indigo-400 transition-all">
                         <i class="fas fa-sign-in-alt mr-2"></i>Sign In
                     </a>
-                    <a href="{{ route('register') }}" class="inline-flex items-center px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all transform hover:scale-105">
-                        <span class="hidden sm:inline">Get Started</span>
-                        <span class="sm:hidden">Join</span>
+                    <a href="{{ route('register') }}?type=advertiser" class="inline-flex items-center px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all transform hover:scale-105">
+                        <i class="fas fa-briefcase mr-2"></i>
+                        <span class="hidden sm:inline">Post a Task</span>
+                        <span class="sm:hidden">Post Task</span>
                     </a>
                 </div>
             </div>
@@ -186,21 +191,20 @@
                 <div class="text-center lg:text-left">
                     <div class="inline-flex items-center px-4 py-2 bg-indigo-500/20 rounded-full mb-6 border border-indigo-500/30">
                         <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                        <span class="text-sm font-medium text-indigo-300">🇳🇬 Nigeria's #1 Micro-Task Platform</span>
+                        <span class="text-sm font-medium text-indigo-300">Trusted by 2,500+ Businesses</span>
                     </div>
                     <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-heading font-extrabold mb-6 leading-tight">
-                        <span class="text-white">Complete Tasks.</span><br>
-                        <span class="gradient-text">Earn Money.</span><br>
-                        <span class="text-white">Live Free.</span>
+                        <span class="text-white">Get Quality Work.</span><br>
+                        <span class="gradient-text">Build Your Team.</span><br>
+                        <span class="text-white">Scale Faster.</span>
                     </h1>
                     <p class="text-base sm:text-lg md:text-xl text-gray-400 mb-8 max-w-xl mx-auto lg:mx-0">
-                        The micro-task marketplace where you earn <span class="font-semibold text-indigo-400">₦30 - ₦5,000</span> per task. 
-                        Like, follow, share, and review to build your income from anywhere in Nigeria.
+                        The #1 marketplace for businesses who need results. Post tasks, hire vetted freelancers, and manage projects with <span class="font-semibold text-indigo-400">secure escrow payments</span>. Only pay when you're satisfied.
                     </p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                        <a href="{{ route('register') }}" class="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white font-bold rounded-xl shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all transform hover:scale-105">
-                            <i class="fas fa-rocket mr-2"></i>
-                            Start Earning Now
+                        <a href="{{ route('tasks.create.new') }}" class="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white font-bold rounded-xl shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all transform hover:scale-105">
+                            <i class="fas fa-briefcase mr-2"></i>
+                            Post Your First Task
                         </a>
                         <a href="#how-it-works" class="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 bg-dark-800 text-gray-300 font-bold rounded-xl shadow-lg border-2 border-dark-700 hover:border-indigo-500 transition-all">
                             <i class="fas fa-play-circle mr-2 text-indigo-400"></i>
@@ -208,18 +212,18 @@
                         </a>
                     </div>
                     
-                    <!-- Trust Badges -->
+                    <!-- Trust Badges for Advertisers -->
                     <div class="mt-8 lg:mt-10 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6">
                         <div class="flex items-center gap-2 text-sm text-gray-400">
                             <i class="fas fa-shield-alt text-green-500"></i>
-                            <span>Secure Payments</span>
+                            <span>Secure Escrow</span>
                         </div>
                         <div class="flex items-center gap-2 text-sm text-gray-400">
-                            <i class="fas fa-bolt text-yellow-500"></i>
-                            <span>Instant Withdrawals</span>
+                            <i class="fas fa-check-circle text-blue-500"></i>
+                            <span>Vetted Workers</span>
                         </div>
                         <div class="flex items-center gap-2 text-sm text-gray-400">
-                            <i class="fas fa-headset text-blue-500"></i>
+                            <i class="fas fa-headset text-purple-500"></i>
                             <span>24/7 Support</span>
                         </div>
                     </div>
@@ -230,32 +234,32 @@
                     <div class="glass-card rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl">
                         <div class="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6">
                             <div class="text-center p-3 sm:p-4 md:p-6 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-xl sm:rounded-2xl">
-                                <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold gradient-text">10K+</div>
-                                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">Active Users</div>
+                                <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold gradient-text">50K+</div>
+                                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">Tasks Completed</div>
                             </div>
                             <div class="text-center p-3 sm:p-4 md:p-6 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl sm:rounded-2xl">
-                                <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold gradient-text-alt">₦50M+</div>
-                                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">Paid Out</div>
+                                <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold gradient-text-alt">2.5K+</div>
+                                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">Businesses</div>
                             </div>
                             <div class="text-center p-3 sm:p-4 md:p-6 bg-gradient-to-br from-pink-500/10 to-rose-500/10 rounded-xl sm:rounded-2xl">
-                                <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-pink-500">500+</div>
-                                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">Tasks Daily</div>
+                                <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-pink-500">98%</div>
+                                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">Success Rate</div>
                             </div>
                             <div class="text-center p-3 sm:p-4 md:p-6 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl sm:rounded-2xl">
                                 <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-yellow-500">4.9★</div>
-                                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">User Rating</div>
+                                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">Satisfaction</div>
                             </div>
                         </div>
                         
-                        <!-- Mini Activity Feed -->
+                        <!-- Mini Activity Feed - Business Focused -->
                         <div class="mt-6 space-y-3">
                             <div class="flex items-center gap-3 p-3 bg-green-500/10 rounded-xl">
                                 <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                                     <i class="fas fa-check text-white text-xs"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Adaeze just earned ₦2,500</p>
-                                    <p class="text-xs text-gray-500">UGC Task • 2 min ago</p>
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">TechStartup Inc posted a new task</p>
+                                    <p class="text-xs text-gray-500">UI Design • 2 min ago</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 p-3 bg-blue-500/10 rounded-xl">
@@ -263,8 +267,8 @@
                                     <i class="fas fa-check text-white text-xs"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Chukwu just withdrew ₦15,000</p>
-                                    <p class="text-xs text-gray-500">Bank Transfer • 5 min ago</p>
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Marketer Co hired a freelancer</p>
+                                    <p class="text-xs text-gray-500">Content Writer • 5 min ago</p>
                                 </div>
                             </div>
                         </div>
@@ -274,19 +278,75 @@
         </div>
     </section>
 
-    <!-- Features Section -->
-    <section id="features" class="py-16 md:py-20 bg-dark-900/50">
+    <!-- Why Businesses Choose SwiftKudi -->
+    <section id="why-businesses" class="py-16 md:py-20 bg-dark-900/50">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12 md:mb-16">
                 <div class="inline-flex items-center px-4 py-2 bg-emerald-500/20 rounded-full mb-4">
-                    <i class="fas fa-sparkles text-emerald-400 mr-2"></i>
-                    <span class="text-sm font-medium text-emerald-300">Powerful Features</span>
+                    <i class="fas fa-briefcase text-emerald-400 mr-2"></i>
+                    <span class="text-sm font-medium text-emerald-300">Why Businesses Choose SwiftKudi</span>
                 </div>
                 <h2 class="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-white mb-4">
-                    Everything You Need to <span class="gradient-text">Earn More</span>
+                    Everything You Need to <span class="gradient-text">Get Work Done</span>
                 </h2>
                 <p class="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto">
-                    Discover all the ways SwiftKudi helps you maximize your earnings and grow your income.
+                    From startups to enterprises, thousands of businesses trust SwiftKudi to get quality work delivered on time, every time.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                <!-- Benefit 1 -->
+                <div class="group p-6 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/10 transition-all">
+                    <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/30">
+                        <i class="fas fa-shield-halved text-white text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Secure Escrow Payments</h3>
+                    <p class="text-gray-400">Your funds are protected until work is approved. Only pay for quality results, not promises.</p>
+                </div>
+                
+                <!-- Benefit 2 -->
+                <div class="group p-6 bg-pink-500/10 rounded-2xl border border-pink-500/20 hover:shadow-xl hover:shadow-pink-500/10 transition-all">
+                    <div class="w-14 h-14 bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-pink-500/30">
+                        <i class="fas fa-users-gear text-white text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Vetted Freelancers</h3>
+                    <p class="text-gray-400">Access verified, skilled workers ready to deliver quality work. Review ratings and past performance.</p>
+                </div>
+                
+                <!-- Benefit 3 -->
+                <div class="group p-6 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/10 transition-all">
+                    <div class="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
+                        <i class="fas fa-chart-pie text-white text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Milestone Management</h3>
+                    <p class="text-gray-400">Break projects into milestones. Release payments gradually as work gets delivered.</p>
+                </div>
+                
+                <!-- Benefit 4 -->
+                <div class="group p-6 bg-orange-500/10 rounded-2xl border border-orange-500/20 hover:shadow-xl hover:shadow-orange-500/10 transition-all">
+                    <div class="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-orange-500/30">
+                        <i class="fas fa-layer-group text-white text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Scale On Demand</h3>
+                    <p class="text-gray-400">Hire one freelancer or build a whole team. Scale your workforce up or down as needed.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-16 md:py-20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 md:mb-16">
+                <div class="inline-flex items-center px-4 py-2 bg-blue-500/20 rounded-full mb-4">
+                    <i class="fas fa-sparkles text-blue-400 mr-2"></i>
+                    <span class="text-sm font-medium text-blue-300">Powerful Tools for Business</span>
+                </div>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-white mb-4">
+                    Tools That <span class="gradient-text">Drive Results</span>
+                </h2>
+                <p class="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto">
+                    Everything you need to post tasks, manage freelancers, and ensure quality delivery.
                 </p>
             </div>
             
@@ -296,70 +356,70 @@
                     <div class="feature-icon w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/30 transition-transform">
                         <i class="fas fa-tasks text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2">Micro Tasks</h3>
-                    <p class="text-gray-400">Complete simple tasks like likes, follows, comments, and shares. Earn ₦30 - ₦250 per task instantly.</p>
+                    <h3 class="text-xl font-bold text-white mb-2">Easy Task Posting</h3>
+                    <p class="text-gray-400">Post tasks in minutes. Set requirements, deadlines, and budget. Get matched with qualified workers.</p>
                 </div>
                 
                 <!-- Feature 2 -->
                 <div class="feature-card group p-6 bg-pink-500/10 rounded-2xl border border-pink-500/20 hover:shadow-xl hover:shadow-pink-500/10 transition-all">
                     <div class="feature-icon w-14 h-14 bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-pink-500/30 transition-transform">
-                        <i class="fas fa-video text-white text-xl"></i>
+                        <i class="fas fa-file-signature text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2">UGC Content</h3>
-                    <p class="text-gray-400">Create user-generated content like videos, reviews, and testimonials. Earn ₦2,500 - ₦5,000 per task.</p>
+                    <h3 class="text-xl font-bold text-white mb-2">Milestone Payments</h3>
+                    <p class="text-gray-400">Break projects into milestones. Approve each stage before releasing payment. Control your cash flow.</p>
                 </div>
                 
                 <!-- Feature 3 -->
                 <div class="feature-card group p-6 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/10 transition-all">
                     <div class="feature-icon w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30 transition-transform">
-                        <i class="fas fa-store text-white text-xl"></i>
+                        <i class="fas fa-magnifying-glass-chart text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2">Professional Services</h3>
-                    <p class="text-gray-400">Offer your professional skills - design, writing, coding, marketing. Set your own prices and terms.</p>
+                    <h3 class="text-xl font-bold text-white mb-2">Worker Verification</h3>
+                    <p class="text-gray-400">View worker profiles, ratings, completed tasks, and reviews. Make informed hiring decisions.</p>
                 </div>
                 
                 <!-- Feature 4 -->
                 <div class="feature-card group p-6 bg-orange-500/10 rounded-2xl border border-orange-500/20 hover:shadow-xl hover:shadow-orange-500/10 transition-all">
                     <div class="feature-icon w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-orange-500/30 transition-transform">
-                        <i class="fas fa-chart-line text-white text-xl"></i>
+                        <i class="fas fa-comments text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2">Growth Marketplace</h3>
-                    <p class="text-gray-400">Buy and sell growth services - backlinks, influencer promotions, newsletter ads, and verified leads.</p>
+                    <h3 class="text-xl font-bold text-white mb-2">Built-in Messaging</h3>
+                    <p class="text-gray-400">Communicate directly with freelancers. Share files, discuss requirements, and track progress.</p>
                 </div>
                 
                 <!-- Feature 5 -->
                 <div class="feature-card group p-6 bg-blue-500/10 rounded-2xl border border-blue-500/20 hover:shadow-xl hover:shadow-blue-500/10 transition-all">
                     <div class="feature-icon w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30 transition-transform">
-                        <i class="fas fa-download text-white text-xl"></i>
+                        <i class="fas fa-clipboard-check text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2">Digital Products</h3>
-                    <p class="text-gray-400">Sell digital products - templates, eBooks, courses, plugins, and scripts. Passive income made easy.</p>
+                    <h3 class="text-xl font-bold text-white mb-2">Work Approval</h3>
+                    <p class="text-gray-400">Review submissions before approval. Request revisions or approve and release payment.</p>
                 </div>
                 
                 <!-- Feature 6 -->
                 <div class="feature-card group p-6 bg-violet-500/10 rounded-2xl border border-violet-500/20 hover:shadow-xl hover:shadow-violet-500/10 transition-all">
                     <div class="feature-icon w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-violet-500/30 transition-transform">
-                        <i class="fas fa-users text-white text-xl"></i>
+                        <i class="fas fa-headset text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2">Referral Program</h3>
-                    <p class="text-gray-400">Invite friends and earn commission on their tasks. Build your network and earn passively forever.</p>
+                    <h3 class="text-xl font-bold text-white mb-2">Dispute Resolution</h3>
+                    <p class="text-gray-400">Our team helps resolve any issues. Fair mediation protects both businesses and workers.</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- How It Works -->
-    <section id="how-it-works" class="py-16 md:py-20">
+    <section id="how-it-works" class="py-16 md:py-20 bg-dark-900/50">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12 md:mb-16">
-                <div class="inline-flex items-center px-4 py-2 bg-blue-500/20 rounded-full mb-4">
-                    <i class="fas fa-route text-blue-400 mr-2"></i>
-                    <span class="text-sm font-medium text-blue-300">Simple Process</span>
+                <div class="inline-flex items-center px-4 py-2 bg-purple-500/20 rounded-full mb-4">
+                    <i class="fas fa-route text-purple-400 mr-2"></i>
+                    <span class="text-sm font-medium text-purple-300">Simple Process</span>
                 </div>
                 <h2 class="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-white mb-4">
-                    How It <span class="gradient-text">Works</span>
+                    Get Work Done in <span class="gradient-text">3 Steps</span>
                 </h2>
-                <p class="text-base sm:text-lg text-gray-400">Start earning in 3 simple steps</p>
+                <p class="text-base sm:text-lg text-gray-400">From posting to payment - get quality work delivered</p>
             </div>
             
             <div class="relative">
@@ -374,10 +434,10 @@
                                 1
                             </div>
                             <div class="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/30">
-                                <i class="fas fa-user-plus text-white text-2xl md:text-3xl"></i>
+                                <i class="fas fa-pen-to-square text-white text-2xl md:text-3xl"></i>
                             </div>
-                            <h3 class="text-xl font-bold text-white mb-3 text-center">Sign Up</h3>
-                            <p class="text-gray-400 text-center">Create your free account and activate with just ₦1,000 to unlock all earning features.</p>
+                            <h3 class="text-xl font-bold text-white mb-3 text-center">Post Your Task</h3>
+                            <p class="text-gray-400 text-center">Describe your requirements, set your budget, and define deadlines. Our platform makes it easy.</p>
                         </div>
                     </div>
                     
@@ -388,10 +448,10 @@
                                 2
                             </div>
                             <div class="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30">
-                                <i class="fas fa-tasks text-white text-2xl md:text-3xl"></i>
+                                <i class="fas fa-user-check text-white text-2xl md:text-3xl"></i>
                             </div>
-                            <h3 class="text-xl font-bold text-white mb-3 text-center">Complete Tasks</h3>
-                            <p class="text-gray-400 text-center">Browse available tasks, submit your work, and get approved by task owners.</p>
+                            <h3 class="text-xl font-bold text-white mb-3 text-center">Hire the Best</h3>
+                            <p class="text-gray-400 text-center">Review proposals, check worker ratings, and hire the best match for your project.</p>
                         </div>
                     </div>
                     
@@ -402,10 +462,10 @@
                                 3
                             </div>
                             <div class="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-500/30">
-                                <i class="fas fa-money-bill-wave text-white text-2xl md:text-3xl"></i>
+                                <i class="fas fa-check-double text-white text-2xl md:text-3xl"></i>
                             </div>
-                            <h3 class="text-xl font-bold text-white mb-3 text-center">Get Paid</h3>
-                            <p class="text-gray-400 text-center">Withdraw your earnings directly to your bank account instantly.</p>
+                            <h3 class="text-xl font-bold text-white mb-3 text-center">Approve & Pay</h3>
+                            <p class="text-gray-400 text-center">Review the completed work, approve quality, and release payment securely.</p>
                         </div>
                     </div>
                 </div>
@@ -419,13 +479,13 @@
             <div class="text-center mb-12 md:mb-16">
                 <div class="inline-flex items-center px-4 py-2 bg-purple-500/20 rounded-full mb-4">
                     <i class="fas fa-store text-purple-400 mr-2"></i>
-                    <span class="text-sm font-medium text-purple-300">Marketplace</span>
+                    <span class="text-sm font-medium text-purple-300">What You Can Outsource</span>
                 </div>
                 <h2 class="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-white mb-4">
-                    Explore Our <span class="gradient-text">Marketplace</span>
+                    Find Skills for <span class="gradient-text">Any Project</span>
                 </h2>
                 <p class="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto">
-                    Multiple ways to earn and grow. From micro-tasks to professional services.
+                    From simple micro-tasks to complex professional projects. Get the help you need.
                 </p>
             </div>
             
@@ -436,11 +496,11 @@
                     <div class="relative">
                         <div class="text-4xl md:text-5xl mb-4">⚡</div>
                         <h3 class="text-lg md:text-xl font-bold mb-2">Micro Tasks</h3>
-                        <p class="text-indigo-100 text-sm mb-4">₦30 - ₦250 per task</p>
+                        <p class="text-indigo-100 text-sm mb-4">Quick tasks for fast results</p>
                         <ul class="text-xs text-indigo-200 space-y-1">
-                            <li><i class="fas fa-check mr-1"></i> Social Media Likes</li>
-                            <li><i class="fas fa-check mr-1"></i> Comments & Follows</li>
-                            <li><i class="fas fa-check mr-1"></i> App Downloads</li>
+                            <li><i class="fas fa-check mr-1"></i> Social Media Marketing</li>
+                            <li><i class="fas fa-check mr-1"></i> Reviews & Testimonials</li>
+                            <li><i class="fas fa-check mr-1"></i> App Testing</li>
                         </ul>
                     </div>
                 </div>
@@ -451,7 +511,7 @@
                     <div class="relative">
                         <div class="text-4xl md:text-5xl mb-4">💼</div>
                         <h3 class="text-lg md:text-xl font-bold text-white mb-2">Pro Services</h3>
-                        <p class="text-gray-400 text-sm mb-4">Set your own price</p>
+                        <p class="text-gray-400 text-sm mb-4">Expert freelancers for any need</p>
                         <ul class="text-xs text-gray-400 space-y-1">
                             <li><i class="fas fa-check text-emerald-500 mr-1"></i> Graphic Design</li>
                             <li><i class="fas fa-check text-emerald-500 mr-1"></i> Web Development</li>
@@ -460,7 +520,7 @@
                     </div>
                 </div>
                 
-                <!-- Growth Marketplace -->
+                <!-- Growth Services -->
                 <div class="group relative overflow-hidden bg-dark-800 rounded-2xl p-6 border-2 border-dark-700 hover:border-orange-500 hover:shadow-2xl transition-all transform hover:-translate-y-2 cursor-pointer">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-16 -mt-16"></div>
                     <div class="relative">
@@ -468,8 +528,8 @@
                         <h3 class="text-lg md:text-xl font-bold text-white mb-2">Growth</h3>
                         <p class="text-gray-400 text-sm mb-4">Scale your business</p>
                         <ul class="text-xs text-gray-400 space-y-1">
-                            <li><i class="fas fa-check text-orange-500 mr-1"></i> Backlinks & SEO</li>
-                            <li><i class="fas fa-check text-orange-500 mr-1"></i> Influencer Promo</li>
+                            <li><i class="fas fa-check text-orange-500 mr-1"></i> SEO & Backlinks</li>
+                            <li><i class="fas fa-check text-orange-500 mr-1"></i> Influencer Marketing</li>
                             <li><i class="fas fa-check text-orange-500 mr-1"></i> Lead Generation</li>
                         </ul>
                     </div>
@@ -481,11 +541,11 @@
                     <div class="relative">
                         <div class="text-4xl md:text-5xl mb-4">🛒</div>
                         <h3 class="text-lg md:text-xl font-bold text-white mb-2">Digital Products</h3>
-                        <p class="text-gray-400 text-sm mb-4">Sell & earn passively</p>
+                        <p class="text-gray-400 text-sm mb-4">Templates & resources</p>
                         <ul class="text-xs text-gray-400 space-y-1">
-                            <li><i class="fas fa-check text-blue-500 mr-1"></i> Templates & Themes</li>
-                            <li><i class="fas fa-check text-blue-500 mr-1"></i> eBooks & Courses</li>
-                            <li><i class="fas fa-check text-blue-500 mr-1"></i> Plugins & Scripts</li>
+                            <li><i class="fas fa-check text-blue-500 mr-1"></i> Business Templates</li>
+                            <li><i class="fas fa-check text-blue-500 mr-1"></i> Marketing Assets</li>
+                            <li><i class="fas fa-check text-blue-500 mr-1"></i> Software Tools</li>
                         </ul>
                     </div>
                 </div>
@@ -499,12 +559,12 @@
             <div class="text-center mb-12 md:mb-16">
                 <div class="inline-flex items-center px-4 py-2 bg-yellow-500/20 rounded-full mb-4">
                     <i class="fas fa-star text-yellow-400 mr-2"></i>
-                    <span class="text-sm font-medium text-yellow-300">Testimonials</span>
+                    <span class="text-sm font-medium text-yellow-300">What Businesses Say</span>
                 </div>
                 <h2 class="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-white mb-4">
-                    What Our <span class="gradient-text">Users Say</span>
+                    Trusted by <span class="gradient-text">2,500+ Businesses</span>
                 </h2>
-                <p class="text-base sm:text-lg text-gray-400">Real stories from real earners</p>
+                <p class="text-base sm:text-lg text-gray-400">Real results from business owners who got work done</p>
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
@@ -517,12 +577,12 @@
                         <i class="fas fa-star text-yellow-400"></i>
                         <i class="fas fa-star text-yellow-400"></i>
                     </div>
-                    <p class="text-gray-400 mb-6">"I started with just the activation fee and now I'm earning over ₦50,000 monthly. SwiftKudi changed my life! The tasks are simple and payments are instant."</p>
+                    <p class="text-gray-400 mb-6">"We needed 50 product descriptions written in a week. Posted the task on Monday, had quality submissions by Wednesday. Game changer for our marketing."</p>
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">A</div>
+                        <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">T</div>
                         <div>
-                            <h4 class="font-bold text-white">Adaeze Okafor</h4>
-                            <p class="text-sm text-gray-500">Lagos • Earned ₦180K+</p>
+                            <h4 class="font-bold text-white">Tunde Industries</h4>
+                            <p class="text-sm text-gray-500">Lagos • E-commerce</p>
                         </div>
                     </div>
                 </div>
@@ -536,12 +596,12 @@
                         <i class="fas fa-star text-yellow-400"></i>
                         <i class="fas fa-star text-yellow-400"></i>
                     </div>
-                    <p class="text-gray-400 mb-6">"As a student, SwiftKudi helps me pay my bills without affecting my studies. I do tasks during my free time. Best decision ever!"</p>
+                    <p class="text-gray-400 mb-6">"The escrow system gives us peace of mind. We only pay when work is approved. Found an amazing designer who's now our go-to freelancer."</p>
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold">C</div>
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold">S</div>
                         <div>
-                            <h4 class="font-bold text-white">Chukwu Emenike</h4>
-                            <p class="text-sm text-gray-500">Abuja • Earned ₦95K+</p>
+                            <h4 class="font-bold text-white">Sarah's Boutique</h4>
+                            <p class="text-sm text-gray-500">Abuja • Retail</p>
                         </div>
                     </div>
                 </div>
@@ -555,12 +615,12 @@
                         <i class="fas fa-star text-yellow-400"></i>
                         <i class="fas fa-star text-yellow-400"></i>
                     </div>
-                    <p class="text-gray-400 mb-6">"I offer graphic design services on SwiftKudi and I've gotten over 50 orders. The platform fee is fair and I get paid immediately."</p>
+                    <p class="text-gray-400 mb-6">"As a startup, we can't hire full-time staff for everything. SwiftKudi lets us access skilled professionals for specific projects. Huge cost saver."</p>
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full flex items-center justify-center text-white font-bold">F</div>
+                        <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full flex items-center justify-center text-white font-bold">T</div>
                         <div>
-                            <h4 class="font-bold text-white">Fatima Abdullahi</h4>
-                            <p class="text-sm text-gray-500">Kano • Earned ₦320K+</p>
+                            <h4 class="font-bold text-white">TechVentures Ltd</h4>
+                            <p class="text-sm text-gray-500">Port Harcourt • Tech Startup</p>
                         </div>
                     </div>
                 </div>
@@ -574,12 +634,12 @@
                         <i class="fas fa-star text-yellow-400"></i>
                         <i class="fas fa-star-half-alt text-yellow-400"></i>
                     </div>
-                    <p class="text-gray-400 mb-6">"The referral program is amazing! I invited my friends and now I earn passive income from their tasks. It's like free money!"</p>
+                    <p class="text-gray-400 mb-6">"We use SwiftKudi for all our social media growth. Posted tasks for likes, follows, and reviews. Our engagement has tripled in 2 months."</p>
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white font-bold">O</div>
                         <div>
-                            <h4 class="font-bold text-white">Oluwaseun Bakare</h4>
-                            <p class="text-sm text-gray-500">Ibadan • Earned ₦75K+</p>
+                            <h4 class="font-bold text-white">Oladipo Marketing</h4>
+                            <p class="text-sm text-gray-500">Ibadan • Digital Agency</p>
                         </div>
                     </div>
                 </div>
@@ -593,12 +653,12 @@
                         <i class="fas fa-star text-yellow-400"></i>
                         <i class="fas fa-star text-yellow-400"></i>
                     </div>
-                    <p class="text-gray-400 mb-6">"I sell my eBooks on SwiftKudi's digital products marketplace. Made over ₦100K in my first month! The exposure is incredible."</p>
+                    <p class="text-gray-400 mb-6">"Needed a website redesign for our restaurant. Found an amazing developer through the platform. The milestone payment system kept them on track."</p>
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold">T</div>
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold">G</div>
                         <div>
-                            <h4 class="font-bold text-white">Tunde Adebayo</h4>
-                            <p class="text-sm text-gray-500">Port Harcourt • Earned ₦150K+</p>
+                            <h4 class="font-bold text-white">Golden Fork Restaurants</h4>
+                            <p class="text-sm text-gray-500">Kano • Hospitality</p>
                         </div>
                     </div>
                 </div>
@@ -612,12 +672,12 @@
                         <i class="fas fa-star text-yellow-400"></i>
                         <i class="fas fa-star text-yellow-400"></i>
                     </div>
-                    <p class="text-gray-400 mb-6">"I was skeptical at first but decided to try. Now I'm a Level 3 earner with access to premium tasks. Customer support is excellent!"</p>
+                    <p class="text-gray-400 mb-6">"The ability to scale our workforce up or down is incredible. We hired 10 freelancers for a product launch, then scaled back. Perfect for our business model."</p>
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">N</div>
                         <div>
-                            <h4 class="font-bold text-white">Ngozi Eze</h4>
-                            <p class="text-sm text-gray-500">Enugu • Earned ₦210K+</p>
+                            <h4 class="font-bold text-white">Nova Events Co</h4>
+                            <p class="text-sm text-gray-500">Enugu • Events Company</p>
                         </div>
                     </div>
                 </div>
@@ -626,16 +686,20 @@
             <!-- Trust Indicators -->
             <div class="mt-12 md:mt-16 flex flex-wrap justify-center items-center gap-4 md:gap-8">
                 <div class="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-green-500/10 rounded-full">
-                    <i class="fas fa-check-circle text-green-500"></i>
-                    <span class="text-sm font-medium text-green-400">Verified Payments</span>
+                    <i class="fas fa-shield-alt text-green-500"></i>
+                    <span class="text-sm font-medium text-green-400">Escrow Protected</span>
                 </div>
                 <div class="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-blue-500/10 rounded-full">
-                    <i class="fas fa-users text-blue-500"></i>
-                    <span class="text-sm font-medium text-blue-400">10,000+ Users</span>
+                    <i class="fas fa-building text-blue-500"></i>
+                    <span class="text-sm font-medium text-blue-400">2,500+ Businesses</span>
                 </div>
                 <div class="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-purple-500/10 rounded-full">
                     <i class="fas fa-award text-purple-500"></i>
-                    <span class="text-sm font-medium text-purple-400">4.9/5 Rating</span>
+                    <span class="text-sm font-medium text-purple-400">98% Success Rate</span>
+                </div>
+                <div class="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-yellow-500/10 rounded-full">
+                    <i class="fas fa-star text-yellow-500"></i>
+                    <span class="text-sm font-medium text-yellow-400">4.9/5 Rating</span>
                 </div>
             </div>
         </div>
@@ -645,19 +709,19 @@
     <section class="py-16 md:py-20 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 relative overflow-hidden">
         <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.05\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
-            <h2 class="text-2xl sm:text-3xl md:text-5xl font-heading font-bold text-white mb-4 md:mb-6">Ready to Start Earning?</h2>
-            <p class="text-lg md:text-xl text-indigo-100 mb-6 md:mb-8 max-w-2xl mx-auto">Join thousands of Nigerians already earning on SwiftKudi. Start your journey to financial freedom today!</p>
+            <h2 class="text-2xl sm:text-3xl md:text-5xl font-heading font-bold text-white mb-4 md:mb-6">Ready to Get Work Done?</h2>
+            <p class="text-lg md:text-xl text-indigo-100 mb-6 md:mb-8 max-w-2xl mx-auto">Join 2,500+ businesses already using SwiftKudi to hire top freelancers and get quality work delivered.</p>
             <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="{{ route('register') }}" class="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 bg-white text-indigo-600 font-bold rounded-xl shadow-xl hover:bg-gray-100 transition-all transform hover:scale-105">
-                    <i class="fas fa-rocket mr-2"></i>
-                    Create Free Account
+                <a href="{{ route('tasks.create.new') }}" class="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 bg-white text-indigo-600 font-bold rounded-xl shadow-xl hover:bg-gray-100 transition-all transform hover:scale-105">
+                    <i class="fas fa-briefcase mr-2"></i>
+                    Post Your First Task
                 </a>
                 <a href="#how-it-works" class="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 bg-transparent text-white font-bold rounded-xl border-2 border-white/30 hover:bg-white/10 transition-all">
                     <i class="fas fa-info-circle mr-2"></i>
                     Learn More
                 </a>
             </div>
-            <p class="mt-6 text-indigo-200 text-sm">No credit card required • Free to join • Start earning immediately</p>
+            <p class="mt-6 text-indigo-200 text-sm">No credit card required • Free to post tasks • Pay only for approved work</p>
         </div>
     </section>
 
@@ -673,34 +737,34 @@
             <div class="space-y-4">
                 <details class="group bg-dark-800 rounded-xl p-4 md:p-6 cursor-pointer">
                     <summary class="flex justify-between items-center font-semibold text-white">
-                        <span>How do I start earning on SwiftKudi?</span>
+                        <span>How does escrow payment work?</span>
                         <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition-transform"></i>
                     </summary>
-                    <p class="mt-4 text-gray-400">Simply create a free account, pay the one-time activation fee of ₦1,000, and start completing available tasks. You can withdraw your earnings anytime.</p>
+                    <p class="mt-4 text-gray-400">When you fund a task, your money is held securely in escrow. It is only released to the freelancer once you approve the completed work. This protects you from scams and ensures quality delivery.</p>
                 </details>
                 
                 <details class="group bg-dark-800 rounded-xl p-4 md:p-6 cursor-pointer">
                     <summary class="flex justify-between items-center font-semibold text-white">
-                        <span>How much can I earn per task?</span>
+                        <span>How do I know the workers are reliable?</span>
                         <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition-transform"></i>
                     </summary>
-                    <p class="mt-4 text-gray-400">Micro-tasks pay ₦30 - ₦250, UGC content tasks pay ₦2,500 - ₦5,000, and professional services can earn you much more depending on your skills and pricing.</p>
+                    <p class="mt-4 text-gray-400">All workers have profiles showing their ratings, completed tasks, and reviews from previous clients. You can also require verification badges and check their work history before hiring.</p>
                 </details>
                 
                 <details class="group bg-dark-800 rounded-xl p-4 md:p-6 cursor-pointer">
                     <summary class="flex justify-between items-center font-semibold text-white">
-                        <span>How do I withdraw my earnings?</span>
+                        <span>What if I'm not satisfied with the work?</span>
                         <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition-transform"></i>
                     </summary>
-                    <p class="mt-4 text-gray-400">Withdrawals are processed instantly to your Nigerian bank account. Minimum withdrawal is ₦1,000. No hidden fees!</p>
+                    <p class="mt-4 text-gray-400">You can request revisions until the work meets your requirements. If issues can't be resolved, our dispute resolution team will mediate. Since funds are in escrow, you're protected until you approve the work.</p>
                 </details>
                 
                 <details class="group bg-dark-800 rounded-xl p-4 md:p-6 cursor-pointer">
                     <summary class="flex justify-between items-center font-semibold text-white">
-                        <span>Is SwiftKudi legit and safe?</span>
+                        <span>How much does it cost to post tasks?</span>
                         <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition-transform"></i>
                     </summary>
-                    <p class="mt-4 text-gray-400">Yes! SwiftKudi is a registered Nigerian company with over 10,000 active users and ₦50M+ paid out. We have a 4.9/5 rating from our community.</p>
+                    <p class="mt-4 text-gray-400">Posting tasks is free! You only pay when you approve completed work. The platform takes a small service fee from the total project budget, which covers payment processing and platform maintenance.</p>
                 </details>
             </div>
         </div>
@@ -717,24 +781,24 @@
                         </div>
                         <span class="ml-3 font-bold text-white text-lg">SwiftKudi</span>
                     </div>
-                    <p class="text-gray-400 text-sm">Nigeria's #1 micro-task marketplace. Complete tasks, earn money, live free.</p>
+                    <p class="text-gray-400 text-sm">The #1 marketplace for businesses to hire freelancers and get quality work done with secure escrow payments.</p>
                 </div>
                 <div>
-                    <h4 class="font-semibold text-white mb-3 md:mb-4">Platform</h4>
+                    <h4 class="font-semibold text-white mb-3 md:mb-4">For Businesses</h4>
                     <ul class="space-y-2 text-sm text-gray-400">
                         <li><a href="#features" class="hover:text-indigo-400 transition-colors">Features</a></li>
                         <li><a href="#how-it-works" class="hover:text-indigo-400 transition-colors">How It Works</a></li>
-                        <li><a href="#marketplace" class="hover:text-indigo-400 transition-colors">Marketplace</a></li>
-                        <li><a href="#reviews" class="hover:text-indigo-400 transition-colors">Reviews</a></li>
+                        <li><a href="{{ route('tasks.create.new') }}" class="hover:text-indigo-400 transition-colors">Post a Task</a></li>
+                        <li><a href="#pricing" class="hover:text-indigo-400 transition-colors">Pricing</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="font-semibold text-white mb-3 md:mb-4">Marketplace</h4>
                     <ul class="space-y-2 text-sm text-gray-400">
-                        <li><a href="{{ route('tasks.index') }}" class="hover:text-indigo-400 transition-colors">Micro Tasks</a></li>
-                        <li><a href="{{ route('professional-services.index') }}" class="hover:text-indigo-400 transition-colors">Pro Services</a></li>
-                        <li><a href="{{ route('growth.index') }}" class="hover:text-indigo-400 transition-colors">Growth</a></li>
-                        <li><a href="{{ route('digital-products.index') }}" class="hover:text-indigo-400 transition-colors">Digital Products</a></li>
+                        <li><a href="/tasks" class="hover:text-indigo-400 transition-colors">Micro Tasks</a></li>
+                        <li><a href="/services" class="hover:text-indigo-400 transition-colors">Pro Services</a></li>
+                        <li><a href="/growth" class="hover:text-indigo-400 transition-colors">Growth</a></li>
+                        <li><a href="/products" class="hover:text-indigo-400 transition-colors">Digital Products</a></li>
                     </ul>
                 </div>
                 <div>
@@ -758,8 +822,8 @@
             <div class="border-t border-dark-700 pt-6 md:pt-8 flex flex-col md:flex-row justify-between items-center">
                 <p class="text-sm text-gray-500">© {{ date('Y') }} SwiftKudi. All rights reserved.</p>
                 <div class="flex gap-4 md:gap-6 mt-4 md:mt-0">
-                    <a href="{{ route('legal.privacy') }}" class="text-sm text-gray-500 hover:text-gray-400">Privacy Policy</a>
-                    <a href="{{ route('legal.terms') }}" class="text-sm text-gray-500 hover:text-gray-400">Terms of Service</a>
+                    <a href="#" class="text-sm text-gray-500 hover:text-gray-400">Privacy Policy</a>
+                    <a href="#" class="text-sm text-gray-500 hover:text-gray-400">Terms of Service</a>
                     <a href="#" class="text-sm text-gray-500 hover:text-gray-400">Contact</a>
                 </div>
             </div>
