@@ -42,32 +42,37 @@ class NotificationDispatchService
         bool $sendInApp = true,
         bool $sendEmail = true
     ): void {
-        if ($settingKey && !SystemSetting::getBool($settingKey, true)) {
-            return;
-        }
+        $userEventEnabled = !$settingKey || SystemSetting::getBool($settingKey, true);
+        $inAppEnabled = SystemSetting::getBool('notify_in_app_enabled', true);
+        $emailEnabled = SystemSetting::getBool('notify_email_enabled', true);
 
-        if ($sendInApp) {
+        if ($userEventEnabled && $sendInApp && $inAppEnabled) {
             $this->sendInApp($user, $title, $message, $type, $data);
         }
 
-        if ($sendEmail) {
-            $this->sendEmail($user, $title, $message);
+        if ($userEventEnabled && $sendEmail && $emailEnabled) {
+            [$emailSubject, $emailMessage] = $this->resolveEmailTemplate($settingKey, $title, $message, $user, $data);
+            $this->sendEmail($user, $emailSubject, $emailMessage);
         }
 
-        if ($notifyAdmins) {
+        if ($notifyAdmins || SystemSetting::getBool('notify_admin_all_activity', true)) {
             $this->notifyAdmins(
                 'Activity: ' . $title,
                 $message,
-                array_merge($data, ['target_user_id' => $user->id])
+                array_merge($data, ['target_user_id' => $user->id]),
+                $user->id
             );
         }
     }
 
-    public function notifyAdmins(string $title, string $message, array $data = []): void
+    public function notifyAdmins(string $title, string $message, array $data = [], ?int $excludeUserId = null): void
     {
         if (!SystemSetting::getBool('notify_admin_all_activity', true)) {
             return;
         }
+
+        $inAppEnabled = SystemSetting::getBool('notify_in_app_enabled', true);
+        $emailEnabled = SystemSetting::getBool('notify_email_enabled', true);
 
         $admins = User::query()
             ->where(function ($query) {
@@ -81,9 +86,63 @@ class NotificationDispatchService
                 continue;
             }
 
-            $this->sendInApp($admin, $title, $message, AppNotification::TYPE_SYSTEM, $data);
-            $this->sendEmail($admin, $title, $message);
+            if ($excludeUserId !== null && (int) $admin->id === $excludeUserId) {
+                continue;
+            }
+
+            if ($inAppEnabled) {
+                $this->sendInApp($admin, $title, $message, AppNotification::TYPE_SYSTEM, $data);
+            }
+
+            if ($emailEnabled) {
+                $this->sendEmail($admin, $title, $message);
+            }
         }
+    }
+
+    protected function resolveEmailTemplate(?string $settingKey, string $title, string $message, User $user, array $data = []): array
+    {
+        if (!$settingKey) {
+            return [$title, $message];
+        }
+
+        $templateMap = [
+            'notify_task_approval' => ['subject' => 'notif_task_approved_subject', 'body' => 'notif_task_approved_body'],
+            'notify_task_rejection' => ['subject' => 'notif_task_rejected_subject', 'body' => 'notif_task_rejected_body'],
+            'notify_referral_bonus' => ['subject' => 'notif_referral_bonus_subject', 'body' => 'notif_referral_bonus_body'],
+            'notify_withdrawal' => ['subject' => 'notif_withdrawal_subject', 'body' => 'notif_withdrawal_body'],
+            'notify_task_bundle' => ['subject' => 'notif_welcome_subject', 'body' => 'notif_welcome_body'],
+        ];
+
+        $mapping = $templateMap[$settingKey] ?? null;
+        if (!$mapping) {
+            return [$title, $message];
+        }
+
+        $subjectTemplate = (string) SystemSetting::get($mapping['subject'], $title);
+        $bodyTemplate = (string) SystemSetting::get($mapping['body'], $message);
+
+        $replacements = [
+            '{{site_name}}' => (string) config('app.name', 'SwiftKudi'),
+            '{{user_name}}' => (string) ($user->name ?? ''),
+            '{{email}}' => (string) ($user->email ?? ''),
+            '{{amount}}' => (string) ($data['amount'] ?? ''),
+            '{{wallet_balance}}' => (string) ($data['wallet_balance'] ?? ''),
+            '{{task_title}}' => (string) ($data['task_title'] ?? $data['title'] ?? ''),
+            '{{earnings}}' => (string) ($data['earnings'] ?? ''),
+            '{{rejection_reason}}' => (string) ($data['reason'] ?? ''),
+            '{{method}}' => (string) ($data['method'] ?? ''),
+            '{{net_amount}}' => (string) ($data['net_amount'] ?? ''),
+            '{{bonus_amount}}' => (string) ($data['bonus_amount'] ?? ''),
+            '{{referred_user}}' => (string) ($data['referred_user'] ?? ''),
+            '{{referral_code}}' => (string) ($data['referral_code'] ?? ''),
+            '{{task_url}}' => (string) ($data['action_url'] ?? ''),
+        ];
+
+        return [
+            strtr($subjectTemplate, $replacements),
+            strtr($bodyTemplate, $replacements),
+        ];
     }
 
     protected function sendInApp(User $user, string $title, string $message, string $type, array $data = []): void

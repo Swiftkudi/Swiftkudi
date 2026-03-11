@@ -14,6 +14,7 @@
             <div class="mt-4 md:mt-0 space-x-4">
                 <a href="/admin" class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Admin Home</a>
                 <a href="{{ route('admin.settings') }}" class="text-indigo-600 hover:text-indigo-900">← Back to Settings</a>
+                <a href="{{ route('admin.settings.notifications-audit') }}" class="text-purple-600 hover:text-purple-900">View Audit Log</a>
             </div>
         </div>
 

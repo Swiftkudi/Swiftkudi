@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
 use App\Models\AdminRole;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -304,6 +305,8 @@ class SettingsController extends Controller
     protected function ensureNotificationSettingsExist(): void
     {
         $defaults = [
+            'notify_in_app_enabled' => ['value' => true, 'type' => 'boolean'],
+            'notify_email_enabled' => ['value' => true, 'type' => 'boolean'],
             'notify_task_approval' => ['value' => true, 'type' => 'boolean'],
             'notify_task_rejection' => ['value' => true, 'type' => 'boolean'],
             'notify_task_bundle' => ['value' => true, 'type' => 'boolean'],
@@ -317,9 +320,33 @@ class SettingsController extends Controller
             'notify_admin_all_activity' => ['value' => true, 'type' => 'boolean'],
             'admin_fraud_alerts' => ['value' => true, 'type' => 'boolean'],
             'large_withdrawal_threshold' => ['value' => 50000, 'type' => 'number'],
+            'notif_welcome_subject' => ['value' => 'Welcome to {{site_name}}!', 'type' => 'text'],
+            'notif_welcome_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_welcome_body' => ['value' => "Hello {{user_name}},\n\nWelcome to {{site_name}}! We're excited to have you on board.\n\nYour referral code: {{referral_code}}\n\nGet started by completing your profile and exploring available tasks.", 'type' => 'text'],
+            'notif_task_approved_subject' => ['value' => 'Your Task Has Been Approved!', 'type' => 'text'],
+            'notif_task_approved_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_task_approved_body' => ['value' => "Hello {{user_name}},\n\nGreat news! Your task \"{{task_title}}\" has been approved.\n\nEarnings: {{earnings}}\n\nKeep up the great work!", 'type' => 'text'],
+            'notif_task_rejected_subject' => ['value' => 'Task Update: Not Approved', 'type' => 'text'],
+            'notif_task_rejected_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_task_rejected_body' => ['value' => "Hello {{user_name}},\n\nYour task \"{{task_title}}\" was not approved.\n\nReason: {{rejection_reason}}\n\nPlease review the feedback and resubmit if needed.", 'type' => 'text'],
+            'notif_earnings_unlocked_subject' => ['value' => 'Your Earnings Are Now Available!', 'type' => 'text'],
+            'notif_earnings_unlocked_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_earnings_unlocked_body' => ['value' => "Hello {{user_name}},\n\nGreat news! Your earnings of {{amount}} have been unlocked and are now available in your wallet.\n\nYou can withdraw these funds or use them for premium tasks.\n\nCurrent Balance: {{wallet_balance}}", 'type' => 'text'],
+            'notif_activation_reminder_subject' => ['value' => 'Reminder: Complete Your Wallet Activation', 'type' => 'text'],
+            'notif_activation_reminder_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_activation_reminder_body' => ['value' => "Hello {{user_name}},\n\nThis is a friendly reminder to complete your wallet activation.\n\nActivate now to unlock your earnings and start withdrawing!\n\nActivation Fee: {{activation_fee}}", 'type' => 'text'],
+            'notif_password_reset_subject' => ['value' => 'Reset Your Password', 'type' => 'text'],
+            'notif_password_reset_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_password_reset_body' => ['value' => "Hello {{user_name}},\n\nYou requested a password reset. Click the link below to reset your password:\n\n{{reset_link}}\n\nThis link expires in 60 minutes.", 'type' => 'text'],
             'notif_email_verify_subject' => ['value' => 'Verify Your Email Address', 'type' => 'text'],
             'notif_email_verify_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
             'notif_email_verify_body' => ['value' => "Hello {{user_name}},\n\nPlease verify your email address by clicking the link below:\n\n{{verify_link}}\n\nIf you did not create an account, please ignore this email.", 'type' => 'text'],
+            'notif_withdrawal_subject' => ['value' => 'Withdrawal Processed Successfully', 'type' => 'text'],
+            'notif_withdrawal_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_withdrawal_body' => ['value' => "Hello {{user_name}},\n\nYour withdrawal of {{amount}} has been processed successfully.\n\nWithdrawal Method: {{method}}\n\nAmount Received: {{net_amount}}", 'type' => 'text'],
+            'notif_referral_bonus_subject' => ['value' => 'You Earned a Referral Bonus!', 'type' => 'text'],
+            'notif_referral_bonus_from_name' => ['value' => config('app.name', 'SwiftKudi'), 'type' => 'text'],
+            'notif_referral_bonus_body' => ['value' => "Hello {{user_name}},\n\nCongratulations! You earned a referral bonus of {{bonus_amount}}!\n\nYour referral {{referred_user}} has completed their first task.\n\nShare your referral code to earn more: {{referral_code}}", 'type' => 'text'],
         ];
 
         foreach ($defaults as $key => $meta) {
@@ -779,6 +806,61 @@ class SettingsController extends Controller
             'settingsByKey' => $settingsByKey,
             'pageTitle' => 'Email Notification Messages'
         ]);
+    }
+
+    /**
+     * Notification audit trail (in-app notifications)
+     */
+    public function notificationAudit(Request $request)
+    {
+        $query = Notification::query()
+            ->with(['user:id,name,email,is_admin,admin_role_id'])
+            ->latest();
+
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('message', 'like', '%' . $search . '%')
+                    ->orWhereHas('user', function ($uq) use ($search) {
+                        $uq->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $type = trim((string) $request->query('type', ''));
+        if ($type !== '') {
+            $query->where('type', $type);
+        }
+
+        $adminOnly = filter_var($request->query('admin_only', false), FILTER_VALIDATE_BOOLEAN);
+        if ($adminOnly) {
+            $query->whereHas('user', function ($uq) {
+                $uq->where('is_admin', true)->orWhereNotNull('admin_role_id');
+            });
+        }
+
+        $notifications = $query->paginate(100);
+        $notifications->appends($request->query());
+
+        $summary = [
+            'total' => Notification::count(),
+            'today' => Notification::whereDate('created_at', now()->toDateString())->count(),
+            'unread' => Notification::where('is_read', false)->count(),
+            'admin_total' => Notification::whereHas('user', function ($uq) {
+                $uq->where('is_admin', true)->orWhereNotNull('admin_role_id');
+            })->count(),
+        ];
+
+        $types = Notification::query()
+            ->select('type')
+            ->whereNotNull('type')
+            ->distinct()
+            ->orderBy('type')
+            ->pluck('type');
+
+        return view('admin.settings.notifications-audit', compact('notifications', 'summary', 'types', 'search', 'type', 'adminOnly'));
     }
 
     /**

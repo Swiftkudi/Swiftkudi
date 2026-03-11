@@ -781,6 +781,8 @@ class SystemSetting extends Model
             'stripe_enabled' => ['value' => false, 'group' => self::GROUP_PAYMENT, 'type' => 'boolean'],
 
             // Notifications
+            'notify_in_app_enabled' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_email_enabled' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_task_approval' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_task_rejection' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_task_bundle' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],

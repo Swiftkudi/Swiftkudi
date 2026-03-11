@@ -186,6 +186,7 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
         Route::get('/settings/smtp', [\App\Http\Controllers\SettingsController::class, 'group'])->name('settings.smtp')->defaults('group', 'smtp');
         Route::get('/settings/currency', [\App\Http\Controllers\SettingsController::class, 'group'])->name('settings.currency')->defaults('group', 'currency');
         Route::get('/settings/notifications', [\App\Http\Controllers\SettingsController::class, 'notificationMessages'])->name('settings.notifications');
+        Route::get('/settings/notifications/audit', [\App\Http\Controllers\SettingsController::class, 'notificationAudit'])->name('settings.notifications-audit');
         Route::post('/settings/test-email', [\App\Http\Controllers\SettingsController::class, 'testEmail'])->name('settings.test-email');
         Route::post('/notifications/send', [\App\Http\Controllers\AdminController::class, 'sendNotification'])->name('notifications.send');
         Route::get('/settings/notification', [\App\Http\Controllers\SettingsController::class, 'group'])->name('settings.notification')->defaults('group', 'notification');

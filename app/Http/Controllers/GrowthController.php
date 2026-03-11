@@ -443,17 +443,18 @@ class GrowthController extends Controller
                 ], 404);
             }
 
-            // Use the Notification model's sendTo method
-            \App\Models\Notification::sendTo(
+            app(\App\Services\NotificationDispatchService::class)->sendToUser(
                 $recipient,
                 'New Message from ' . $sender->name,
                 "Subject: {$validated['subject']}\n\n{$validated['message']}",
-                'contact_message',
+                \App\Models\Notification::TYPE_SYSTEM,
                 [
                     'sender_id' => $sender->id,
                     'sender_name' => $sender->name,
                     'action_url' => route('growth.index'),
-                ]
+                ],
+                'notify_chat_messages',
+                true
             );
 
             $conversation = MarketplaceConversation::findOrCreate(
