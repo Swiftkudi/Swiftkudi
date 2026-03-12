@@ -590,6 +590,9 @@
                 <a href="{{ route('dashboard') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('dashboard') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
                     <i class="fas fa-home mr-3 w-5"></i>Dashboard
                 </a>
+                <a href="{{ route('dashboard.profile') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('dashboard.profile') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
+                    <i class="fas fa-user mr-3 w-5"></i>Profile
+                </a>
                 <a href="{{ route('tasks.index') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('tasks.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
                     <i class="fas fa-tasks mr-3 w-5"></i>Tasks
                 </a>
@@ -651,6 +654,9 @@
                     <nav class="hidden md:flex space-x-1">
                         <a href="{{ route('dashboard') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('dashboard') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
                             <i class="fas fa-home mr-2"></i>Dashboard
+                        </a>
+                        <a href="{{ route('dashboard.profile') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('dashboard.profile') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
+                            <i class="fas fa-user mr-2"></i>Profile
                         </a>
                         <a href="{{ route('tasks.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('tasks.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
                             <i class="fas fa-tasks mr-2"></i>Tasks
