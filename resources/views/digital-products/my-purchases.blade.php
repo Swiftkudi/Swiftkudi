@@ -110,7 +110,7 @@
                                     <div class="flex items-center gap-3">
                                         <div class="h-12 w-12 rounded-xl bg-gray-100 dark:bg-dark-800 flex-shrink-0 overflow-hidden">
                                             @if($order->product->thumbnail)
-                                                <img src="{{ Storage::url($order->product->thumbnail) }}" class="h-12 w-12 object-cover">
+                                                <img src="{{ Storage::disk('public')->url($order->product->thumbnail) }}" class="h-12 w-12 object-cover">
                                             @else
                                                 <div class="h-12 w-12 flex items-center justify-center">
                                                     <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

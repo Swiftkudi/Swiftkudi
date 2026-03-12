@@ -34,7 +34,7 @@
                     <!-- Product Image -->
                     @if($product->thumbnail)
                         <div class="mb-6">
-                            <img src="{{ Storage::url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-full h-48 object-cover rounded-xl">
+                            <img src="{{ Storage::disk('public')->url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-full h-48 object-cover rounded-xl">
                         </div>
                     @endif
 

@@ -25,7 +25,7 @@
                 <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 overflow-hidden mb-6">
                     <div class="aspect-video bg-gray-100 dark:bg-dark-800">
                         @if($product->thumbnail)
-                            <img src="{{ Storage::url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-full h-full object-contain">
+                            <img src="{{ Storage::disk('public')->url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-full h-full object-contain">
                         @else
                             <div class="w-full h-full flex items-center justify-center">
                                 <svg class="h-24 w-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -293,7 +293,7 @@
                         <a href="{{ route('digital-products.show', $related) }}">
                             <div class="aspect-video bg-gray-100 dark:bg-dark-800">
                                 @if($related->thumbnail)
-                                    <img src="{{ Storage::url($related->thumbnail) }}" alt="{{ $related->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                    <img src="{{ Storage::disk('public')->url($related->thumbnail) }}" alt="{{ $related->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                                 @else
                                     <div class="w-full h-full flex items-center justify-center">
                                         <svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

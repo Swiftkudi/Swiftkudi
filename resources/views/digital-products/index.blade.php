@@ -138,7 +138,7 @@
                         <a href="{{ route('digital-products.show', $product) }}">
                             <div class="aspect-video bg-gray-100 dark:bg-dark-800 relative overflow-hidden">
                                 @if($product->thumbnail)
-                                    <img src="{{ Storage::url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                    <img src="{{ Storage::disk('public')->url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                                 @else
                                     <div class="w-full h-full flex items-center justify-center">
                                         <svg class="h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

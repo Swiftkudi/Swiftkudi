@@ -118,7 +118,7 @@
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3">
                                             @if($product->thumbnail)
-                                                <img src="{{ Storage::url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-10 h-10 rounded-lg object-cover">
+                                                <img src="{{ Storage::disk('public')->url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-10 h-10 rounded-lg object-cover">
                                             @else
                                                 <div class="w-10 h-10 bg-gray-100 dark:bg-dark-800 rounded-lg flex items-center justify-center">
                                                     <i class="fas fa-file text-gray-400"></i>

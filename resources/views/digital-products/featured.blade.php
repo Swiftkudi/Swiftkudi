@@ -31,7 +31,7 @@
                         <!-- Thumbnail -->
                         <div class="aspect-video bg-gradient-to-br from-indigo-500 to-purple-600 relative">
                             @if($product->thumbnail)
-                                <img src="{{ Storage::url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-full h-full object-cover">
+                                <img src="{{ Storage::disk('public')->url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-full h-full object-cover">
                             @else
                                 <div class="w-full h-full flex items-center justify-center">
                                     <i class="fas fa-file-download text-white text-4xl opacity-50"></i>
