@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivationLog;
 use App\Models\ExpenseLog;
+use App\Models\FinancialTransaction;
+use App\Models\RevenueReport;
+use App\Models\Wallet;
 use App\Services\RevenueAnalyticsService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use App\Exports\FinancialReportExport;
 
@@ -331,5 +336,66 @@ class RevenueController extends Controller
             'startDate',
             'endDate'
         ))->with('success', 'Revenue dashboard refreshed successfully.');
+    }
+
+    public function clearSystemRevenue(Request $request)
+    {
+        $request->validate([
+            'confirm_text' => 'required|string|in:CLEAR_REVENUE',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                RevenueReport::query()->update([
+                    'gross_amount' => 0,
+                    'gateway_fees' => 0,
+                    'refunds' => 0,
+                    'worker_payouts' => 0,
+                    'commissions_paid' => 0,
+                    'taxes' => 0,
+                    'platform_net' => 0,
+                    'transaction_count' => 0,
+                    'task_amount' => 0,
+                    'total_deposits' => 0,
+                    'pending_withdrawals' => 0,
+                    'total_transactions_amount' => 0,
+                    'total_wallet_balance' => 0,
+                    'total_withdrawable_balance' => 0,
+                    'total_withdrawn' => 0,
+                    'admin_deposits' => 0,
+                    'activation_fees' => 0,
+                    'commission_fees' => 0,
+                ]);
+
+                FinancialTransaction::query()
+                    ->where('transaction_type', FinancialTransaction::TYPE_REVENUE)
+                    ->update(['amount' => 0, 'amount_usd' => 0]);
+
+                ActivationLog::query()->update([
+                    'platform_revenue' => 0,
+                    'activation_fee' => 0,
+                    'referral_bonus' => 0,
+                ]);
+            });
+
+            return redirect()->back()->with('success', 'System revenue has been cleared successfully.');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Failed to clear system revenue: ' . $e->getMessage());
+        }
+    }
+
+    public function clearTotalEarnings(Request $request)
+    {
+        $request->validate([
+            'confirm_text' => 'required|string|in:CLEAR_EARNINGS',
+        ]);
+
+        try {
+            $updated = Wallet::query()->update(['total_earned' => 0]);
+
+            return redirect()->back()->with('success', "Total earned has been reset for {$updated} wallet(s).");
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Failed to clear total earnings: ' . $e->getMessage());
+        }
     }
 }

@@ -31,6 +31,8 @@ class RevenueAggregator
             ->groupBy('currency', 'gateway')
             ->get();
 
+        $seenCurrency = [];
+
         foreach ($grouped as $row) {
             $currency = $row->currency;
             $gateway = $row->gateway;
@@ -54,6 +56,7 @@ class RevenueAggregator
                 ->where('status', 'completed')
                 ->whereBetween('created_at', [$start, $end])
                 ->where('currency', $currency)
+                ->where('payment_method', $gateway)
                 ->sum('amount');
 
             // Worker payouts (task rewards payouts out of platform)
@@ -61,6 +64,7 @@ class RevenueAggregator
                 ->where('status', 'completed')
                 ->whereBetween('created_at', [$start, $end])
                 ->where('currency', $currency)
+                ->where('payment_method', $gateway)
                 ->sum('amount');
 
             // Total deposits for the day (could be higher than gross if there are deposit-only flows)
@@ -68,11 +72,11 @@ class RevenueAggregator
                 ->where('status', 'completed')
                 ->whereBetween('created_at', [$start, $end])
                 ->where('currency', $currency)
+                ->where('payment_method', $gateway)
                 ->sum('amount');
 
             // Pending withdrawals amount
             $pendingWithdrawals = Withdrawal::where('status', Withdrawal::STATUS_PENDING)
-                ->whereBetween('created_at', [$start, $end])
                 ->where('currency', $currency)
                 ->sum('amount');
 
@@ -80,17 +84,23 @@ class RevenueAggregator
             $totalTransactionsAmount = Transaction::where('status', 'completed')
                 ->whereBetween('created_at', [$start, $end])
                 ->where('currency', $currency)
+                ->where('payment_method', $gateway)
                 ->sum('amount');
 
             // Wallet totals snapshot: sum of all wallet balances in the system for this currency
             // Some installations may not have a 'currency' column on wallets; check before filtering
-            if (Schema::hasColumn('wallets', 'currency')) {
-                $totalWalletBalance = \App\Models\Wallet::where('currency', $currency)->sum(DB::raw('COALESCE(withdrawable_balance,0) + COALESCE(promo_credit_balance,0) + COALESCE(escrow_balance,0)'));
-                $totalWithdrawableBalance = \App\Models\Wallet::where('currency', $currency)->sum('withdrawable_balance');
+            if (!isset($seenCurrency[$currency])) {
+                if (Schema::hasColumn('wallets', 'currency')) {
+                    $totalWalletBalance = \App\Models\Wallet::where('currency', $currency)->sum(DB::raw('COALESCE(withdrawable_balance,0) + COALESCE(promo_credit_balance,0) + COALESCE(escrow_balance,0)'));
+                    $totalWithdrawableBalance = \App\Models\Wallet::where('currency', $currency)->sum('withdrawable_balance');
+                } else {
+                    // fallback: sum across all wallets
+                    $totalWalletBalance = \App\Models\Wallet::sum(DB::raw('COALESCE(withdrawable_balance,0) + COALESCE(promo_credit_balance,0) + COALESCE(escrow_balance,0)'));
+                    $totalWithdrawableBalance = \App\Models\Wallet::sum('withdrawable_balance');
+                }
             } else {
-                // fallback: sum across all wallets
-                $totalWalletBalance = \App\Models\Wallet::sum(DB::raw('COALESCE(withdrawable_balance,0) + COALESCE(promo_credit_balance,0) + COALESCE(escrow_balance,0)'));
-                $totalWithdrawableBalance = \App\Models\Wallet::sum('withdrawable_balance');
+                $totalWalletBalance = 0;
+                $totalWithdrawableBalance = 0;
             }
 
             // Total withdrawn (completed withdrawals)
@@ -104,18 +114,25 @@ class RevenueAggregator
                 ->where('status', 'completed')
                 ->whereBetween('created_at', [$start, $end])
                 ->where('currency', $currency)
+                ->where('payment_method', $gateway)
                 ->whereIn('user_id', function($q){ $q->select('id')->from('users')->where('is_admin', true); })
                 ->sum('amount');
 
             // Activation fees and commission fees approximated from wallet ledger or transactions with specific types
-            $activationFees = WalletLedger::where('type', WalletLedger::TYPE_ACTIVATION)
-                ->whereBetween('created_at', [$start, $end])
-                ->where('currency', $currency)
-                ->sum('amount');
+            if (!isset($seenCurrency[$currency])) {
+                $activationFees = WalletLedger::where('type', WalletLedger::TYPE_ACTIVATION)
+                    ->whereBetween('created_at', [$start, $end])
+                    ->where('currency', $currency)
+                    ->sum('amount');
+            } else {
+                $activationFees = 0;
+            }
 
             $commissionFees = Transaction::where('type', Transaction::TYPE_FEE)
+                ->where('status', 'completed')
                 ->whereBetween('created_at', [$start, $end])
                 ->where('currency', $currency)
+                ->where('payment_method', $gateway)
                 ->sum('amount');
 
             // Commissions and taxes (if stored separately) — attempt to read from metadata
@@ -150,6 +167,8 @@ class RevenueAggregator
                     ],
                 ]
             );
+
+            $seenCurrency[$currency] = true;
         }
 
         // Broadcast a simple summary for realtime admin UI
@@ -158,7 +177,7 @@ class RevenueAggregator
                 'date' => $start->toDateString(),
                 'totals' => [
                     'gross' => (float) $grouped->sum('gross_amount'),
-                    'net' => (float) $grouped->sum(function($g){ return $g->gross_amount - ($g->gateway_fees ?? 0); }),
+                    'net' => (float) RevenueReport::where('date', $start->toDateString())->sum('platform_net'),
                 ],
             ]));
         } catch (\Exception $e) {

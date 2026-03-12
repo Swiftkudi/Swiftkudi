@@ -262,6 +262,8 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
         Route::get('/revenue/export', [\App\Http\Controllers\Admin\RevenueController::class, 'export'])->name('revenue.export');
         Route::get('/revenue/stats', [\App\Http\Controllers\Admin\RevenueController::class, 'getQuickStats'])->name('revenue.stats');
         Route::match(['get','post'], '/revenue/refresh', [\App\Http\Controllers\Admin\RevenueController::class, 'refresh'])->name('revenue.refresh');
+        Route::post('/revenue/clear-system-revenue', [\App\Http\Controllers\Admin\RevenueController::class, 'clearSystemRevenue'])->name('revenue.clear-system-revenue');
+        Route::post('/revenue/clear-total-earned', [\App\Http\Controllers\Admin\RevenueController::class, 'clearTotalEarnings'])->name('revenue.clear-total-earned');
         Route::get('/revenue/chart-data', [\App\Http\Controllers\RevenueApiController::class, 'chartData'])->name('revenue.chart-data');
         Route::get('/revenue/drilldown', [\App\Http\Controllers\RevenueApiController::class, 'drilldown'])->name('revenue.drilldown');
 

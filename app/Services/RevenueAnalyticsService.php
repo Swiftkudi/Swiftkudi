@@ -76,6 +76,7 @@ class RevenueAnalyticsService
         // Other revenue from financial transactions
         $transactions = FinancialTransaction::completed()
             ->revenue()
+            ->where('category', '!=', FinancialTransaction::CAT_ACTIVATION)
             ->dateRange($startDate, $endDate)
             ->select('category', DB::raw('SUM(amount) as total'))
             ->groupBy('category')
@@ -113,6 +114,11 @@ class RevenueAnalyticsService
             ->dateRange($startDate, $endDate)
             ->sum('referral_bonus');
 
+        $manualReferralBonus = $expenses[ExpenseLog::TYPE_REFERRAL_BONUS] ?? 0;
+        $combinedReferralBonus = $referralBonus + $manualReferralBonus;
+
+        $nonReferralExpenseTotal = array_sum($expenses) - $manualReferralBonus;
+
         return [
             'gateway_fees' => $expenses[ExpenseLog::TYPE_GATEWAY_FEE] ?? 0,
             'server_cost' => $expenses[ExpenseLog::TYPE_SERVER_COST] ?? 0,
@@ -121,9 +127,9 @@ class RevenueAnalyticsService
             'staff_cost' => $expenses[ExpenseLog::TYPE_STAFF_COST] ?? 0,
             'marketing' => $expenses[ExpenseLog::TYPE_MARKETING] ?? 0,
             'operations' => $expenses[ExpenseLog::TYPE_OPERATIONS] ?? 0,
-            'referral_bonus' => $referralBonus,
+            'referral_bonus' => $combinedReferralBonus,
             'custom' => $expenses[ExpenseLog::TYPE_CUSTOM] ?? 0,
-            'total' => array_sum($expenses) + $referralBonus,
+            'total' => $nonReferralExpenseTotal + $combinedReferralBonus,
         ];
     }
 
@@ -140,7 +146,7 @@ class RevenueAnalyticsService
             'referral' => $activations->referral()->count(),
             'revenue' => $activations->sum('platform_revenue'),
             'referral_bonus' => $activations->sum('referral_bonus'),
-            'net_profit' => $activations->sum('platform_revenue'),
+            'net_profit' => $activations->sum('platform_revenue') - $activations->sum('referral_bonus'),
         ];
     }
 
@@ -155,6 +161,7 @@ class RevenueAnalyticsService
 
         $transactionRevenue = FinancialTransaction::completed()
             ->revenue()
+            ->where('category', '!=', FinancialTransaction::CAT_ACTIVATION)
             ->dateRange($startDate, $endDate)
             ->sum('amount');
 
@@ -168,13 +175,19 @@ class RevenueAnalyticsService
     {
         $expenseLogTotal = ExpenseLog::approved()
             ->dateRange($startDate, $endDate)
+            ->where('expense_type', '!=', ExpenseLog::TYPE_REFERRAL_BONUS)
+            ->sum('amount');
+
+        $manualReferralBonus = ExpenseLog::approved()
+            ->dateRange($startDate, $endDate)
+            ->where('expense_type', ExpenseLog::TYPE_REFERRAL_BONUS)
             ->sum('amount');
 
         $referralBonus = ActivationLog::completed()
             ->dateRange($startDate, $endDate)
             ->sum('referral_bonus');
 
-        return $expenseLogTotal + $referralBonus;
+        return $expenseLogTotal + $referralBonus + $manualReferralBonus;
     }
 
     /**
@@ -194,6 +207,7 @@ class RevenueAnalyticsService
         
         $revenueData = FinancialTransaction::completed()
             ->revenue()
+            ->where('category', '!=', FinancialTransaction::CAT_ACTIVATION)
             ->dateRange($startDate, $endDate)
             ->select(
                 DB::raw('DATE(transaction_date) as date'),
@@ -203,11 +217,43 @@ class RevenueAnalyticsService
             ->pluck('revenue', 'date')
             ->toArray();
 
+        $activationRevenueData = ActivationLog::completed()
+            ->dateRange($startDate, $endDate)
+            ->select(
+                DB::raw('DATE(activated_at) as date'),
+                DB::raw('SUM(platform_revenue) as revenue')
+            )
+            ->groupBy('date')
+            ->pluck('revenue', 'date')
+            ->toArray();
+
         $expenseData = ExpenseLog::approved()
             ->dateRange($startDate, $endDate)
+            ->where('expense_type', '!=', ExpenseLog::TYPE_REFERRAL_BONUS)
             ->select(
                 DB::raw('DATE(expense_date) as date'),
                 DB::raw('SUM(amount) as expense')
+            )
+            ->groupBy('date')
+            ->pluck('expense', 'date')
+            ->toArray();
+
+        $manualReferralExpenseData = ExpenseLog::approved()
+            ->dateRange($startDate, $endDate)
+            ->where('expense_type', ExpenseLog::TYPE_REFERRAL_BONUS)
+            ->select(
+                DB::raw('DATE(expense_date) as date'),
+                DB::raw('SUM(amount) as expense')
+            )
+            ->groupBy('date')
+            ->pluck('expense', 'date')
+            ->toArray();
+
+        $activationReferralExpenseData = ActivationLog::completed()
+            ->dateRange($startDate, $endDate)
+            ->select(
+                DB::raw('DATE(activated_at) as date'),
+                DB::raw('SUM(referral_bonus) as expense')
             )
             ->groupBy('date')
             ->pluck('expense', 'date')
@@ -218,11 +264,13 @@ class RevenueAnalyticsService
         $current = $startDate->copy();
         while ($current->lte($endDate)) {
             $dateStr = $current->toDateString();
+            $dayRevenue = ($revenueData[$dateStr] ?? 0) + ($activationRevenueData[$dateStr] ?? 0);
+            $dayExpense = ($expenseData[$dateStr] ?? 0) + ($manualReferralExpenseData[$dateStr] ?? 0) + ($activationReferralExpenseData[$dateStr] ?? 0);
             $result[] = [
                 'date' => $dateStr,
-                'revenue' => $revenueData[$dateStr] ?? 0,
-                'expense' => $expenseData[$dateStr] ?? 0,
-                'profit' => ($revenueData[$dateStr] ?? 0) - ($expenseData[$dateStr] ?? 0),
+                'revenue' => $dayRevenue,
+                'expense' => $dayExpense,
+                'profit' => $dayRevenue - $dayExpense,
             ];
             $current->addDay();
         }

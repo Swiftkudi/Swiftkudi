@@ -59,6 +59,27 @@
                 </button>
             </div>
         </form>
+
+        <div class="mt-4 bg-white dark:bg-dark-900 rounded-xl shadow-sm border border-red-200 dark:border-red-500/30 p-4">
+            <h3 class="text-sm font-semibold text-red-700 dark:text-red-300 mb-3">Danger Zone (Admin Only)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <form method="POST" action="{{ route('admin.revenue.clear-system-revenue') }}" onsubmit="return confirm('This will clear SYSTEM REVENUE records and analytics totals. Type carefully and proceed only if you are sure.')" class="flex gap-2 items-center">
+                    @csrf
+                    <input type="text" name="confirm_text" placeholder="Type CLEAR_REVENUE" class="flex-1 px-3 py-2 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-lg text-sm" required>
+                    <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        Clear System Revenue
+                    </button>
+                </form>
+
+                <form method="POST" action="{{ route('admin.revenue.clear-total-earned') }}" onsubmit="return confirm('This will reset total earned for ALL users to 0. Continue?')" class="flex gap-2 items-center">
+                    @csrf
+                    <input type="text" name="confirm_text" placeholder="Type CLEAR_EARNINGS" class="flex-1 px-3 py-2 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-lg text-sm" required>
+                    <button type="submit" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        Clear Total Earned
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Summary Cards -->
