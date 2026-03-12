@@ -98,7 +98,15 @@
                         </div>
                         @if($wallet)
                         <div class="pt-4">
-                            <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-3">Wallet</h3>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-semibold text-gray-900 dark:text-gray-100">Wallet</h3>
+                                <form action="{{ route('admin.users.clear-wallet', $user) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-xs px-3 py-1 bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-500/30 transition-colors" onclick="return confirm('Clear all wallet money for this user?')">
+                                        <i class="fas fa-wallet mr-1"></i>Clear Wallet
+                                    </button>
+                                </form>
+                            </div>
                             <div class="space-y-2">
                                 <div class="flex justify-between">
                                     <span class="text-gray-500 dark:text-gray-400">Balance</span>

@@ -1122,6 +1122,47 @@ class AdminController extends Controller
         }
     }
 
+    public function clearUserWallet(User $user)
+    {
+        try {
+            $wallet = Wallet::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'withdrawable_balance' => 0,
+                    'promo_credit_balance' => 0,
+                    'pending_balance' => 0,
+                    'escrow_balance' => 0,
+                    'total_earned' => 0,
+                    'total_spent' => 0,
+                    'currency' => Wallet::CURRENCY_NGN,
+                ]
+            );
+
+            $cleared = (float) $wallet->withdrawable_balance
+                + (float) $wallet->promo_credit_balance
+                + (float) $wallet->pending_balance
+                + (float) $wallet->escrow_balance;
+
+            $wallet->withdrawable_balance = 0;
+            $wallet->promo_credit_balance = 0;
+            $wallet->pending_balance = 0;
+            $wallet->escrow_balance = 0;
+            $wallet->save();
+
+            return redirect()->back()->with(
+                'success',
+                'Wallet cleared for ' . $user->name . '. Amount removed: ₦' . number_format($cleared, 2)
+            );
+        } catch (\Throwable $e) {
+            Log::error('Admin failed to clear user wallet', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Unable to clear this wallet right now.');
+        }
+    }
+
     /**
      * Delete task
      */
@@ -1317,6 +1358,53 @@ class AdminController extends Controller
         } catch (\Throwable $e) {
             Log::error('Admin bulk delete users failed', ['error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Bulk delete failed. Please try again.');
+        }
+    }
+
+    public function bulkClearUserWallets(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
+
+        try {
+            $users = User::whereIn('id', $request->ids)->get();
+            $count = 0;
+            $totalCleared = 0.0;
+
+            foreach ($users as $user) {
+                $wallet = Wallet::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'withdrawable_balance' => 0,
+                        'promo_credit_balance' => 0,
+                        'pending_balance' => 0,
+                        'escrow_balance' => 0,
+                        'total_earned' => 0,
+                        'total_spent' => 0,
+                        'currency' => Wallet::CURRENCY_NGN,
+                    ]
+                );
+
+                $totalCleared += (float) $wallet->withdrawable_balance
+                    + (float) $wallet->promo_credit_balance
+                    + (float) $wallet->pending_balance
+                    + (float) $wallet->escrow_balance;
+
+                $wallet->withdrawable_balance = 0;
+                $wallet->promo_credit_balance = 0;
+                $wallet->pending_balance = 0;
+                $wallet->escrow_balance = 0;
+                $wallet->save();
+
+                $count++;
+            }
+
+            return redirect()->back()->with(
+                'success',
+                "Wallet cleared for {$count} user(s). Total removed: ₦" . number_format($totalCleared, 2)
+            );
+        } catch (\Throwable $e) {
+            Log::error('Admin bulk clear wallet failed', ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Bulk wallet clear failed. Please try again.');
         }
     }
 

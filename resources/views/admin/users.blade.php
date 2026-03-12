@@ -44,9 +44,14 @@
         <div class="lg:hidden space-y-4">
             <div class="flex items-center justify-between bg-dark-900 border border-dark-700 rounded-xl p-3">
                 <p class="text-sm text-gray-300">Select users to delete</p>
-                <button type="button" onclick="submitBulkDelete('users')" class="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-medium transition-colors">
-                    <i class="fas fa-trash mr-1"></i>Delete Selected
-                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="submitBulkClearWalletUsers()" class="px-3 py-1.5 bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 rounded-lg text-xs font-medium transition-colors">
+                        <i class="fas fa-wallet mr-1"></i>Clear Wallet
+                    </button>
+                    <button type="button" onclick="submitBulkDelete('users')" class="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-medium transition-colors">
+                        <i class="fas fa-trash mr-1"></i>Delete Selected
+                    </button>
+                </div>
             </div>
             @foreach($users as $user)
             <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4">
@@ -61,9 +66,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        @if($user->id !== auth()->id())
                         <input type="checkbox" name="ids[]" value="{{ $user->id }}" class="bulk-cb-users w-4 h-4 rounded cursor-pointer">
-                        @endif
                         @if($user->is_admin)
                         <span class="px-2 py-1 text-xs font-semibold bg-purple-500/20 text-purple-400 rounded-lg">
                             <i class="fas fa-shield-alt mr-1"></i>Admin
@@ -109,6 +112,12 @@
                     <a href="{{ route('admin.user-details', $user) }}" class="flex-1 flex items-center justify-center px-4 py-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl hover:bg-indigo-500/20 transition-colors text-sm font-medium">
                         <i class="fas fa-eye mr-2"></i>View Details
                     </a>
+                    <form action="{{ route('admin.users.clear-wallet', $user) }}" method="POST" class="flex-1">
+                        @csrf
+                        <button type="submit" class="w-full px-4 py-2.5 bg-yellow-500/10 text-yellow-400 rounded-xl hover:bg-yellow-500/20 transition-colors text-sm font-medium" onclick="return confirm('Clear all wallet money for this user?')">
+                            <i class="fas fa-wallet mr-2"></i>Clear Wallet
+                        </button>
+                    </form>
                     @if($user->id !== auth()->id())
                     <form action="{{ route('admin.users.delete', $user) }}" method="POST" class="flex-1">
                         @csrf
@@ -126,11 +135,17 @@
         <!-- Desktop Table View (visible on desktop only) -->
         <div class="hidden lg:block bg-dark-900 rounded-2xl shadow-lg border border-dark-700 overflow-hidden">
             <form id="bulk-form-users" action="{{ route('admin.users.bulk-delete') }}" method="POST">@csrf</form>
+            <form id="bulk-form-users-wallet" action="{{ route('admin.users.bulk-clear-wallet') }}" method="POST">@csrf</form>
             <div id="bulk-toolbar-users" class="hidden px-6 py-3 bg-red-500/10 border-b border-red-500/20 flex items-center justify-between">
                 <span class="text-sm text-red-400 font-medium"><span id="bulk-count-users">0</span> selected</span>
-                <button type="button" onclick="submitBulkDelete('users')" class="px-4 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-sm font-medium transition-colors">
-                    <i class="fas fa-trash mr-2"></i>Delete Selected
-                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="submitBulkClearWalletUsers()" class="px-4 py-1.5 bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 rounded-lg text-sm font-medium transition-colors">
+                        <i class="fas fa-wallet mr-2"></i>Clear Wallets
+                    </button>
+                    <button type="button" onclick="submitBulkDelete('users')" class="px-4 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-sm font-medium transition-colors">
+                        <i class="fas fa-trash mr-2"></i>Delete Selected
+                    </button>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-dark-700">
@@ -195,6 +210,12 @@
                                     <a href="{{ route('admin.user-details', $user) }}" class="p-2 text-indigo-400 hover:bg-dark-700 rounded-lg transition-colors" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    <form action="{{ route('admin.users.clear-wallet', $user) }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" class="p-2 text-yellow-400 hover:bg-dark-700 rounded-lg transition-colors" title="Clear Wallet" onclick="return confirm('Clear all wallet money for this user?')">
+                                            <i class="fas fa-wallet"></i>
+                                        </button>
+                                    </form>
                                     @if($user->id !== auth()->id())
                                     <form action="{{ route('admin.users.delete', $user) }}" method="POST" class="inline">
                                         @csrf
@@ -230,3 +251,29 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function submitBulkClearWalletUsers() {
+    var checked = document.querySelectorAll('.bulk-cb-users:checked');
+    if (checked.length === 0) {
+        alert('Select at least one user.');
+        return;
+    }
+    if (!confirm('Clear wallet money for ' + checked.length + ' selected user(s)?')) {
+        return;
+    }
+
+    var form = document.getElementById('bulk-form-users-wallet');
+    form.querySelectorAll('input[name="ids[]"]').forEach(function(el){ el.remove(); });
+    checked.forEach(function(cb) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ids[]';
+        input.value = cb.value;
+        form.appendChild(input);
+    });
+    form.submit();
+}
+</script>
+@endpush

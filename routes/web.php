@@ -227,6 +227,7 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
         Route::post('/users/{user}/suspend', [AdminController::class, 'suspendUser'])->name('users.suspend');
         Route::post('/users/{user}/promote', [AdminController::class, 'promoteToAdmin'])->name('users.promote');
         Route::post('/users/{user}/demote', [AdminController::class, 'demoteFromAdmin'])->name('users.demote');
+        Route::post('/users/{user}/clear-wallet', [AdminController::class, 'clearUserWallet'])->name('users.clear-wallet');
         Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.delete');
 
         // Task management (admin)
@@ -329,6 +330,7 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
 
         // Bulk delete
         Route::post('/users/bulk-delete',                [AdminController::class, 'bulkDeleteUsers'])->name('users.bulk-delete');
+        Route::post('/users/bulk-clear-wallet',          [AdminController::class, 'bulkClearUserWallets'])->name('users.bulk-clear-wallet');
         Route::post('/tasks/bulk-delete',                [AdminController::class, 'bulkDeleteTasks'])->name('tasks.bulk-delete');
         Route::post('/professional-services/bulk-delete',[AdminController::class, 'bulkDeleteProfessionalServices'])->name('professional-services.bulk-delete');
         Route::post('/growth-listings/bulk-delete',      [AdminController::class, 'bulkDeleteGrowthListings'])->name('growth-listings.bulk-delete');
