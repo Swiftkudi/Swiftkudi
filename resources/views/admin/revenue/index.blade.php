@@ -80,6 +80,55 @@
                 </form>
             </div>
         </div>
+
+        <div class="mt-4 bg-white dark:bg-dark-900 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-4">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Revenue Reset History</h3>
+            @if($revenueResetHistory->count() === 0)
+                <p class="text-sm text-gray-500 dark:text-gray-400">No revenue reset actions recorded yet.</p>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-dark-700 text-left text-gray-500 dark:text-gray-400">
+                                <th class="py-2 pr-4">Time</th>
+                                <th class="py-2 pr-4">Admin</th>
+                                <th class="py-2 pr-4">Action</th>
+                                <th class="py-2 pr-4">Details</th>
+                                <th class="py-2">IP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($revenueResetHistory as $log)
+                                @php
+                                    $details = json_decode($log->new_value ?? '{}', true);
+                                    $actionLabel = $log->setting_key === 'revenue.clear_system_revenue'
+                                        ? 'Cleared System Revenue'
+                                        : 'Cleared Total Earned';
+                                @endphp
+                                <tr class="border-b border-gray-100 dark:border-dark-800 last:border-0 text-gray-700 dark:text-gray-300">
+                                    <td class="py-2 pr-4 whitespace-nowrap">{{ $log->created_at?->format('Y-m-d H:i:s') }}</td>
+                                    <td class="py-2 pr-4">{{ $log->admin->name ?? $log->admin->email ?? 'Unknown Admin' }}</td>
+                                    <td class="py-2 pr-4">{{ $actionLabel }}</td>
+                                    <td class="py-2 pr-4">
+                                        @if(is_array($details) && count($details) > 0)
+                                            {{ collect($details)->map(fn($value, $key) => $key . ': ' . $value)->implode(', ') }}
+                                        @else
+                                            {{ $log->masked_new_value }}
+                                        @endif
+                                    </td>
+                                    <td class="py-2">{{ $log->ip_address ?? '-' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @if($revenueResetHistory->hasPages())
+                    <div class="mt-3">
+                        {{ $revenueResetHistory->links() }}
+                    </div>
+                @endif
+            @endif
+        </div>
     </div>
 
     <!-- Summary Cards -->

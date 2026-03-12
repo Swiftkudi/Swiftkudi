@@ -74,6 +74,8 @@ class RevenueController extends Controller
         // Get profit margin
         $profitMargin = $this->analyticsService->getProfitMargin($startDate, $endDate);
 
+        $revenueResetHistory = $this->getRevenueResetHistory();
+
         return view('admin.revenue.index', compact(
             'summary',
             'revenueBySource',
@@ -83,6 +85,7 @@ class RevenueController extends Controller
             'activationTrend',
             'alerts',
             'profitMargin',
+            'revenueResetHistory',
             'startDate',
             'endDate'
         ));
@@ -307,6 +310,7 @@ class RevenueController extends Controller
         $activationTrend = $this->analyticsService->getActivationTrend($startDate, $endDate);
         $alerts = $this->analyticsService->checkForAnomalies();
         $profitMargin = $this->analyticsService->getProfitMargin($startDate, $endDate);
+        $revenueResetHistory = $this->getRevenueResetHistory();
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
@@ -334,9 +338,24 @@ class RevenueController extends Controller
             'activationTrend',
             'alerts',
             'profitMargin',
+            'revenueResetHistory',
             'startDate',
             'endDate'
         ))->with('success', 'Revenue dashboard refreshed successfully.');
+    }
+
+    private function getRevenueResetHistory()
+    {
+        return SettingsAuditLog::query()
+            ->with(['admin:id,name,email'])
+            ->where('group', 'revenue')
+            ->whereIn('setting_key', [
+                'revenue.clear_system_revenue',
+                'revenue.clear_total_earned',
+            ])
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
     }
 
     public function clearSystemRevenue(Request $request)
