@@ -42,6 +42,12 @@
 
         <!-- Mobile Cards View (visible on mobile only) -->
         <div class="lg:hidden space-y-4">
+            <div class="flex items-center justify-between bg-dark-900 border border-dark-700 rounded-xl p-3">
+                <p class="text-sm text-gray-300">Select users to delete</p>
+                <button type="button" onclick="submitBulkDelete('users')" class="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-medium transition-colors">
+                    <i class="fas fa-trash mr-1"></i>Delete Selected
+                </button>
+            </div>
             @foreach($users as $user)
             <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4">
                 <div class="flex items-start justify-between mb-3">
@@ -54,11 +60,16 @@
                             <p class="text-sm text-gray-400">{{ $user->email }}</p>
                         </div>
                     </div>
-                    @if($user->is_admin)
-                    <span class="px-2 py-1 text-xs font-semibold bg-purple-500/20 text-purple-400 rounded-lg">
-                        <i class="fas fa-shield-alt mr-1"></i>Admin
-                    </span>
-                    @endif
+                    <div class="flex items-center gap-2">
+                        @if($user->id !== auth()->id())
+                        <input type="checkbox" name="ids[]" value="{{ $user->id }}" class="bulk-cb-users w-4 h-4 rounded cursor-pointer">
+                        @endif
+                        @if($user->is_admin)
+                        <span class="px-2 py-1 text-xs font-semibold bg-purple-500/20 text-purple-400 rounded-lg">
+                            <i class="fas fa-shield-alt mr-1"></i>Admin
+                        </span>
+                        @endif
+                    </div>
                 </div>
                 
                 <div class="grid grid-cols-2 gap-3 mb-3">

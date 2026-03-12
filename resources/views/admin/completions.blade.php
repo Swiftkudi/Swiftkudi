@@ -24,6 +24,12 @@
 
         <!-- Mobile Cards View -->
         <div class="lg:hidden space-y-4">
+            <div class="flex items-center justify-between bg-dark-900 border border-dark-700 rounded-xl p-3">
+                <p class="text-sm text-gray-300">Select completions to delete</p>
+                <button type="button" onclick="submitBulkDelete('completions')" class="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-medium transition-colors">
+                    <i class="fas fa-trash mr-1"></i>Delete Selected
+                </button>
+            </div>
             @forelse($completions as $completion)
             <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4">
                 <div class="flex items-start justify-between mb-3">
@@ -36,6 +42,7 @@
                             <p class="text-sm text-gray-400">{{ optional($completion->user)->name ?? '—' }}</p>
                         </div>
                     </div>
+                    <input type="checkbox" name="ids[]" value="{{ $completion->id }}" class="bulk-cb-completions w-4 h-4 rounded cursor-pointer">
                 </div>
                 
                 <div class="grid grid-cols-2 gap-3 mb-4">

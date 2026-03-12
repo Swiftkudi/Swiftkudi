@@ -84,6 +84,12 @@
 
         <!-- Mobile Cards View -->
         <div class="lg:hidden space-y-4">
+            <div class="flex items-center justify-between bg-dark-900 border border-dark-700 rounded-xl p-3">
+                <p class="text-sm text-gray-300">Select services to delete</p>
+                <button type="button" onclick="submitBulkDelete('professional-services')" class="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-medium transition-colors">
+                    <i class="fas fa-trash mr-1"></i>Delete Selected
+                </button>
+            </div>
             @if($services->count() > 0)
                 @foreach($services as $service)
                 <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4">
@@ -103,9 +109,12 @@
                                 'draft' => 'bg-dark-700 text-gray-400',
                             ];
                         @endphp
-                        <span class="px-2 py-1 rounded-full text-xs font-medium {{ $statusClasses[$service->status] ?? 'bg-gray-500/20 text-gray-400' }}">
-                            {{ ucfirst($service->status) }}
-                        </span>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" name="ids[]" value="{{ $service->id }}" class="bulk-cb-professional-services w-4 h-4 rounded cursor-pointer">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium {{ $statusClasses[$service->status] ?? 'bg-gray-500/20 text-gray-400' }}">
+                                {{ ucfirst($service->status) }}
+                            </span>
+                        </div>
                     </div>
                     
                     <div class="grid grid-cols-2 gap-3 mb-3">

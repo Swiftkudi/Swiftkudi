@@ -24,6 +24,12 @@
 
         <!-- Mobile Cards View -->
         <div class="lg:hidden space-y-4">
+            <div class="flex items-center justify-between bg-dark-900 border border-dark-700 rounded-xl p-3">
+                <p class="text-sm text-gray-300">Select logs to delete</p>
+                <button type="button" onclick="submitBulkDelete('fraud-logs')" class="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-medium transition-colors">
+                    <i class="fas fa-trash mr-1"></i>Delete Selected
+                </button>
+            </div>
             @forelse($logs as $log)
             <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4">
                 <div class="flex items-start justify-between mb-3">
@@ -36,15 +42,18 @@
                             <p class="text-sm text-gray-400">{{ optional($log->user)->name ?? 'System' }}</p>
                         </div>
                     </div>
-                    @if($log->is_resolved)
-                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400">
-                        Resolved
-                    </span>
-                    @else
-                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400">
-                        Open
-                    </span>
-                    @endif
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" name="ids[]" value="{{ $log->id }}" class="bulk-cb-fraud-logs w-4 h-4 rounded cursor-pointer">
+                        @if($log->is_resolved)
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400">
+                            Resolved
+                        </span>
+                        @else
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400">
+                            Open
+                        </span>
+                        @endif
+                    </div>
                 </div>
                 
                 <div class="bg-dark-800 rounded-lg p-3 mb-3">
