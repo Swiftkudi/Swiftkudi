@@ -30,6 +30,19 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        if ($user && $user->isSuspended()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Your account has been suspended. Please contact support.',
+            ]);
+        }
+
         $request->session()->regenerate();
 
         $redirectUrl = redirect()->intended(RouteServiceProvider::HOME)->getTargetUrl();

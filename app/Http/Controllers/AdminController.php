@@ -122,9 +122,24 @@ class AdminController extends Controller
      */
     public function suspendUser(Request $request, User $user)
     {
-        // Implementation would suspend user access
+        if ($user->id === Auth::id()) {
+            return redirect()->back()
+                ->with('error', 'You cannot suspend your own account.');
+        }
+
+        $reason = $request->input('reason');
+
+        if ($user->isSuspended()) {
+            $user->unsuspend();
+
+            return redirect()->back()
+                ->with('success', $user->name . ' has been unsuspended successfully.');
+        }
+
+        $user->suspend($reason);
+
         return redirect()->back()
-            ->with('success', 'User suspended successfully.');
+            ->with('success', $user->name . ' has been suspended successfully.');
     }
 
     /**

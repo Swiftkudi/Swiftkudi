@@ -59,6 +59,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'referred_by',
         'trial_ends_at',
         'is_admin',
+        'is_suspended',
+        'suspended_at',
+        'suspension_reason',
         'admin_role_id',
     ];
 
@@ -85,7 +88,32 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_activity_at' => 'datetime',
         'trial_ends_at' => 'datetime',
         'is_admin' => 'boolean',
+        'is_suspended' => 'boolean',
+        'suspended_at' => 'datetime',
     ];
+
+    public function isSuspended(): bool
+    {
+        return (bool) $this->is_suspended;
+    }
+
+    public function suspend(?string $reason = null): void
+    {
+        $this->forceFill([
+            'is_suspended' => true,
+            'suspended_at' => now(),
+            'suspension_reason' => $reason,
+        ])->save();
+    }
+
+    public function unsuspend(): void
+    {
+        $this->forceFill([
+            'is_suspended' => false,
+            'suspended_at' => null,
+            'suspension_reason' => null,
+        ])->save();
+    }
 
     public function sendEmailVerificationNotification(): void
     {

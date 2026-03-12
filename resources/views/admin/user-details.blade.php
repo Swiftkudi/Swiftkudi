@@ -57,6 +57,24 @@
                             <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $user->created_at->format('M d, Y') }}</span>
                         </div>
                         <div class="py-2 border-b border-gray-100 dark:border-dark-700">
+                            <span class="text-gray-500 dark:text-gray-400">Account Status</span>
+                            <div class="mt-2">
+                                @if($user->is_suspended)
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                                    <i class="fas fa-ban mr-1"></i>Suspended
+                                </span>
+                                @elseif($user->wallet && $user->wallet->is_activated)
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400">
+                                    <i class="fas fa-check-circle mr-1"></i>Active
+                                </span>
+                                @else
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400">
+                                    <i class="fas fa-clock mr-1"></i>Pending
+                                </span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="py-2 border-b border-gray-100 dark:border-dark-700">
                             <span class="text-gray-500 dark:text-gray-400">Admin Status</span>
                             <div class="mt-2">
                                 @if($user->is_admin)
@@ -71,6 +89,18 @@
                             </div>
                             @if($user->id !== auth()->id())
                             <div class="mt-3">
+                                <form action="{{ route('admin.users.suspend', $user) }}" method="POST" class="inline">
+                                    @csrf
+                                    @if($user->is_suspended)
+                                    <button type="submit" class="text-xs px-3 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 rounded-lg transition-colors" onclick="return confirm('Unsuspend this account?')">
+                                        <i class="fas fa-unlock mr-1"></i>Unsuspend
+                                    </button>
+                                    @else
+                                    <button type="submit" class="text-xs px-3 py-1 bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-500/30 rounded-lg transition-colors" onclick="return confirm('Suspend this account?')">
+                                        <i class="fas fa-ban mr-1"></i>Suspend
+                                    </button>
+                                    @endif
+                                </form>
                                 @if($user->is_admin)
                                 <form action="{{ route('admin.users.demote', $user) }}" method="POST" class="inline">
                                     @csrf

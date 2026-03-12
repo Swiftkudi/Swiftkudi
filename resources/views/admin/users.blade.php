@@ -78,7 +78,11 @@
                 <div class="grid grid-cols-2 gap-3 mb-3">
                     <div class="bg-dark-800 rounded-lg p-3">
                         <p class="text-xs text-gray-500 mb-1">Status</p>
-                        @if($user->wallet && $user->wallet->is_activated)
+                        @if($user->is_suspended)
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400">
+                            <i class="fas fa-ban mr-1"></i>Suspended
+                        </span>
+                        @elseif($user->wallet && $user->wallet->is_activated)
                         <span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400">
                             <i class="fas fa-check-circle mr-1"></i>Activated
                         </span>
@@ -112,6 +116,20 @@
                     <a href="{{ route('admin.user-details', $user) }}" class="flex-1 flex items-center justify-center px-4 py-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl hover:bg-indigo-500/20 transition-colors text-sm font-medium">
                         <i class="fas fa-eye mr-2"></i>View Details
                     </a>
+                    @if($user->id !== auth()->id())
+                    <form action="{{ route('admin.users.suspend', $user) }}" method="POST" class="flex-1">
+                        @csrf
+                        @if($user->is_suspended)
+                        <button type="submit" class="w-full px-4 py-2.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-xl transition-colors text-sm font-medium" onclick="return confirm('Unsuspend this account?')">
+                            <i class="fas fa-unlock mr-2"></i>Unsuspend
+                        </button>
+                        @else
+                        <button type="submit" class="w-full px-4 py-2.5 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 rounded-xl transition-colors text-sm font-medium" onclick="return confirm('Suspend this account?')">
+                            <i class="fas fa-ban mr-2"></i>Suspend
+                        </button>
+                        @endif
+                    </form>
+                    @endif
                     <form action="{{ route('admin.users.clear-wallet', $user) }}" method="POST" class="flex-1">
                         @csrf
                         <button type="submit" class="w-full px-4 py-2.5 bg-yellow-500/10 text-yellow-400 rounded-xl hover:bg-yellow-500/20 transition-colors text-sm font-medium" onclick="return confirm('Clear all wallet money for this user?')">
@@ -180,7 +198,11 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                @if($user->wallet && $user->wallet->is_activated)
+                                @if($user->is_suspended)
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400">
+                                    <i class="fas fa-ban mr-1"></i>Suspended
+                                </span>
+                                @elseif($user->wallet && $user->wallet->is_activated)
                                 <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400">
                                     <i class="fas fa-check-circle mr-1"></i>Activated
                                 </span>
@@ -216,6 +238,20 @@
                                             <i class="fas fa-wallet"></i>
                                         </button>
                                     </form>
+                                    @if($user->id !== auth()->id())
+                                    <form action="{{ route('admin.users.suspend', $user) }}" method="POST" class="inline">
+                                        @csrf
+                                        @if($user->is_suspended)
+                                        <button type="submit" class="p-2 text-green-400 hover:bg-dark-700 rounded-lg transition-colors" title="Unsuspend User" onclick="return confirm('Unsuspend this account?')">
+                                            <i class="fas fa-unlock"></i>
+                                        </button>
+                                        @else
+                                        <button type="submit" class="p-2 text-orange-400 hover:bg-dark-700 rounded-lg transition-colors" title="Suspend User" onclick="return confirm('Suspend this account?')">
+                                            <i class="fas fa-ban"></i>
+                                        </button>
+                                        @endif
+                                    </form>
+                                    @endif
                                     @if($user->id !== auth()->id())
                                     <form action="{{ route('admin.users.delete', $user) }}" method="POST" class="inline">
                                         @csrf

@@ -77,6 +77,7 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
     Route::get('/dashboard/leaderboard', [DashboardController::class, 'leaderboard'])->name('dashboard.leaderboard');
     Route::get('/dashboard/profile', [DashboardController::class, 'profile'])->name('dashboard.profile');
     Route::put('/dashboard/profile', [DashboardController::class, 'updateProfile'])->name('dashboard.profile.update');
+    Route::delete('/dashboard/profile', [DashboardController::class, 'deleteAccount'])->name('dashboard.profile.delete');
 
     // Referral routes
     Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');

@@ -12,6 +12,7 @@ use App\Models\Referral;
 use App\Services\SwiftKudiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -392,5 +393,31 @@ class DashboardController extends Controller
 
         return redirect()->back()
             ->with('success', 'Profile updated successfully.');
+    }
+
+    public function deleteAccount(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            if (!$user) {
+                return redirect()->route('login');
+            }
+
+            Auth::logout();
+            $user->delete();
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect('/')->with('success', 'Your account has been deleted successfully.');
+        } catch (\Throwable $e) {
+            Log::error('User failed to delete own account', [
+                'user_id' => optional($request->user())->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Unable to delete your account right now.');
+        }
     }
 }

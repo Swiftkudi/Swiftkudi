@@ -97,8 +97,9 @@
                     <div class="w-full bg-gray-200 rounded-full h-4 mb-2">
                         @php
                             $progress = $user->getXpProgress();
+                            $progressPercentage = max(0, min(100, (int) $progress['percentage']));
                         @endphp
-                        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all" style="width: {{ $progress['percentage'] }}%"></div>
+                        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all profile-progress-bar" data-progress="{{ $progressPercentage }}"></div>
                     </div>
                     <div class="flex justify-between text-sm text-gray-500">
                         <span>{{ number_format($progress['xp_current']) }} XP</span>
@@ -156,6 +157,19 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Delete Account -->
+                <div class="bg-white rounded-lg shadow p-6 mt-6 border border-red-100">
+                    <h3 class="font-bold text-red-700 mb-2">Danger Zone</h3>
+                    <p class="text-sm text-gray-600 mb-4">You can permanently delete your account here. This action cannot be undone.</p>
+                    <form action="{{ route('dashboard.profile.delete') }}" method="POST" onsubmit="return confirm('Delete your account permanently? This action cannot be undone.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition">
+                            <i class="fas fa-trash mr-2"></i>Delete My Account
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -177,6 +191,12 @@ function copyReferralCode() {
         alert('Referral code copied to clipboard!');
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.profile-progress-bar').forEach(function (bar) {
+        bar.style.width = (bar.dataset.progress || '0') + '%';
+    });
+});
 </script>
 @endpush
 @endsection
