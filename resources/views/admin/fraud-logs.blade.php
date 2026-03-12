@@ -72,6 +72,13 @@
                     </button>
                 </form>
                 @endif
+                <form method="POST" action="{{ route('admin.fraud-logs.delete', $log) }}" class="mt-2" onsubmit="return confirm('Delete this fraud log permanently?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-gray-500/20 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors text-sm font-medium">
+                        <i class="fas fa-trash mr-2"></i>Delete
+                    </button>
+                </form>
             </div>
             @empty
             <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-8 text-center">
@@ -123,16 +130,23 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4">
-                                @if(!$log->is_resolved)
-                                <form method="POST" action="{{ route('admin.fraud-logs.resolve', $log) }}">
-                                    @csrf
-                                    <button type="submit" class="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors text-sm">
-                                        <i class="fas fa-check mr-1"></i>Resolve
-                                    </button>
-                                </form>
-                                @else
-                                <span class="text-sm text-gray-500">—</span>
-                                @endif
+                                <div class="flex gap-2">
+                                    @if(!$log->is_resolved)
+                                    <form method="POST" action="{{ route('admin.fraud-logs.resolve', $log) }}">
+                                        @csrf
+                                        <button type="submit" class="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors text-sm">
+                                            <i class="fas fa-check mr-1"></i>Resolve
+                                        </button>
+                                    </form>
+                                    @endif
+                                    <form method="POST" action="{{ route('admin.fraud-logs.delete', $log) }}" onsubmit="return confirm('Delete this fraud log permanently?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="px-3 py-2 rounded-lg bg-gray-500/20 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors text-sm" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         @empty

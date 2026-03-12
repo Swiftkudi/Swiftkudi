@@ -109,8 +109,8 @@
                                 {{ $withdrawal->created_at->format('M d, Y h:i A') }}
                             </td>
                             <td class="px-6 py-4">
-                                @if($withdrawal->status === 'pending')
                                 <div class="flex items-center gap-2">
+                                    @if($withdrawal->status === 'pending')
                                     <form action="{{ route('admin.approve-withdrawal', $withdrawal) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="px-3 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 rounded-lg text-xs font-semibold transition-colors">
@@ -123,10 +123,15 @@
                                             <i class="fas fa-times mr-1"></i>Reject
                                         </button>
                                     </form>
+                                    @endif
+                                    <form method="POST" action="{{ route('admin.withdrawals.delete', $withdrawal) }}" onsubmit="return confirm('Delete this withdrawal record?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="px-3 py-1 bg-gray-100 dark:bg-gray-500/20 text-gray-600 dark:text-gray-400 hover:bg-red-100 dark:hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-400 rounded-lg text-xs font-semibold transition-colors" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
                                 </div>
-                                @else
-                                <span class="text-gray-400 dark:text-gray-500 text-xs">-</span>
-                                @endif
                             </td>
                         </tr>
                         @empty

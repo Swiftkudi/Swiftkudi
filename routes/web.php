@@ -311,6 +311,21 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
         Route::post('/digital-products/{product}/reject', [AdminController::class, 'rejectDigitalProduct'])->name('digital-products.reject');
         Route::delete('/digital-products/{product}', [AdminController::class, 'deleteDigitalProduct'])->name('digital-products.delete');
 
+        // Completions
+        Route::delete('/completions/{completion}', [AdminController::class, 'deleteCompletion'])->name('completions.delete');
+
+        // Fraud Logs
+        Route::delete('/fraud-logs/{log}', [AdminController::class, 'deleteFraudLog'])->name('fraud-logs.delete');
+
+        // Referrals
+        Route::delete('/referrals/{referral}', [AdminController::class, 'deleteReferral'])->name('referrals.delete');
+
+        // Withdrawals
+        Route::delete('/withdrawals/{withdrawal}', [AdminController::class, 'deleteWithdrawal'])->name('withdrawals.delete');
+
+        // Activations
+        Route::delete('/activations/{activation}', [AdminController::class, 'deleteActivation'])->name('activations.delete');
+
          // end admin routes
     });
 

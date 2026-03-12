@@ -165,9 +165,18 @@
                             {{ $activation->created_at->format('M d, Y H:i') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <a href="{{ route('admin.activations.show', $activation) }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
-                                <i class="fas fa-eye"></i>
-                            </a>
+                            <div class="flex items-center justify-end gap-3">
+                                <a href="{{ route('admin.activations.show', $activation) }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <form method="POST" action="{{ route('admin.activations.delete', $activation) }}" onsubmit="return confirm('Delete this activation record?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-gray-400 hover:text-red-400 transition-colors" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty

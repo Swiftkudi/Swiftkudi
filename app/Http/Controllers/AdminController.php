@@ -1214,4 +1214,94 @@ class AdminController extends Controller
                 ->with('error', 'Unable to delete this product right now.');
         }
     }
+
+    public function deleteCompletion(\App\Models\TaskCompletion $completion)
+    {
+        try {
+            $completion->delete();
+
+            return redirect()->back()
+                ->with('success', 'Task completion record deleted successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Admin failed to delete task completion', [
+                'completion_id' => $completion->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Unable to delete this completion right now.');
+        }
+    }
+
+    public function deleteFraudLog(\App\Models\FraudLog $log)
+    {
+        try {
+            $log->delete();
+
+            return redirect()->back()
+                ->with('success', 'Fraud log deleted successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Admin failed to delete fraud log', [
+                'log_id' => $log->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Unable to delete this fraud log right now.');
+        }
+    }
+
+    public function deleteReferral(\App\Models\Referral $referral)
+    {
+        try {
+            $referral->delete();
+
+            return redirect()->back()
+                ->with('success', 'Referral record deleted successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Admin failed to delete referral', [
+                'referral_id' => $referral->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Unable to delete this referral right now.');
+        }
+    }
+
+    public function deleteWithdrawal(\App\Models\Withdrawal $withdrawal)
+    {
+        try {
+            $withdrawal->delete();
+
+            return redirect()->back()
+                ->with('success', 'Withdrawal record deleted successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Admin failed to delete withdrawal', [
+                'withdrawal_id' => $withdrawal->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Unable to delete this withdrawal right now.');
+        }
+    }
+
+    public function deleteActivation(\App\Models\ActivationLog $activation)
+    {
+        try {
+            $activation->delete();
+
+            return redirect()->back()
+                ->with('success', 'Activation record deleted successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Admin failed to delete activation', [
+                'activation_id' => $activation->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Unable to delete this activation right now.');
+        }
+    }
 }

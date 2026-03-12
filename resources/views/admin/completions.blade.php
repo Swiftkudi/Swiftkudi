@@ -65,6 +65,13 @@
                             <i class="fas fa-times mr-2"></i>Reject
                         </button>
                     </form>
+                    <form method="POST" action="{{ route('admin.completions.delete', $completion) }}" onsubmit="return confirm('Delete this completion record?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="px-4 py-2.5 rounded-xl bg-gray-500/20 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors text-sm font-medium">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
                 </div>
             </div>
             @empty
@@ -118,6 +125,13 @@
                                         <input type="hidden" name="notes" value="Rejected by admin">
                                         <button type="submit" class="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors text-sm">
                                             <i class="fas fa-times mr-1"></i>Reject
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.completions.delete', $completion) }}" onsubmit="return confirm('Delete this completion record?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="px-3 py-2 rounded-lg bg-gray-500/20 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors text-sm" title="Delete">
+                                            <i class="fas fa-trash"></i>
                                         </button>
                                     </form>
                                 </div>
