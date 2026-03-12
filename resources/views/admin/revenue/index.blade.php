@@ -219,14 +219,15 @@
                 </div>
             </div>
 
-            <!-- Lifetime Profit -->
+            <!-- Total Earnings -->
             <div class="bg-white dark:bg-dark-900 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-5">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Lifetime Profit</p>
-                        <p class="text-2xl font-bold {{ $summary['lifetime']['net_profit'] >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-600 dark:text-red-400' }} mt-1">
-                            ₦{{ number_format($summary['lifetime']['net_profit'], 2) }}
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Total Earnings</p>
+                        <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                            ₦{{ number_format($summary['wallet_total_earned'] ?? 0, 2) }}
                         </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Matches admin dashboard and analytics</p>
                     </div>
                     <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-500/20 rounded-lg flex items-center justify-center">
                         <i class="fas fa-building-columns text-indigo-600 dark:text-indigo-400"></i>

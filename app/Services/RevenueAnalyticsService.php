@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ActivationLog;
 use App\Models\ExpenseLog;
 use App\Models\FinancialTransaction;
+use App\Models\Wallet;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ class RevenueAnalyticsService
         $todayEnd = Carbon::today()->endOfDay();
 
         $startOfMonth = Carbon::today()->startOfMonth()->startOfDay();
-        $startOfYear = Carbon::today()->startOfYear()->startOfDay();
+        $allTimeStart = Carbon::create(2000, 1, 1)->startOfDay();
 
         // Today's stats (full day)
         $todayRevenue = $this->getRevenue($todayStart, $todayEnd);
@@ -36,10 +37,11 @@ class RevenueAnalyticsService
         $monthlyExpenses = $this->getExpenses($startOfMonth, $todayEnd);
         $monthlyActivations = $this->getActivationStats($startOfMonth, $todayEnd);
 
-        // Yearly/Lifetime stats (from start of year until end of today)
-        $lifetimeRevenue = $this->getRevenue($startOfYear, $todayEnd);
-        $lifetimeExpenses = $this->getExpenses($startOfYear, $todayEnd);
-        $lifetimeActivations = $this->getActivationStats($startOfYear, $todayEnd);
+        // Lifetime stats (all-time until end of today)
+        $lifetimeRevenue = $this->getRevenue($allTimeStart, $todayEnd);
+        $lifetimeExpenses = $this->getExpenses($allTimeStart, $todayEnd);
+        $lifetimeActivations = $this->getActivationStats($allTimeStart, $todayEnd);
+        $walletTotalEarned = (float) Wallet::query()->sum('total_earned');
 
         return [
             'today' => [
@@ -60,6 +62,7 @@ class RevenueAnalyticsService
                 'net_profit' => $lifetimeRevenue - $lifetimeExpenses,
                 'activations' => $lifetimeActivations,
             ],
+            'wallet_total_earned' => $walletTotalEarned,
         ];
     }
 

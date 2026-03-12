@@ -62,12 +62,12 @@
                     <div class="ml-5 w-0 flex-1">
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Total Earnings</dt>
-                            <dd class="text-lg font-medium text-gray-900">₦{{ number_format($stats['total_earnings'], 0) }}</dd>
+                            <dd class="text-lg font-medium text-gray-900">₦{{ number_format($stats['total_earnings'], 2) }}</dd>
                         </dl>
                     </div>
                 </div>
                 <div class="mt-4">
-                    <span class="text-sm text-gray-500">₦{{ number_format($stats['total_withdrawals'], 0) }} withdrawn</span>
+                    <span class="text-sm text-gray-500">₦{{ number_format($stats['total_withdrawals'], 2) }} withdrawn</span>
                 </div>
             </div>
 
