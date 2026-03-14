@@ -58,6 +58,12 @@ services:
         value: file
       - key: QUEUE_CONNECTION
         value: database
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
 
   # Database - PostgreSQL
   - type: pserv

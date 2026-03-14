@@ -36,6 +36,12 @@ if [ -z "$APP_KEY" ]; then
     php artisan key:generate --force
 fi
 
+# Generate VAPID keys if not set
+if [ -z "$VAPID_PUBLIC_KEY" ] || [ -z "$VAPID_PRIVATE_KEY" ]; then
+    echo "🔔 Generating VAPID keys for Web Push..."
+    OPENSSL_CONF=/etc/ssl/openssl.cnf php artisan webpush:vapid 2>/dev/null || true
+fi
+
 echo "✅ Build complete!"
 echo ""
 echo "Next steps:"
