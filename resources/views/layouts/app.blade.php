@@ -1182,7 +1182,6 @@
         setInterval(() => fetchNotifications(false), POLL_INTERVAL_MS);
     }());
     </script>
-    @auth
     <script>
     // ── Web Push Subscription ─────────────────────────────────────────────────
     (function () {
