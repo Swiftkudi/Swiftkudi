@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Models\Notification as AppNotification;
+use App\Models\PushSubscription;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Minishlink\WebPush\Subscription;
+use Minishlink\WebPush\WebPush;
 
 class NotificationDispatchService
 {
@@ -55,6 +58,10 @@ class NotificationDispatchService
             $this->sendEmail($user, $emailSubject, $emailMessage);
         }
 
+        if ($userEventEnabled) {
+            $this->sendPush($user, $title, $message, $data);
+        }
+
         if ($notifyAdmins || SystemSetting::getBool('notify_admin_all_activity', true)) {
             $this->notifyAdmins(
                 'Activity: ' . $title,
@@ -98,6 +105,8 @@ class NotificationDispatchService
             if ($emailEnabled) {
                 $this->sendEmail($admin, $title, $message);
             }
+
+            $this->sendPush($admin, $title, $message, $data);
         }
     }
 
@@ -155,6 +164,89 @@ class NotificationDispatchService
     protected function sendInApp(User $user, string $title, string $message, string $type, array $data = []): void
     {
         $this->createInAppNotification($user, $title, $message, $type, $data);
+    }
+
+    /**
+     * Public alias so controllers can trigger a push directly.
+     */
+    public function sendPushToUser(User $user, string $title, string $message, array $data = []): void
+    {
+        $this->sendPush($user, $title, $message, $data);
+    }
+
+    /**
+     * Send a Web Push notification to all subscribed browsers of this user.
+     */
+    protected function sendPush(User $user, string $title, string $message, array $data = []): void
+    {
+        $publicKey  = config('services.vapid.public_key');
+        $privateKey = config('services.vapid.private_key');
+        $subject    = config('services.vapid.subject');
+
+        if (empty($publicKey) || empty($privateKey)) {
+            // VAPID keys not configured — skip silently
+            return;
+        }
+
+        $subscriptions = PushSubscription::where('user_id', $user->id)->get();
+
+        if ($subscriptions->isEmpty()) {
+            return;
+        }
+
+        try {
+            $webPush = new WebPush([
+                'VAPID' => [
+                    'subject'    => $subject,
+                    'publicKey'  => $publicKey,
+                    'privateKey' => $privateKey,
+                ],
+            ]);
+            $webPush->setReuseVAPIDHeaders(true);
+
+            $payload = json_encode([
+                'title' => $title,
+                'body'  => $message,
+                'icon'  => '/favicon.svg',
+                'badge' => '/favicon.ico',
+                'url'   => $data['action_url'] ?? $data['url'] ?? '/dashboard',
+            ]);
+
+            $staleEndpoints = [];
+
+            foreach ($subscriptions as $sub) {
+                $subscription = Subscription::create([
+                    'endpoint'        => $sub->endpoint,
+                    'contentEncoding' => $sub->content_encoding ?: 'aesgcm',
+                    'keys' => [
+                        'p256dh' => $sub->p256dh,
+                        'auth'   => $sub->auth_token,
+                    ],
+                ]);
+
+                $report = $webPush->sendOneNotification($subscription, $payload);
+
+                // Remove subscription if the endpoint is gone (410) or expired (404)
+                if ($report instanceof \Minishlink\WebPush\MessageSentReport) {
+                    $statusCode = $report->getResponse() ? $report->getResponse()->getStatusCode() : null;
+                    if (in_array($statusCode, [404, 410], true)) {
+                        $staleEndpoints[] = hash('sha256', $sub->endpoint);
+                    }
+                }
+            }
+
+            if (!empty($staleEndpoints)) {
+                PushSubscription::where('user_id', $user->id)
+                    ->whereIn('endpoint_hash', $staleEndpoints)
+                    ->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Web push notification failed', [
+                'user_id' => $user->id,
+                'title'   => $title,
+                'error'   => $e->getMessage(),
+            ]);
+        }
     }
 
     protected function sendEmail(User $user, string $subject, string $message): void

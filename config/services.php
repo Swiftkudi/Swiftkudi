@@ -94,4 +94,19 @@ return [
         'enabled' => env('STRIPE_ENABLED', false),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | VAPID Keys — Web Push Notifications
+    |--------------------------------------------------------------------------
+    |
+    | Generate a key pair once with:  php artisan webpush:vapid
+    | Then set the two env variables below.
+    |
+    */
+    'vapid' => [
+        'subject'     => env('VAPID_SUBJECT', 'mailto:' . env('MAIL_FROM_ADDRESS', 'admin@swiftkudi.com')),
+        'public_key'  => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+    ],
+
 ];

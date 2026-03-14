@@ -156,6 +156,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Relationship: Web Push Subscriptions
+     */
+    public function pushSubscriptions()
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
+    /**
      * Relationship: Referrals (users this user referred)
      */
     public function referrals()

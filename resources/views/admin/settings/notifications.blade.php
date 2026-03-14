@@ -508,7 +508,16 @@
                                 <input type="checkbox" name="send_via[]" value="database" checked class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700">
                                 <span class="ml-2 text-gray-700 dark:text-gray-200">In-App Notification</span>
                             </label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="send_via[]" value="push" checked class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700">
+                                <span class="ml-2 text-gray-700 dark:text-gray-200">
+                                    <i class="fas fa-bell text-xs mr-1 text-indigo-400"></i>Browser Push
+                                </span>
+                            </label>
                         </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Browser push is delivered instantly to subscribed users' devices even when the tab is closed.
+                        </p>
                     </div>
 
                     <!-- Submit Button -->

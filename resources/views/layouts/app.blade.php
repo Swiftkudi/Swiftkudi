@@ -1182,6 +1182,71 @@
         setInterval(() => fetchNotifications(false), POLL_INTERVAL_MS);
     }());
     </script>
+    @auth
+    <script>
+    // ── Web Push Subscription ─────────────────────────────────────────────────
+    (function () {
+        const VAPID_PUBLIC_KEY = @json(config('services.vapid.public_key'));
+        if (!VAPID_PUBLIC_KEY) return; // keys not configured yet
+
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const raw     = atob(base64);
+            const output  = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+            return output;
+        }
+
+        async function registerPush() {
+            try {
+                const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                await navigator.serviceWorker.ready;
+
+                if (Notification.permission === 'denied') return;
+
+                let sub = await reg.pushManager.getSubscription();
+                if (!sub) {
+                    if (Notification.permission === 'default') {
+                        const permission = await Notification.requestPermission();
+                        if (permission !== 'granted') return;
+                    }
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+                    });
+                }
+
+                // POST subscription to server
+                await fetch('/push/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        endpoint: sub.endpoint,
+                        keys: {
+                            p256dh: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
+                            auth:   btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
+                        },
+                        contentEncoding: (PushManager.supportedContentEncodings || ['aesgcm'])[0],
+                    }),
+                });
+            } catch (e) {
+                // Silently ignore — push is a progressive enhancement
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', registerPush);
+        } else {
+            registerPush();
+        }
+    }());
+    </script>
     @endauth
 
     @stack('scripts')

@@ -679,7 +679,7 @@ class AdminController extends Controller
             'notif_title' => 'required|string|max:255',
             'notif_message' => 'required|string',
             'send_via' => 'required|array|min:1',
-            'send_via.*' => 'in:email,database',
+            'send_via.*' => 'in:email,database,push',
         ]);
 
         $title = $request->notif_title;
@@ -737,6 +737,15 @@ class AdminController extends Controller
                         false,
                         $sendDatabase,
                         $sendEmail
+                    );
+                }
+
+                // Web Push
+                if (in_array('push', $sendVia, true)) {
+                    app(\App\Services\NotificationDispatchService::class)->sendPushToUser(
+                        $user,
+                        $title,
+                        $message
                     );
                 }
                 $sent++;

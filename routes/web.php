@@ -22,6 +22,7 @@ use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\BoostController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\PushSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -65,6 +66,12 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
         Route::post('/read-all', [\App\Http\Controllers\UserNotificationController::class, 'markAllRead'])->name('read-all');
     });
     
+    // Push Notification Subscriptions
+    Route::prefix('push')->name('push.')->group(function () {
+        Route::post('/subscribe',   [PushSubscriptionController::class, 'subscribe'])->name('subscribe');
+        Route::post('/unsubscribe', [PushSubscriptionController::class, 'unsubscribe'])->name('unsubscribe');
+    });
+
     // Start Your Journey - Mandatory Task Creation Gate Landing Page
     Route::get('/start-your-journey', [StartJourneyController::class, 'index'])->name('start-your-journey');
     Route::post('/start-your-journey/apply-bundle', [StartJourneyController::class, 'applyBundle'])->name('start-journey.apply-bundle');
