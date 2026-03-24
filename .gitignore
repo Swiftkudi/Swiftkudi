@@ -1,27 +1,75 @@
-/vendor/
-/node_modules/
-/.env
-/.env.backup
-/.env.production
-/.phpunit.result.cache
-Homestead.json
-Homestead.yaml
-npm-debug.log
-yarn-error.log
+# Dependencies
+/node_modules
+/vendor
+
+# Build artifacts
+/public/build
+/public/hot
+/public/storage
+/public/mix-manifest.json
+
+# Storage
+/storage/*.key
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+
+# Environment files
+.env
+.env.backup
+.env.local
+.env.*.local
+!.env.example
+!.env.production
+
+# IDE
 /.idea
 /.vscode
-/.DS_Store
-/storage/*.key
-/storage/app/*
-!/storage/app/.gitkeep
-/storage/framework/cache/*
-!/storage/framework/cache/.gitkeep
-/storage/framework/sessions/*
-!/storage/framework/sessions/.gitkeep
-/storage/framework/views/*
-!/storage/framework/views/.gitkeep
-/storage/logs/*
-!/storage/logs/.gitkeep
-/bootstrap/cache/*
-!/bootstrap/cache/.gitkeep
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Logs
+npm-debug.log
+yarn-error.log
+yarn.lock
+package-lock.json
+
+# Testing
 .phpunit.result.cache
+.phpcs-cache
+phpunit.xml
+
+# Docker
+docker-compose.override.yml
+
+# Laravel Homestead
+Homestead.json
+Homestead.yaml
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Sensitive files
+cookies
+login_headers.txt
+SSH
+/Settings/
+
+# Development documentation (not needed in production)
+CODE_FLOW_DETAILED.md
+COMPLETE_DEPOSIT_FLOW.md
+DEPOSIT_FLOW_SUMMARY.md
+IMPLEMENTATION_CHECKLIST.md
+IMPLEMENTATION_COMPLETE.md
+MARKETPLACE_AUDIT_REPORT.md
+TASK_CREATION_FLOW.md

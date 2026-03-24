@@ -16,64 +16,6 @@
     <meta name="twitter:description" content="Post tasks, hire skilled freelancers, and manage your projects with secure escrow payments.">
     <link rel="canonical" href="https://swiftkudi.com">
     
-    {{-- JSON-LD Structured Data for SEO & AI Indexing --}}
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "SwiftKudi",
-        "url": "https://swiftkudi.com",
-        "logo": "https://swiftkudi.com/images/logo.png",
-        "description": "The premier task posting marketplace for businesses in Nigeria. Post tasks, hire vetted freelancers, manage projects with secure escrow payments.",
-        "foundingDate": "2024",
-        "address": {
-            "@type": "PostalAddress",
-            "addressCountry": "NG",
-            "addressRegion": "Lagos"
-        },
-        "areaServed": {
-            "@type": "Country",
-            "name": "Nigeria"
-        },
-        "serviceType": ["Freelance Marketplace", "Task Posting", "Escrow Services"],
-        "sameAs": [
-            "https://twitter.com/swiftkudi",
-            "https://facebook.com/swiftkudi",
-            "https://instagram.com/swiftkudi",
-            "https://linkedin.com/company/swiftkudi"
-        ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "SwiftKudi",
-        "url": "https://swiftkudi.com",
-        "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://swiftkudi.com/search?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-        }
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "SwiftKudi",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web Browser",
-        "url": "https://swiftkudi.com",
-        "description": "Freelance marketplace platform connecting businesses with vetted freelancers in Nigeria.",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "NGN"
-        }
-    }
-    </script>
-    
     {{-- Laravel Mix Assets - Tailwind CSS compiled via Mix --}}
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
     <script src="{{ mix('js/app.js') }}" defer></script>

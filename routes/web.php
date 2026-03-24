@@ -23,7 +23,6 @@ use App\Http\Controllers\BoostController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\PushSubscriptionController;
-use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,15 +33,6 @@ use Illuminate\Support\Facades\Route;
 
 // Health check endpoint (for monitoring)
 Route::get('/health', [HealthController::class, 'check'])->name('health');
-
-// Sitemaps for SEO and AI crawlers
-Route::get('/sitemap.xml', [SitemapController::class, 'main'])->name('sitemap');
-Route::get('/sitemap_index.xml', [SitemapController::class, 'index'])->name('sitemap.index');
-Route::get('/sitemap-tasks.xml', [SitemapController::class, 'tasks'])->name('sitemap.tasks');
-Route::get('/sitemap-services.xml', [SitemapController::class, 'services'])->name('sitemap.services');
-
-// IndexNow protocol for instant indexing
-Route::post('/indexnow', [IndexNowController::class, 'handle'])->name('indexnow');
 
 // Payment gateway webhooks (public, verified by signature)
 Route::post('/webhooks/paystack', [PaymentController::class, 'paystackWebhook'])->name('webhooks.paystack');
@@ -55,17 +45,6 @@ Route::get('/', function () {
 })->name('home');
 Route::view('/privacy-policy', 'legal.privacy')->name('legal.privacy');
 Route::view('/terms-of-service', 'legal.terms')->name('legal.terms');
-
-// AI Authority & Trust Pages
-Route::view('/about-author', 'pages.about-author')->name('about.author');
-Route::view('/editorial-policy', 'pages.editorial-policy')->name('editorial.policy');
-
-// Learning Hub
-Route::view('/learn', 'learn.index')->name('learn.index');
-
-// Trust & Legitimacy Pages
-Route::view('/how-payments-work', 'pages.how-payments-work')->name('how.payments.work');
-Route::view('/platform-safety', 'pages.platform-safety')->name('platform.safety');
 
 // Short referral link - stores code in session then redirects to register
 Route::get('/ref/{code}', [ReferralController::class, 'redirectWithCode'])->name('ref.redirect');

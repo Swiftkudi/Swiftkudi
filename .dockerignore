@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+npm-debug.log
+
+# PHP
+vendor
+.phpunit.result.cache
+
+# Build artifacts
+public/build
+public/hot
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.backup
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+
+# Test files
+tests
+phpunit.xml
+
+# Documentation
+*.md
+!README.md
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Cache
+.cache
