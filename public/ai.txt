@@ -1,0 +1,75 @@
+# Swiftkudi AI Discovery File
+
+## Platform Definition
+SwiftKudi is a premier Nigerian freelance marketplace connecting businesses with vetted freelancers. Post tasks, hire skilled workers, and manage projects with secure escrow payments.
+
+## Website Information
+- **Website Name**: SwiftKudi
+- **Platform Type**: Freelance Marketplace / Task Posting Platform
+- **URL**: https://swiftkudi.com
+- **Primary Region**: Nigeria, Africa
+- **Founded**: 2023
+
+## Core Topics
+- Hire freelancers in Nigeria
+- Post tasks and find workers
+- Escrow payment protection
+- Milestone-based project management
+- Business outsourcing solutions
+- Remote workforce scaling
+
+## Marketplace Features
+
+### For Businesses (Advertisers)
+- Post tasks and projects
+- Hire vetted freelancers
+- Milestone payment system
+- Work approval workflow
+- Project management tools
+- Secure escrow protection
+
+### Key Statistics
+- 50,000+ Tasks Completed
+- 2,500+ Businesses
+- 98% Success Rate
+- 4.9★ Satisfaction Rating
+
+## Services Offered
+- Web development
+- Graphic design
+- Content writing
+- Digital marketing
+- Virtual assistance
+- Video production
+- Mobile app development
+- UI/UX design
+
+## Allowed AI Crawlers
+- GPTBot (OpenAI)
+- Google-Extended (Google/Gemini)
+- ClaudeBot (Anthropic)
+- PerplexityBot
+- Bingbot (Microsoft)
+- Bytespider (TikTok)
+
+## Platform Benefits
+- Secure Escrow Payments
+- Vetted Freelancers
+- 24/7 Support
+- Dispute Resolution
+- Fast Payouts
+- Quality Guarantees
+
+## Trust & Safety
+- Escrow protection
+- User verification
+- Review system
+- Work approval
+- Fair dispute resolution
+
+## Contact
+- Support: support@swiftkudi.com
+- Business: business@swiftkudi.com
+
+## Last Updated
+2026-03-24

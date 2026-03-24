@@ -1,0 +1,33 @@
+{
+  "name": "earndesk",
+  "version": "1.0.0",
+  "description": "A project for managing tasks and productivity.",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/earndesk.git"
+  },
+  "keywords": [
+    "productivity",
+    "task management",
+    "typescript"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1",
+    "axios": "^0.21.1"
+  },
+  "devDependencies": {
+    "typescript": "^4.1.2",
+    "ts-node": "^9.1.1",
+    "jest": "^26.6.3",
+    "@types/jest": "^26.0.0",
+    "@types/express": "^4.17.8"
+  }
+}

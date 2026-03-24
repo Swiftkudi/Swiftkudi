@@ -1,0 +1,19 @@
+{
+  "environment": "development",
+  "port": 3000,
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "username": "user",
+    "password": "password",
+    "database": "earndesk_db"
+  },
+  "api": {
+    "baseUrl": "https://api.example.com",
+    "timeout": 5000
+  },
+  "logging": {
+    "level": "info",
+    "file": "logs/app.log"
+  }
+}

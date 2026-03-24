@@ -1,0 +1,146 @@
+# Swiftkudi Robots.txt - AI Search Engine Optimization
+# ====================================================
+# Last Updated: 2026-03-24
+# Purpose: Grant AI search engines full access to index content
+
+# ====================================================
+# GENERAL SETTINGS
+# ====================================================
+
+User-agent: *
+Allow: /
+
+# Allow static assets needed for rendering
+Allow: /css/
+Allow: /js/
+Allow: /images/
+Allow: /fonts/
+Allow: /storage/
+Allow: /favicon.ico
+Allow: /logo.png
+
+# Disallow private areas
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /_debugbar/
+
+# ====================================================
+# AI SEARCH ENGINE CRAWLERS
+# ====================================================
+
+# ---- ChatGPT / OpenAI ----
+# Enables ChatGPT search and GPT-powered features
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+
+# ---- Google Gemini / AI Overview ----
+# Enables Google AI features, Gemini integration, and AI summaries
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+
+# ---- Claude / Anthropic ----
+# Enables Claude search and AI assistant features
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+
+# ---- Perplexity AI ----
+# Enables Perplexity AI search engine
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+
+# ---- Amazon Alexa ----
+# Enables Amazon AI search capabilities
+User-agent: Amazonbot
+Allow: /
+Disallow: /api/
+
+# ---- Apple Intelligence ----
+# Enables Apple AI and Siri integration
+User-agent: Applebot
+Allow: /
+Disallow: /api/
+
+# ---- TikTok/ByteDance ----
+# Enables TikTok content discovery
+User-agent: Bytespider
+Allow: /
+Disallow: /api/
+
+# ---- Common Crawl ----
+# Enables web archiving and AI training
+User-agent: CCBot
+Allow: /
+Disallow: /api/
+
+# ====================================================
+# TRADITIONAL SEARCH ENGINES
+# ====================================================
+
+# ---- Microsoft Bing ----
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+
+User-agent: msnbot
+Allow: /
+Disallow: /api/
+
+# ---- Google ----
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Googlebot-News
+Allow: /
+
+User-agent: Googlebot-Video
+Allow: /
+
+# ---- Yahoo ----
+User-agent: Slurp
+Allow: /
+Disallow: /api/
+
+# ---- DuckDuckGo ----
+User-agent: DuckDuckBot
+Allow: /
+Disallow: /api/
+
+# ---- Yandex ----
+User-agent: Yandex
+Allow: /
+Disallow: /api/
+
+# ---- Baidu ----
+User-agent: Baiduspider
+Allow: /
+Disallow: /api/
+
+# ---- Social Media Crawlers ----
+User-agent: Twitterbot
+Allow: /
+
+User-agent: FacebookExternalHit
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: Pinterestbot
+Allow: /
+
+# ====================================================
+# SITEMAP
+# ====================================================
+
+Sitemap: https://swiftkudi.com/sitemap.xml
+Sitemap: https://swiftkudi.com/sitemap_index.xml
