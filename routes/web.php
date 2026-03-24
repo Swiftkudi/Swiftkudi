@@ -23,6 +23,8 @@ use App\Http\Controllers\BoostController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\IndexNowController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -46,6 +48,14 @@ Route::get('/', function () {
 Route::view('/privacy-policy', 'legal.privacy')->name('legal.privacy');
 Route::view('/terms-of-service', 'legal.terms')->name('legal.terms');
 
+// SEO Sitemap Routes
+Route::get('/sitemap.xml', [SitemapController::class, 'main'])->name('sitemap');
+Route::get('/sitemap_index.xml', [SitemapController::class, 'index'])->name('sitemap.index');
+Route::get('/sitemap-tasks.xml', [SitemapController::class, 'tasks'])->name('sitemap.tasks');
+Route::get('/sitemap-services.xml', [SitemapController::class, 'services'])->name('sitemap.services');
+
+// IndexNow Route
+Route::get('/indexnow-key.txt', [IndexNowController::class, 'getKey'])->name('indexnow.key');
 // Short referral link - stores code in session then redirects to register
 Route::get('/ref/{code}', [ReferralController::class, 'redirectWithCode'])->name('ref.redirect');
 
@@ -583,3 +593,14 @@ Route::get('/_csrf-token', function(){
 });
 
 require __DIR__.'/auth.php';
+
+
+// SEO Pages
+Route::view('/about', 'pages.about')->name('pages.about');
+Route::view('/learn', 'learn.index')->name('learn.index');
+Route::view('/about-author', 'pages.about-author')->name('pages.about-author');
+Route::view('/editorial-policy', 'pages.editorial-policy')->name('pages.editorial-policy');
+Route::view('/how-payments-work', 'pages.how-payments-work')->name('pages.how-payments-work');
+Route::view('/platform-safety', 'pages.platform-safety')->name('pages.platform-safety');
+Route::view('/press', 'pages.press')->name('pages.press');
+
