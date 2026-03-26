@@ -54,7 +54,7 @@ Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('aut
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 Route::post('/auth/google/one-tap', [GoogleAuthController::class, 'oneTap'])->name('auth.google.one-tap');
 
-Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
+Route::middleware(['auth', 'verified', 'logout.inactive', 'onboarding'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -70,6 +70,7 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
     Route::prefix('push')->name('push.')->group(function () {
         Route::post('/subscribe',   [PushSubscriptionController::class, 'subscribe'])->name('subscribe');
         Route::post('/unsubscribe', [PushSubscriptionController::class, 'unsubscribe'])->name('unsubscribe');
+        Route::post('/test',        [PushSubscriptionController::class, 'testPush'])->name('test');
     });
 
     // Start Your Journey - Mandatory Task Creation Gate Landing Page
@@ -77,7 +78,45 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
     Route::post('/start-your-journey/apply-bundle', [StartJourneyController::class, 'applyBundle'])->name('start-journey.apply-bundle');
     Route::get('/start-your-journey/check-status', [StartJourneyController::class, 'checkUnlockStatus'])->name('start-journey.check-status');
     Route::get('/start-your-journey/success', [StartJourneyController::class, 'unlockSuccess'])->name('start-journey.unlock-success');
+
+    // Onboarding path for worker roles and buyers
+    Route::get('/onboarding/select', [\App\Http\Controllers\OnboardingController::class, 'selectAccountType'])->name('onboarding.select');
+    Route::post('/onboarding/select', [\App\Http\Controllers\OnboardingController::class, 'storeAccountType'])->name('onboarding.select.post');
     
+    // API: Check account type status
+    Route::get('/api/onboarding/account-type-status', [\App\Http\Controllers\OnboardingController::class, 'checkAccountTypeStatus'])->name('api.onboarding.account-type-status');
+    Route::post('/onboarding/earn/activate', [\App\Http\Controllers\OnboardingController::class, 'activateEarner'])->name('onboarding.earn.activate');
+    Route::post('/onboarding/earn/referral/complete', [\App\Http\Controllers\OnboardingController::class, 'completeReferralTask'])->name('onboarding.earn.referral.complete');
+    Route::post('/onboarding/earn/referral/skip', [\App\Http\Controllers\OnboardingController::class, 'skipReferralTask'])->name('onboarding.earn.referral.skip');
+    Route::post('/onboarding/earn/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockEarnerFeature'])->name('onboarding.earn.feature.unlock');
+    Route::get('/onboarding/feature/unlock/complete', [\App\Http\Controllers\OnboardingController::class, 'completePendingFeatureUnlock'])->name('onboarding.feature.unlock.complete');
+    Route::post('/onboarding/freelancer/activate', [\App\Http\Controllers\OnboardingController::class, 'activateFreelancer'])->name('onboarding.freelancer.activate');
+    Route::post('/onboarding/digital-product/activate', [\App\Http\Controllers\OnboardingController::class, 'activateDigitalProduct'])->name('onboarding.digital-product.activate');
+    Route::post('/onboarding/growth/activate', [\App\Http\Controllers\OnboardingController::class, 'activateGrowth'])->name('onboarding.growth.activate');
+    
+    // Feature unlock routes for each role
+    Route::post('/onboarding/buyer/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockBuyerFeature'])->name('onboarding.buyer.feature.unlock');
+    Route::post('/onboarding/task-creator/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockTaskCreatorFeature'])->name('onboarding.task-creator.feature.unlock');
+    Route::post('/onboarding/freelancer/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockFreelancerFeature'])->name('onboarding.freelancer.feature.unlock');
+    Route::post('/onboarding/digital-seller/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockDigitalSellerFeature'])->name('onboarding.digital-seller.feature.unlock');
+    Route::post('/onboarding/growth-seller/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockGrowthSellerFeature'])->name('onboarding.growth-seller.feature.unlock');
+    
+    // Feature unlock page route
+    Route::get('/onboarding/features', [\App\Http\Controllers\OnboardingController::class, 'showFeatureUnlock'])->name('onboarding.features');
+
+    Route::get('/onboarding/task-creator', [\App\Http\Controllers\OnboardingController::class, 'taskCreatorOnboarding'])->name('onboarding.task-creator');
+    Route::get('/onboarding/freelancer', [\App\Http\Controllers\OnboardingController::class, 'freelancerOnboarding'])->name('onboarding.freelancer');
+    Route::get('/onboarding/digital-product', [\App\Http\Controllers\OnboardingController::class, 'digitalProductOnboarding'])->name('onboarding.digital-product');
+    Route::get('/onboarding/growth', [\App\Http\Controllers\OnboardingController::class, 'growthOnboarding'])->name('onboarding.growth');
+    Route::get('/onboarding/buyer', [\App\Http\Controllers\OnboardingController::class, 'buyerOnboarding'])->name('onboarding.buyer');
+    Route::get('/onboarding/buyer/categories', [\App\Http\Controllers\OnboardingController::class, 'buyerCategorySelection'])->name('onboarding.buyer.categories');
+    Route::post('/onboarding/buyer/categories', [\App\Http\Controllers\OnboardingController::class, 'storeBuyerCategories'])->name('onboarding.buyer.categories.store');
+    
+ // Buyer category preferences
+        Route::get('/settings/buyer-categories', [\App\Http\Controllers\OnboardingController::class, 'buyerCategoriesForm'])->name('settings.buyer-categories');
+        Route::post('/settings/buyer-categories', [\App\Http\Controllers\OnboardingController::class, 'updateBuyerCategories'])->name('settings.buyer-categories.update');
+
+
     // Dashboard sections
     Route::get('/dashboard/worker', [DashboardController::class, 'worker'])->name('dashboard.worker');
     Route::get('/dashboard/client', [DashboardController::class, 'client'])->name('dashboard.client');
@@ -114,7 +153,7 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
     });
 
     // Task routes - Protected by task creation gate middleware
-    Route::prefix('tasks')->name('tasks.')->middleware(['task.creation.gate'])->group(function () {
+    Route::prefix('tasks')->name('tasks.')->middleware(['task.creation.gate', 'earner.access'])->group(function () {
         // New Create Task Module Routes
         Route::get('/create/new', [CreateTaskController::class, 'showCreateForm'])->name('create.new');
         Route::get('/create', function() { return redirect()->route('tasks.create.new'); })->name('create');
@@ -155,7 +194,7 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
     });
 
     // NEW TASK SYSTEM - Escrow-based Task Management
-    Route::prefix('new-tasks')->name('new-tasks.')->group(function () {
+    Route::prefix('new-tasks')->name('new-tasks.')->middleware(['task.creation.gate', 'earner.access'])->group(function () {
         // Browse available tasks (worker view)
         Route::get('/', [NewTaskController::class, 'index'])->name('index');
         
@@ -223,7 +262,6 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
         Route::get('/settings/audit/logs', [\App\Http\Controllers\SettingsController::class, 'auditLogs'])->name('settings.audit');
         Route::post('/settings/initialize', [\App\Http\Controllers\SettingsController::class, 'initializeDefaults'])->name('settings.initialize');
         Route::post('/settings/clear-cache', [\App\Http\Controllers\SettingsController::class, 'clearCache'])->name('settings.clear-cache');
-
 
 
         // Analytics
@@ -373,8 +411,8 @@ Route::middleware(['auth', 'verified', 'logout.inactive'])->group(function () {
     });
 });
 
-// Professional Services (Hire) - Available to all authenticated users
-Route::prefix('services')->name('professional-services.')->group(function () {
+// Professional Services (Hire) - Available to all authenticated users, but restricted for earners until unlocked
+Route::prefix('services')->name('professional-services.')->middleware(['earner.access'])->group(function () {
     // Public - Browse services
     Route::get('/', [ProfessionalServiceController::class, 'index'])->name('index');
     Route::get('/search', [ProfessionalServiceController::class, 'index'])->name('search');
@@ -421,8 +459,8 @@ Route::prefix('services')->name('professional-services.')->group(function () {
     Route::get('/{service}', [ProfessionalServiceController::class, 'show'])->name('show');
 });
 
-// Growth Marketplace - Available to all authenticated users
-Route::prefix('growth')->name('growth.')->group(function () {
+// Growth Marketplace - Available to all authenticated users, but restricted for earners until unlocked
+Route::prefix('growth')->name('growth.')->middleware(['earner.access'])->group(function () {
     // Public - Browse
     Route::get('/', [GrowthController::class, 'index'])->name('index');
     
@@ -461,8 +499,8 @@ Route::prefix('growth')->name('growth.')->group(function () {
     Route::get('/listing/{listing}', [GrowthController::class, 'show'])->name('show');
 });
 
-// Digital Products Marketplace
-Route::prefix('products')->name('digital-products.')->group(function () {
+// Digital Products Marketplace - Restricted for earners until unlocked
+Route::prefix('products')->name('digital-products.')->middleware(['earner.access'])->group(function () {
     // Public - Browse
     Route::get('/', [DigitalProductController::class, 'index'])->name('index');
     Route::get('/featured', [DigitalProductController::class, 'featured'])->name('featured');

@@ -57,7 +57,10 @@ class BoostPackageSeeder extends Seeder
         ];
 
         foreach ($packages as $package) {
-            BoostPackage::create($package);
+            BoostPackage::updateOrInsert(
+                ['slug' => $package['slug']],
+                $package
+            );
         }
     }
 }

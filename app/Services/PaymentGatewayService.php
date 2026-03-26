@@ -17,6 +17,7 @@ class PaymentGatewayService
      */
     const MODE_SANDBOX = 'sandbox';
     const MODE_LIVE = 'live';
+    const MODE_MOCK = 'mock';
 
     /**
      * Gateways
@@ -24,6 +25,7 @@ class PaymentGatewayService
     const GATEWAY_PAYSTACK = 'paystack';
     const GATEWAY_KORA = 'kora';
     const GATEWAY_STRIPE = 'stripe';
+    const GATEWAY_MOCK = 'mock';
 
     /**
      * Current gateway
@@ -48,8 +50,13 @@ class PaymentGatewayService
     /**
      * Constructor
      */
-    public function __construct($gateway = null, $mode = self::MODE_LIVE)
+    public function __construct($gateway = null, $mode = null)
     {
+        // Auto-detect mode based on environment if not provided
+        if ($mode === null) {
+            $mode = $this->detectMode();
+        }
+
         // Auto-detect gateway from SystemSettings if not provided
         if (!$gateway) {
             $gateway = $this->detectActiveGateway();
@@ -59,6 +66,80 @@ class PaymentGatewayService
         $this->mode = $mode;
         $this->loadCredentials();
         $this->loadRates();
+    }
+
+    /**
+     * Detect payment mode based on environment
+     */
+    protected function detectMode(): string
+    {
+        // Check SystemSetting first (admin-controlled)
+        if (SystemSetting::getBool('payment_mock_enabled', false)) {
+            return self::MODE_MOCK;
+        }
+
+        // Check env config for mock mode
+        if (config('services.payment.mock_enabled', false)) {
+            return self::MODE_MOCK;
+        }
+
+        // Check if running on local environment
+        if (app()->environment('local', 'development')) {
+            // Check if sandbox mode is preferred (SystemSetting or config)
+            $sandboxAuto = SystemSetting::getBool('payment_sandbox_auto', 
+                config('services.payment.sandbox_auto', true));
+            
+            if ($sandboxAuto) {
+                return self::MODE_SANDBOX;
+            }
+        }
+
+        // Check system setting for sandbox mode
+        $gatewaySpecificSandbox = match ($this->gateway) {
+            self::GATEWAY_PAYSTACK => SystemSetting::getBool('paystack_sandbox', false),
+            self::GATEWAY_KORA => SystemSetting::getBool('kora_sandbox', false),
+            self::GATEWAY_STRIPE => SystemSetting::getBool('stripe_sandbox', false),
+            default => false,
+        };
+
+        return $gatewaySpecificSandbox ? self::MODE_SANDBOX : self::MODE_LIVE;
+    }
+
+    /**
+     * Check if we're running in mock mode (for local development)
+     */
+    public function isMockMode(): bool
+    {
+        // Check SystemSetting first (admin-controlled)
+        if (SystemSetting::getBool('payment_mock_enabled', false)) {
+            return true;
+        }
+
+        // Fall back to env config
+        return $this->mode === self::MODE_MOCK || 
+               config('services.payment.mock_enabled', false) ||
+               app()->environment('local');
+    }
+
+    /**
+     * Get the callback URL, allowing override for local development
+     */
+    protected function getCallbackUrl(): string
+    {
+        // Check SystemSetting first (admin-controlled)
+        $customCallback = SystemSetting::get('payment_callback_url');
+        if ($customCallback) {
+            return $customCallback;
+        }
+
+        // Check config
+        $customCallback = config('services.payment.callback_url');
+        if ($customCallback) {
+            return $customCallback;
+        }
+
+        // Fall back to route URL
+        return route('payment.callback');
     }
 
     /**
@@ -247,6 +328,11 @@ class PaymentGatewayService
      */
     public function initializePayment(User $user, $amount, $currency, $description)
     {
+        // Handle mock mode for local development
+        if ($this->isMockMode()) {
+            return $this->processMockPayment($user, $amount, $currency, $description);
+        }
+
         $amountInNgn = $this->convertToNgn($amount, $currency);
 
         $data = [
@@ -254,7 +340,7 @@ class PaymentGatewayService
             'currency' => 'NGN',
             'email' => $user->email,
             'reference' => $this->generateReference(),
-            'callback_url' => route('payment.callback'),
+            'callback_url' => $this->getCallbackUrl(),
             'metadata' => [
                 'user_id' => $user->id,
                 'currency' => $currency,
@@ -264,6 +350,34 @@ class PaymentGatewayService
         ];
 
         return $this->processPayment($data);
+    }
+
+    /**
+     * Process mock payment for local development
+     */
+    protected function processMockPayment(User $user, $amount, $currency, $description): array
+    {
+        $reference = $this->generateReference();
+        $amountInNgn = $this->convertToNgn($amount, $currency);
+
+        Log::info('Mock payment initialized', [
+            'user_id' => $user->id,
+            'amount' => $amount,
+            'currency' => $currency,
+            'amount_in_ngn' => $amountInNgn,
+            'reference' => $reference,
+        ]);
+
+        // Return a mock authorization URL that redirects back to our callback
+        $mockCallbackUrl = $this->getCallbackUrl() . '?reference=' . $reference . '&status=success';
+
+        return [
+            'success' => true,
+            'authorization_url' => $mockCallbackUrl,
+            'reference' => $reference,
+            'mock' => true,
+            'message' => 'Mock payment mode - click to simulate successful payment',
+        ];
     }
 
     /**
@@ -278,12 +392,29 @@ class PaymentGatewayService
                 return $this->processKora($data);
             case self::GATEWAY_STRIPE:
                 return $this->processStripe($data);
+            case self::GATEWAY_MOCK:
+                return $this->processMockPaymentData($data);
             default:
                 return [
                     'success' => false,
                     'message' => 'Invalid payment gateway',
                 ];
         }
+    }
+
+    /**
+     * Process mock payment data
+     */
+    protected function processMockPaymentData($data): array
+    {
+        $reference = $data['reference'] ?? $this->generateReference();
+        
+        return [
+            'success' => true,
+            'authorization_url' => $this->getCallbackUrl() . '?reference=' . $reference . '&status=success&mock=true',
+            'reference' => $reference,
+            'mock' => true,
+        ];
     }
 
     /**
@@ -430,6 +561,11 @@ class PaymentGatewayService
      */
     public function verifyPayment($reference)
     {
+        // Handle mock mode verification
+        if ($this->isMockMode()) {
+            return $this->verifyMockPayment($reference);
+        }
+
         switch ($this->gateway) {
             case self::GATEWAY_PAYSTACK:
                 return $this->verifyPaystack($reference);
@@ -437,9 +573,27 @@ class PaymentGatewayService
                 return $this->verifyKora($reference);
             case self::GATEWAY_STRIPE:
                 return $this->verifyStripe($reference);
+            case self::GATEWAY_MOCK:
+                return $this->verifyMockPayment($reference);
             default:
                 return ['success' => false, 'message' => 'Invalid gateway'];
         }
+    }
+
+    /**
+     * Verify mock payment (always succeeds in mock mode)
+     */
+    protected function verifyMockPayment($reference): array
+    {
+        Log::info('Mock payment verified', ['reference' => $reference]);
+
+        return [
+            'success' => true,
+            'amount' => 0, // Will be fetched from transaction
+            'currency' => 'NGN',
+            'metadata' => ['mock' => true],
+            'status' => 'success',
+        ];
     }
 
     /**

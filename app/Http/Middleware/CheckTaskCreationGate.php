@@ -45,7 +45,42 @@ class CheckTaskCreationGate
             return $next($request);
         }
 
-        // Get minimum required budget
+        // Task creators must create first task before listing access (no budget requirement)
+        if ($user->account_type === 'task_creator') {
+            // allow these routes for onboarding / first task creation
+            $allowedForTaskCreator = [
+                'start-your-journey',
+                'tasks.index',
+                'tasks.create',
+                'tasks.create.new',
+                'tasks.store',
+                'tasks.bundles',
+                'tasks.suggest-bundles',
+                'dashboard',
+                'logout',
+                'wallet.index',
+                'wallet.deposit',
+                'wallet.transactions',
+                'wallet.activate',
+                'wallet.activate.process',
+                'referrals.index',
+                'new-tasks.index',
+                'new-tasks.create',
+                'new-tasks.store',
+            ];
+
+            $route = $request->route();
+            $currentRoute = $route ? $route->getName() : null;
+
+            if ($currentRoute && in_array($currentRoute, $allowedForTaskCreator)) {
+                return $next($request);
+            }
+
+            return redirect()->route('start-your-journey')
+                ->with('warning', 'Create your first task to activate marketplace access.');
+        }
+
+        // Get minimum required budget for earners
         $minimumBudget = SystemSetting::get('minimum_required_budget', 1000);
 
         // Check if user has met the requirement
@@ -64,6 +99,7 @@ class CheckTaskCreationGate
         $allowedRoutes = [
             'start-your-journey',
             'tasks.create',
+            'tasks.create.new',
             'tasks.store',
             'tasks.bundles',
             'tasks.suggest-bundles',

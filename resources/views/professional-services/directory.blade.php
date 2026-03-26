@@ -45,8 +45,11 @@
                         @endif
                         
                         @if($profile->skills)
+                            @php
+                                $skillsData = is_array($profile->skills) ? $profile->skills : (json_decode($profile->skills, true) ?: []);
+                            @endphp
                             <div class="flex flex-wrap gap-2 mb-4">
-                                @foreach(array_slice(json_decode($profile->skills, true) ?? [], 0, 4) as $skill)
+                                @foreach(array_slice($skillsData, 0, 4) as $skill)
                                     <span class="px-2 py-1 bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 text-xs rounded">{{ $skill }}</span>
                                 @endforeach
                             </div>

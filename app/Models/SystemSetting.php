@@ -780,6 +780,11 @@ class SystemSetting extends Model
             'stripe_sandbox' => ['value' => true, 'group' => self::GROUP_PAYMENT, 'type' => 'boolean'],
             'stripe_enabled' => ['value' => false, 'group' => self::GROUP_PAYMENT, 'type' => 'boolean'],
 
+            // Payment Gateway - Development Settings
+            'payment_mock_enabled' => ['value' => false, 'group' => self::GROUP_PAYMENT, 'type' => 'boolean'],
+            'payment_callback_url' => ['value' => '', 'group' => self::GROUP_PAYMENT, 'type' => 'text'],
+            'payment_sandbox_auto' => ['value' => true, 'group' => self::GROUP_PAYMENT, 'type' => 'boolean'],
+
             // Notifications
             'notify_in_app_enabled' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_email_enabled' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],

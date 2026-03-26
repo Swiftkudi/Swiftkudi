@@ -146,8 +146,20 @@ class PaymentController extends Controller
                 return redirect()->route('wallet.index')->with('info', 'Payment already processed.');
             }
 
+            // Check if this is a mock payment
+            $isMockPayment = $request->query('mock') === 'true' || 
+                            $request->input('mock') === 'true' ||
+                            $this->paymentGatewayService->isMockMode();
+
             // Verify payment with gateway
-            $verificationData = $this->paymentGatewayService->verifyPayment($reference);
+            if ($isMockPayment) {
+                // For mock payments, simulate successful verification
+                $verificationData = $this->paymentGatewayService->verifyPayment($reference);
+                $verificationData['mock_verified'] = true;
+                Log::info('Mock payment callback processed', ['reference' => $reference]);
+            } else {
+                $verificationData = $this->paymentGatewayService->verifyPayment($reference);
+            }
 
             if (!empty($verificationData['success'])) {
                 DB::transaction(function () use ($transaction, $verificationData) {

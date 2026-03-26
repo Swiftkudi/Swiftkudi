@@ -157,7 +157,9 @@ class WalletController extends Controller
 
         $activationFee = SystemSetting::getActivationFeeForUser(false);
         $referredActivationFee = SystemSetting::getActivationFeeForUser(true);
-        $actualFee = $activationFeeEnabled ? ($referredBy ? $referredActivationFee : $activationFee) : 0;
+        // Activation fee only applies to earners; non-earners get free activation
+        $isEarner = $user->account_type === 'earner';
+        $actualFee = ($activationFeeEnabled && $isEarner) ? ($referredBy ? $referredActivationFee : $activationFee) : 0;
 
         return view('wallet.activate', compact(
             'wallet',

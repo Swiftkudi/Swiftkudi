@@ -586,6 +586,10 @@
                     </button>
                 </div>
             </div>
+            @php
+$user = auth()->user();
+$accountType = $user->account_type ?? '';
+@endphp
             <nav class="p-4 space-y-2">
                 <a href="{{ route('dashboard') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('dashboard') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
                     <i class="fas fa-home mr-3 w-5"></i>Dashboard
@@ -593,9 +597,11 @@
                 <a href="{{ route('dashboard.profile') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('dashboard.profile') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
                     <i class="fas fa-user mr-3 w-5"></i>Profile
                 </a>
+                @if($accountType === 'earner')
                 <a href="{{ route('tasks.index') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('tasks.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
                     <i class="fas fa-tasks mr-3 w-5"></i>Tasks
                 </a>
+                @endif
                 <a href="{{ route('wallet.index') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('wallet.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
                     <i class="fas fa-wallet mr-3 w-5"></i>Wallet
                 </a>
@@ -658,9 +664,11 @@
                         <a href="{{ route('dashboard.profile') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('dashboard.profile') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
                             <i class="fas fa-user mr-2"></i>Profile
                         </a>
+                        @if($accountType === 'earner')
                         <a href="{{ route('tasks.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('tasks.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
                             <i class="fas fa-tasks mr-2"></i>Tasks
                         </a>
+                        @endif
                         <a href="{{ route('wallet.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('wallet.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
                             <i class="fas fa-wallet mr-2"></i>Wallet
                         </a>
@@ -670,6 +678,11 @@
                         @if(Auth::check() && Auth::user()->is_admin)
                         <a href="{{ route('admin.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-indigo-400 hover:bg-dark-800 transition-all">
                             <i class="fas fa-cog mr-2"></i>Admin
+                        </a>
+                        @endif
+                         @if($accountType === 'buyer')
+                        <a href="{{ route('settings.buyer-categories') }}" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-indigo-400 hover:bg-dark-800 transition-all">
+                            <i class="fas fa-cog mr-2"></i>settings
                         </a>
                         @endif
                     </nav>
@@ -1219,6 +1232,7 @@
                 }
 
                 // POST subscription to server
+                const subscriptionJson = sub.toJSON();
                 await fetch('/push/subscribe', {
                     method: 'POST',
                     headers: {
@@ -1226,11 +1240,8 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                     body: JSON.stringify({
-                        endpoint: sub.endpoint,
-                        keys: {
-                            p256dh: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
-                            auth:   btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
-                        },
+                        endpoint: subscriptionJson.endpoint,
+                        keys: subscriptionJson.keys,
                         contentEncoding: (PushManager.supportedContentEncodings || ['aesgcm'])[0],
                     }),
                 });

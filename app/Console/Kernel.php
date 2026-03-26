@@ -23,6 +23,9 @@ class Kernel extends ConsoleKernel
 
         // Auto-approve pending completions older than 48 hours, run every 30 minutes
         $schedule->command('tasks:auto-approve')->everyThirtyMinutes()->withoutOverlapping();
+
+        // Send onboarding reminders to users without account type - daily at 9am
+        $schedule->command('onboarding:send-reminders')->dailyAt('09:00')->withoutOverlapping();
     }
 
     /**

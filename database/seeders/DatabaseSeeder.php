@@ -17,18 +17,28 @@ use Illuminate\Support\Facades\Hash;
 class DatabaseSeeder extends Seeder
 {
     /**
+     * Determine if we're running in production
+     */
+    protected function isProduction(): bool
+    {
+        return app()->environment('production');
+    }
+
+    /**
      * Seed the application's database.
+     * 
+     * For production: Only seeds essential data (admin roles, settings, categories)
+     * For local/development: Seeds all data including demo users and tasks
      */
     public function run(): void
     {
-        // Seed admin roles
+        // Always seed admin roles
         $this->seedAdminRoles();
         
-        // Initialize system settings
+        // Always initialize system settings
         $this->initializeSystemSettings();
 
-        // Apply a few environment-friendly defaults that may be edited later via admin
-        // Set default gateway per currency only if not already set
+        // Always set default payment gateways (only if not already set)
         if (!SystemSetting::get('default_gateway_ngn')) {
             SystemSetting::set('default_gateway_ngn', 'paystack', SystemSetting::GROUP_PAYMENT, 'text');
         }
@@ -39,41 +49,48 @@ class DatabaseSeeder extends Seeder
             SystemSetting::set('default_gateway_usdt', 'stripe', SystemSetting::GROUP_PAYMENT, 'text');
         }
 
-        // Ensure conversion rate aligns with seeded currencies
+        // Always set conversion rate
         SystemSetting::set('ngn_to_usd_rate', 1550, SystemSetting::GROUP_CURRENCY, 'number');
 
-        // Seed currencies
+        // Always seed currencies
         $this->seedCurrencies();
         
-        // Seed task categories
+        // Always seed task categories
         $this->seedTaskCategories();
         
-        // Seed marketplace categories
+        // Always seed marketplace categories
         $this->call([
             MarketplaceCategorySeeder::class,
         ]);
         
-        // Seed professional service categories
+        // Always seed professional service categories
         $this->call([
             ProfessionalServiceCategorySeeder::class,
         ]);
         
-        // Seed boost packages
+        // Always seed boost packages
         $this->call([
             BoostPackageSeeder::class,
         ]);
         
-        // Seed badges
+        // Always seed badges
         $this->seedBadges();
-        
-        // Create sample users with wallets
-        $this->createSampleUsers();
-        
-        // Seed sample tasks
-        $this->seedSampleTasks();
 
-        // Seed lightweight sample data (dev only)
-        $this->call(\Database\Seeders\SampleDataSeeder::class);
+        // Only seed demo data in non-production environments
+        if (!$this->isProduction()) {
+            // Create sample users with wallets
+            $this->createSampleUsers();
+            
+            // Seed sample tasks
+            $this->seedSampleTasks();
+
+            // Seed lightweight sample data (dev only)
+            $this->call(\Database\Seeders\SampleDataSeeder::class);
+            
+            $this->command->info('Demo data seeded successfully!');
+        } else {
+            $this->command->info('Production mode: Demo data skipped. Run `php artisan db:seed --env=local` to seed demo data.');
+        }
     }
 
     /**

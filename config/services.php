@@ -96,6 +96,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Payment Gateway - Local Development Settings
+    |--------------------------------------------------------------------------
+    |
+    | Settings for local development and testing without real payment gateways.
+    |
+    */
+    'payment' => [
+        // Enable mock payment mode - simulates successful payments without calling real gateways
+        'mock_enabled' => env('PAYMENT_MOCK_ENABLED', false),
+
+        // Custom callback URL - useful when using ngrok or tunnel for local testing
+        // Example: https://abc123.ngrok-free.app
+        'callback_url' => env('PAYMENT_CALLBACK_URL'),
+
+        // Auto-enable sandbox mode when running on local environment
+        'sandbox_auto' => env('PAYMENT_SANDBOX_AUTO', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | VAPID Keys — Web Push Notifications
     |--------------------------------------------------------------------------
     |
@@ -104,7 +124,7 @@ return [
     |
     */
     'vapid' => [
-        'subject'     => env('VAPID_SUBJECT', 'mailto:' . env('MAIL_FROM_ADDRESS', 'admin@swiftkudi.com')),
+        'subject'     => env('VAPID_SUBJECT') ?: 'mailto:' . (env('MAIL_FROM_ADDRESS') ?: 'admin@swiftkudi.com'),
         'public_key'  => env('VAPID_PUBLIC_KEY'),
         'private_key' => env('VAPID_PRIVATE_KEY'),
     ],

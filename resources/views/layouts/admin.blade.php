@@ -537,6 +537,7 @@
                     });
                 }
 
+                const subscriptionJson = sub.toJSON();
                 await fetch('/push/subscribe', {
                     method: 'POST',
                     headers: {
@@ -544,11 +545,8 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                     body: JSON.stringify({
-                        endpoint: sub.endpoint,
-                        keys: {
-                            p256dh: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
-                            auth:   btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
-                        },
+                        endpoint: subscriptionJson.endpoint,
+                        keys: subscriptionJson.keys,
                         contentEncoding: (PushManager.supportedContentEncodings || ['aesgcm'])[0],
                     }),
                 });

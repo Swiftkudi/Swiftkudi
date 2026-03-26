@@ -26,20 +26,44 @@ class TaskGateProgressService
         $previousBudget = $user->total_created_task_budget ?? 0;
         $newBudget = $previousBudget + $taskBudget;
 
-        // Update budget atomically
-        DB::transaction(function () use ($user, $taskBudget, $newBudget) {
-            $user->increment('total_created_task_budget', $taskBudget);
-            $user->refresh();
+        // Update budget atomically using locking to prevent race conditions
+        DB::transaction(function () use ($user, $taskBudget, $newBudget, &$previousBudget) {
+            // Lock the user row for update to prevent race conditions
+            $lockedUser = DB::table('users')
+                ->where('id', $user->id)
+                ->lockForUpdate()
+                ->first();
 
-            // Check if user just reached unlock threshold
-            if (!$user->has_completed_mandatory_creation) {
-                $minimumBudget = SystemSetting::get('minimum_required_budget', 2500);
+            $currentBudget = $lockedUser->total_created_task_budget ?? 0;
+            $previousBudget = $currentBudget;
+            $updatedBudget = $currentBudget + $taskBudget;
 
-                if ($newBudget >= $minimumBudget) {
-                    // User has reached the threshold - unlock earnings
-                    $user->has_completed_mandatory_creation = true;
-                    $user->task_creation_unlocked_at = now();
-                    $user->save();
+            // Update the budget
+            DB::table('users')
+                ->where('id', $user->id)
+                ->update(['total_created_task_budget' => $updatedBudget]);
+
+            // Check unlock progress for task creators first task + earners threshold
+            if (!$lockedUser->has_completed_mandatory_creation) {
+                $shouldUnlock = false;
+
+                if ($lockedUser->account_type === 'task_creator') {
+                    // Task creators unlock after first task creation
+                    $shouldUnlock = true;
+                } else {
+                    $minimumBudget = SystemSetting::get('minimum_required_budget', 2500);
+                    if ($updatedBudget >= $minimumBudget) {
+                        $shouldUnlock = true;
+                    }
+                }
+
+                if ($shouldUnlock) {
+                    DB::table('users')
+                        ->where('id', $user->id)
+                        ->update([
+                            'has_completed_mandatory_creation' => true,
+                            'task_creation_unlocked_at' => now(),
+                        ]);
 
                     // Send unlock notification
                     try {
@@ -59,12 +83,15 @@ class TaskGateProgressService
 
                     Log::info('User unlocked earnings access', [
                         'user_id' => $user->id,
-                        'total_budget' => $newBudget,
+                        'total_budget' => $updatedBudget,
                         'threshold' => $minimumBudget,
                     ]);
                 }
             }
         });
+
+        // Refresh user to get updated state
+        $user->refresh();
 
         return [
             'unlocked' => $user->has_completed_mandatory_creation ?? false,
@@ -126,5 +153,56 @@ class TaskGateProgressService
             'percentage' => round($percentage, 1),
             'unlocked' => $this->isUnlocked($user),
         ];
+    }
+
+    /**
+     * Unlock a marketplace seller (freelancer, digital_seller, growth_seller) after they create their first item.
+     * Call this after a freelancer creates a service, digital seller uploads a product, or growth seller creates a listing.
+     *
+     * @param User $user
+     * @param string $sellerType 'freelancer', 'digital_seller', or 'growth_seller'
+     * @return array ['success' => bool, 'message' => string]
+     */
+    public function unlockMarketplaceSeller(User $user, string $sellerType): array
+    {
+        $updates = [];
+        $fieldToCheck = '';
+        $fieldToSet = '';
+
+        switch ($sellerType) {
+            case 'freelancer':
+                $fieldToCheck = 'freelancer_service_created';
+                $fieldToSet = 'freelancer_service_created';
+                break;
+            case 'digital_seller':
+                $fieldToCheck = 'digital_product_uploaded';
+                $fieldToSet = 'digital_product_uploaded';
+                break;
+            case 'growth_seller':
+                $fieldToCheck = 'growth_listing_created';
+                $fieldToSet = 'growth_listing_created';
+                break;
+            default:
+                return ['success' => false, 'message' => 'Invalid seller type'];
+        }
+
+        // Only set the specific field, don't override other fields
+        $updates[$fieldToSet] = true;
+
+        // Only set has_completed_mandatory_creation if not already set
+        if (!$user->has_completed_mandatory_creation) {
+            $updates['has_completed_mandatory_creation'] = true;
+            $updates['task_creation_unlocked_at'] = now();
+        }
+
+        $user->update($updates);
+
+        Log::info('Marketplace seller unlocked', [
+            'user_id' => $user->id,
+            'seller_type' => $sellerType,
+            'field_set' => $fieldToSet,
+        ]);
+
+        return ['success' => true, 'message' => ucfirst($sellerType) . ' marketplace access unlocked'];
     }
 }

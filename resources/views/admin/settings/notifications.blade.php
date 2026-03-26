@@ -439,6 +439,62 @@
             </div>
         </div>
 
+        <!-- Test Push Section -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Test Browser Push Notification</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Send a test push notification to your own browser to verify the push setup</p>
+            </div>
+            <div class="p-6">
+                <div class="flex items-center gap-4">
+                    <button id="testPushBtn" type="button"
+                        class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-all transform hover:scale-105">
+                        <i class="fas fa-bell mr-2"></i>
+                        Send Test Push to My Browser
+                    </button>
+                    <span id="testPushStatus" class="text-sm font-medium hidden"></span>
+                </div>
+                <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Make sure you have allowed notifications for this site and have reloaded the page at least once after granting permission.
+                </p>
+            </div>
+        </div>
+
+        <script>
+        document.getElementById('testPushBtn').addEventListener('click', function () {
+            var btn = this;
+            var status = document.getElementById('testPushStatus');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sending…';
+            status.className = 'text-sm font-medium hidden';
+
+            fetch('/push/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                }
+            })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+            .then(function (res) {
+                status.textContent = res.data.message || (res.ok ? 'Sent!' : 'Error');
+                status.className = 'text-sm font-medium ' + (res.ok ? 'text-green-600' : 'text-red-600');
+                status.classList.remove('hidden');
+            })
+            .catch(function (e) {
+                status.textContent = 'Request failed: ' + e.message;
+                status.className = 'text-sm font-medium text-red-600';
+                status.classList.remove('hidden');
+            })
+            .finally(function () {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-bell mr-2"></i>Send Test Push to My Browser';
+            });
+        });
+        </script>
+
         <!-- Send Push Notification Section -->
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">

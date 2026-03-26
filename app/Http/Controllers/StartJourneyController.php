@@ -101,6 +101,189 @@ class StartJourneyController extends Controller
             ->limit(6)
             ->get();
 
+        // Earner-specific flags and tasks
+        $isEarner = $user->account_type === 'earner';
+        $activationFee = SystemSetting::get('activation_fee', 1500);
+        $activationPaid = $user->activation_paid;
+        $referralTaskCompleted = $user->referral_task_completed ?? false;
+        $referralTaskSkipped = $user->referral_task_skipped ?? false;
+
+        $accountType = $user->account_type;
+
+        // Build role-specific features based on account type
+        $roleFeatures = [];
+        $featureRoute = '';
+
+        switch ($accountType) {
+            case 'buyer':
+                $roleFeatures = [
+                    'start_journey' => [
+                        'label' => 'Start Journey Access',
+                        'unlocked' => $user->hasBuyerFeature('start_journey'),
+                        'expires' => $user->getBuyerFeatureExpiry('start_journey'),
+                    ],
+                    'task_creation' => [
+                        'label' => 'Task Creation',
+                        'unlocked' => $user->hasBuyerFeature('task_creation'),
+                        'expires' => $user->getBuyerFeatureExpiry('task_creation'),
+                    ],
+                    'available_tasks' => [
+                        'label' => 'Available Tasks',
+                        'unlocked' => $user->hasBuyerFeature('available_tasks'),
+                        'expires' => $user->getBuyerFeatureExpiry('available_tasks'),
+                    ],
+                ];
+                $featureRoute = 'onboarding.buyer.feature.unlock';
+                break;
+
+            case 'earner':
+                $roleFeatures = [
+                    'freelance_marketplace' => [
+                        'label' => 'Freelance Marketplace',
+                        'unlocked' => $user->hasEarnerFeature('freelance_marketplace'),
+                        'expires' => $user->getEarnerFeatureExpiry('freelance_marketplace'),
+                    ],
+                    'digital_products' => [
+                        'label' => 'Digital Products',
+                        'unlocked' => $user->hasEarnerFeature('digital_products'),
+                        'expires' => $user->getEarnerFeatureExpiry('digital_products'),
+                    ],
+                    'growth_marketplace' => [
+                        'label' => 'Growth Marketplace',
+                        'unlocked' => $user->hasEarnerFeature('growth_marketplace'),
+                        'expires' => $user->getEarnerFeatureExpiry('growth_marketplace'),
+                    ],
+                    'task_creation' => [
+                        'label' => 'Task Creation',
+                        'unlocked' => $user->hasEarnerFeature('task_creation'),
+                        'expires' => $user->getEarnerFeatureExpiry('task_creation'),
+                    ],
+                ];
+                $featureRoute = 'onboarding.earn.feature.unlock';
+                break;
+
+            case 'task_creator':
+                $roleFeatures = [
+                    'available_tasks' => [
+                        'label' => 'Available Tasks',
+                        'unlocked' => $user->hasTaskCreatorFeature('available_tasks'),
+                        'expires' => $user->getTaskCreatorFeatureExpiry('available_tasks'),
+                    ],
+                    'professional_services' => [
+                        'label' => 'Professional Services',
+                        'unlocked' => $user->hasTaskCreatorFeature('professional_services'),
+                        'expires' => $user->getTaskCreatorFeatureExpiry('professional_services'),
+                    ],
+                    'growth_listings' => [
+                        'label' => 'Growth Listings',
+                        'unlocked' => $user->hasTaskCreatorFeature('growth_listings'),
+                        'expires' => $user->getTaskCreatorFeatureExpiry('growth_listings'),
+                    ],
+                    'digital_products' => [
+                        'label' => 'Digital Products',
+                        'unlocked' => $user->hasTaskCreatorFeature('digital_products'),
+                        'expires' => $user->getTaskCreatorFeatureExpiry('digital_products'),
+                    ],
+                ];
+                $featureRoute = 'onboarding.task-creator.feature.unlock';
+                break;
+
+            case 'freelancer':
+                $roleFeatures = [
+                    'task_creation' => [
+                        'label' => 'Task Creation',
+                        'unlocked' => $user->hasFreelancerFeature('task_creation'),
+                        'expires' => $user->getFreelancerFeatureExpiry('task_creation'),
+                    ],
+                    'available_tasks' => [
+                        'label' => 'Available Tasks',
+                        'unlocked' => $user->hasFreelancerFeature('available_tasks'),
+                        'expires' => $user->getFreelancerFeatureExpiry('available_tasks'),
+                    ],
+                    'growth_listings' => [
+                        'label' => 'Growth Listings',
+                        'unlocked' => $user->hasFreelancerFeature('growth_listings'),
+                        'expires' => $user->getFreelancerFeatureExpiry('growth_listings'),
+                    ],
+                    'digital_products' => [
+                        'label' => 'Digital Products',
+                        'unlocked' => $user->hasFreelancerFeature('digital_products'),
+                        'expires' => $user->getFreelancerFeatureExpiry('digital_products'),
+                    ],
+                ];
+                $featureRoute = 'onboarding.freelancer.feature.unlock';
+                break;
+
+            case 'digital_seller':
+                $roleFeatures = [
+                    'task_creation' => [
+                        'label' => 'Task Creation',
+                        'unlocked' => $user->hasDigitalSellerFeature('task_creation'),
+                        'expires' => $user->getDigitalSellerFeatureExpiry('task_creation'),
+                    ],
+                    'available_tasks' => [
+                        'label' => 'Available Tasks',
+                        'unlocked' => $user->hasDigitalSellerFeature('available_tasks'),
+                        'expires' => $user->getDigitalSellerFeatureExpiry('available_tasks'),
+                    ],
+                    'professional_services' => [
+                        'label' => 'Professional Services',
+                        'unlocked' => $user->hasDigitalSellerFeature('professional_services'),
+                        'expires' => $user->getDigitalSellerFeatureExpiry('professional_services'),
+                    ],
+                    'growth_listings' => [
+                        'label' => 'Growth Listings',
+                        'unlocked' => $user->hasDigitalSellerFeature('growth_listings'),
+                        'expires' => $user->getDigitalSellerFeatureExpiry('growth_listings'),
+                    ],
+                ];
+                $featureRoute = 'onboarding.digital-seller.feature.unlock';
+                break;
+
+            case 'growth_seller':
+                $roleFeatures = [
+                    'task_creation' => [
+                        'label' => 'Task Creation',
+                        'unlocked' => $user->hasGrowthSellerFeature('task_creation'),
+                        'expires' => $user->getGrowthSellerFeatureExpiry('task_creation'),
+                    ],
+                    'available_tasks' => [
+                        'label' => 'Available Tasks',
+                        'unlocked' => $user->hasGrowthSellerFeature('available_tasks'),
+                        'expires' => $user->getGrowthSellerFeatureExpiry('available_tasks'),
+                    ],
+                    'professional_services' => [
+                        'label' => 'Professional Services',
+                        'unlocked' => $user->hasGrowthSellerFeature('professional_services'),
+                        'expires' => $user->getGrowthSellerFeatureExpiry('professional_services'),
+                    ],
+                    'digital_products' => [
+                        'label' => 'Digital Products',
+                        'unlocked' => $user->hasGrowthSellerFeature('digital_products'),
+                        'expires' => $user->getGrowthSellerFeatureExpiry('digital_products'),
+                    ],
+                ];
+                $featureRoute = 'onboarding.growth-seller.feature.unlock';
+                break;
+
+            default:
+                $roleFeatures = [];
+                $featureRoute = '';
+        }
+
+        // Keep for backwards compatibility
+        $earnerFeatures = $roleFeatures;
+
+        $referralOnboardingTask = [
+            'title' => 'Referral Task',
+            'reward' => 500,
+            'description' => 'Invite a friend and earn₦500 as a first onboarding exercise.',
+        ];
+
+        // Micro and UGC tasks preview for activated earners
+        $microTasks = Task::active()->whereIn('task_type', ['like', 'follow', 'comment', 'share', 'view', 'retweet'])->limit(4)->get();
+        $ugcTasks = Task::active()->whereIn('task_type', ['testimonial', 'review', 'promo_video', 'story'])->limit(4)->get();
+
         // Calculate potential earnings preview
         $potentialEarnings = $availableTasks->sum('worker_reward_per_task');
         $avgEarningsPerBundle = $potentialEarnings / max(1, count($availableTasks));
@@ -128,7 +311,19 @@ class StartJourneyController extends Controller
             'avgEarningsPerBundle',
             'activeWorkers',
             'totalPaidOut',
-            'recentPayouts'
+            'recentPayouts',
+            'isEarner',
+            'activationFee',
+            'activationPaid',
+            'referralTaskCompleted',
+            'referralTaskSkipped',
+            'earnerFeatures',
+            'referralOnboardingTask',
+            'microTasks',
+            'ugcTasks',
+            'roleFeatures',
+            'featureRoute',
+            'accountType'
         ));
     }
 

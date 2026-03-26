@@ -3,6 +3,10 @@
 @section('title', 'Activate Account - SwiftKudi')
 
 @section('content')
+@php
+$user = auth()->user();
+$accountType = $user->account_type ?? '';
+@endphp
 <div class="py-8">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Back Link -->
@@ -59,6 +63,7 @@
                 @endif
 
                 <!-- Benefits -->
+                 @if($accountType === 'earner')
                 <div class="p-4 sm:p-8">
                     <h2 class="font-bold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4 text-base sm:text-lg">What you get after activation:</h2>
                     <ul class="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
@@ -74,7 +79,7 @@
                             </div>
                             <span class="text-gray-600 dark:text-gray-400 text-sm sm:text-base">Complete tasks and earn real money</span>
                         </li>
-                        <li class="flex items-start">
+                        <!--<li class="flex items-start">
                             <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center mr-2 sm:mr-3 mt-0.5 flex-shrink-0">
                                 <i class="fas fa-briefcase text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm"></i>
                             </div>
@@ -91,7 +96,7 @@
                                 <i class="fas fa-shopping-bag text-pink-600 dark:text-pink-400 text-xs sm:text-sm"></i>
                             </div>
                             <span class="text-gray-600 dark:text-gray-400 text-sm sm:text-base">Buy and sell digital products</span>
-                        </li>
+                        </li>-->
                         <li class="flex items-start">
                             <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center mr-2 sm:mr-3 mt-0.5 flex-shrink-0">
                                 <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-xs sm:text-sm"></i>
@@ -164,6 +169,8 @@
                             </div>
                         </div>
                     </div>
+                    @endif
+
 
                     <!-- Pricing -->
                     <div class="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-500/10 dark:to-purple-500/10 rounded-2xl p-4 sm:p-6 mb-8">

@@ -6,6 +6,7 @@ use App\Models\GrowthListing;
 use App\Models\GrowthOrder;
 use App\Models\MarketplaceConversation;
 use App\Models\MarketplaceMessage;
+use App\Models\MarketplaceCategory;
 use App\Services\GrowthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,9 +25,31 @@ class GrowthController extends Controller
     /**
      * Browse listings by type
      */
-    public function index(Request $request, string $type = null): View
+    public function index(Request $request, ?string $type = null): View
     {
         $query = GrowthListing::active()->with('seller');
+
+        // Get available types based on buyer categories
+        $availableTypes = null;
+        $categorySlugs = [];
+        $user = auth()->user();
+        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
+            $buyerCategories = $user->getBuyerCategories();
+            if (!empty($buyerCategories)) {
+                // Get selected categories from marketplace - use slug as type
+                $availableTypes = MarketplaceCategory::whereIn('id', $buyerCategories)
+                    ->where('type', 'growth')
+                    ->get();
+                
+                // Collect slugs for filtering listings
+                $categorySlugs = $availableTypes->pluck('slug')->toArray();
+            }
+        }
+
+        // Filter by buyer-selected categories if any
+        if (!empty($categorySlugs)) {
+            $query->whereIn('type', $categorySlugs);
+        }
 
         if ($type) {
             $query->ofType($type);
@@ -43,12 +66,8 @@ class GrowthController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        $types = [
-            'backlinks' => 'Backlinks',
-            'influencer' => 'Influencers',
-            'newsletter' => 'Newsletters',
-            'leads' => 'Leads',
-        ];
+        $types = $availableTypes;
+        
 
         return view('growth.index', compact('listings', 'types', 'type'));
     }
@@ -114,6 +133,14 @@ class GrowthController extends Controller
             true
         );
 
+        if ($user->account_type === 'growth_seller' && !$user->growth_listing_created) {
+            // Use centralized service for unlock logic
+            app(\App\Services\TaskGateProgressService::class)->unlockMarketplaceSeller(
+                $user,
+                'growth_seller'
+            );
+        }
+
         return response()->json([
             'success' => true,
             'message' => $result['message'],
@@ -128,362 +155,133 @@ class GrowthController extends Controller
     {
         $user = Auth::user();
         
-        $activeListings = GrowthListing::where('user_id', $user->id)
-            ->where('status', GrowthListing::STATUS_ACTIVE)
-            ->get();
+        $listings = GrowthListing::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
-        $pendingListings = GrowthListing::where('user_id', $user->id)
-            ->where('status', GrowthListing::STATUS_PENDING)
-            ->get();
-
-        return view('growth.my-listings', compact('activeListings', 'pendingListings'));
+        return view('growth.my-listings', compact('listings'));
     }
 
     /**
-     * Create order
+     * Show edit form
      */
-    public function createOrder(Request $request, int $listingId)
+    public function edit(int $id): View
     {
-        $user = Auth::user();
-        $result = $this->service->createOrder($user, $listingId);
+        $listing = GrowthListing::where('user_id', auth()->id())->findOrFail($id);
+        
+        $specsFields = GrowthService::getSpecsFields($listing->type);
 
-        if (!$result['success']) {
-            if (isset($result['required'], $result['available'])) {
-                $requiredTopup = max(0, (float) $result['required'] - (float) $result['available']);
-                session([
-                    'pending_growth_checkout' => [
-                        'listing_id' => $listingId,
-                    ],
-                    'deposit_success_redirect' => route('growth.checkout.resume'),
-                    'insufficient_balance_required' => $requiredTopup,
-                ]);
+        return view('growth.edit', compact('listing', 'specsFields'));
+    }
 
-                $result['redirect'] = route('wallet.deposit', ['required' => $requiredTopup]);
-                $result['message'] = 'Insufficient wallet balance. Deposit and you will be returned to complete this order.';
-            }
+    /**
+     * Update listing
+     */
+    public function update(Request $request, int $id)
+    {
+        $listing = GrowthListing::where('user_id', auth()->id())->findOrFail($id);
 
-            return response()->json($result, 400);
-        }
+        $validated = $request->validate([
+            'title' => 'required|string|min:5|max:255',
+            'description' => 'required|string|min:20|max:5000',
+            'price' => 'required|numeric|min:100',
+            'delivery_days' => 'required|integer|min:1|max:30',
+            'specs' => 'nullable|array',
+        ]);
 
-        try {
-            $conversation = MarketplaceConversation::findOrCreate(
-                'growth_service',
-                $result['order']->listing_id,
-                $result['order']->buyer_id,
-                $result['order']->seller_id
-            );
-
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
-                $result['order']->seller,
-                'New Growth Order Received',
-                'You received a new growth order for "' . ($result['order']->listing->title ?? 'Growth Listing') . '".',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $result['order']->id, 'action_url' => route('growth.orders.show', $result['order']->id)],
-                'notify_growth_orders',
-                true
-            );
-
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
-                $result['order']->buyer,
-                'Growth Order Confirmed',
-                'Your order for "' . ($result['order']->listing->title ?? 'Growth Listing') . '" has been placed successfully.',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $result['order']->id, 'action_url' => route('growth.orders.show', $result['order']->id)],
-                'notify_growth_orders'
-            );
-
-            MarketplaceMessage::create([
-                'conversation_id' => $conversation->id,
-                'sender_id' => $result['order']->buyer_id,
-                'message' => 'New order placed for "' . ($result['order']->listing->title ?? 'Growth Listing') . '". Please review and begin delivery.',
-                'is_read' => false,
-            ]);
-
-            $conversation->update(['last_message_at' => now()]);
-        } catch (\Exception $e) {
-            Log::warning('Failed to create growth order conversation', ['error' => $e->getMessage()]);
-        }
+        $listing->update($validated);
 
         return response()->json([
             'success' => true,
-            'message' => $result['message'],
-            'order' => $result['order'],
-            'redirect' => route('growth.orders.show', $result['order']->id),
+            'message' => 'Listing updated successfully',
         ]);
     }
 
     /**
-     * Resume growth checkout after successful deposit
+     * Delete listing
      */
-    public function resumeCheckout(Request $request)
+    public function destroy(int $id)
     {
-        $pending = session('pending_growth_checkout');
-
-        if (!$pending || empty($pending['listing_id'])) {
-            return redirect()->route('growth.index')->with('error', 'No pending growth order found to resume.');
-        }
-
-
-        $result = $this->service->createOrder(Auth::user(), (int) $pending['listing_id']);
-
-        if (!$result['success']) {
-            if (isset($result['required'], $result['available'])) {
-                $requiredTopup = max(0, (float) $result['required'] - (float) $result['available']);
-                session([
-                    'deposit_success_redirect' => route('growth.checkout.resume'),
-                    'insufficient_balance_required' => $requiredTopup,
-                ]);
-
-                return redirect()
-                    ->route('wallet.deposit', ['required' => $requiredTopup])
-                    ->with('error', 'Your balance is still insufficient. Please complete your deposit to continue.');
-            }
-
-            return redirect()->route('growth.show', (int) $pending['listing_id'])
-                ->with('error', $result['message'] ?? 'Failed to resume growth checkout.');
-        }
-
-        try {
-            $conversation = MarketplaceConversation::findOrCreate(
-                'growth_service',
-                $result['order']->listing_id,
-                $result['order']->buyer_id,
-                $result['order']->seller_id
-            );
-
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
-                $result['order']->seller,
-                'Growth Checkout Resumed',
-                'A buyer resumed checkout and confirmed order for "' . ($result['order']->listing->title ?? 'Growth Listing') . '".',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $result['order']->id, 'action_url' => route('growth.orders.show', $result['order']->id)],
-                'notify_growth_orders',
-                true
-            );
-
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
-                $result['order']->buyer,
-                'Growth Order Confirmed',
-                'Your order for "' . ($result['order']->listing->title ?? 'Growth Listing') . '" has been placed successfully.',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $result['order']->id, 'action_url' => route('growth.orders.show', $result['order']->id)],
-                'notify_growth_orders'
-            );
-
-            MarketplaceMessage::create([
-                'conversation_id' => $conversation->id,
-                'sender_id' => $result['order']->buyer_id,
-                'message' => 'Checkout resumed and order confirmed for "' . ($result['order']->listing->title ?? 'Growth Listing') . '".',
-                'is_read' => false,
-            ]);
-
-            $conversation->update(['last_message_at' => now()]);
-        } catch (\Exception $e) {
-            Log::warning('Failed to create growth resume conversation', ['error' => $e->getMessage()]);
-        }
-
-        session()->forget(['pending_growth_checkout', 'deposit_success_redirect', 'insufficient_balance_required']);
-
-        return redirect()->route('growth.orders.show', $result['order']->id)
-            ->with('success', 'Growth order completed successfully after deposit.');
-    }
-
-    /**
-     * My orders (buyer)
-     */
-    public function myOrders(): View
-    {
-        $user = Auth::user();
+        $listing = GrowthListing::where('user_id', auth()->id())->findOrFail($id);
         
-        $activeOrders = GrowthOrder::forBuyer($user->id)
-            ->whereIn('status', ['paid', 'in_progress', 'delivered', 'revision'])
-            ->with('listing')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $listing->update(['status' => GrowthListing::STATUS_DELETED]);
 
-        $completedOrders = GrowthOrder::forBuyer($user->id)
-            ->where('status', 'completed')
-            ->with('listing')
-            ->orderBy('completed_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        return view('growth.orders.index', compact('activeOrders', 'completedOrders'));
+        return response()->json([
+            'success' => true,
+            'message' => 'Listing deleted successfully',
+        ]);
     }
 
     /**
-     * My sales (seller)
+     * Start conversation about a listing
      */
-    public function mySales(): View
+    public function startConversation(Request $request, int $id)
     {
-        $user = Auth::user();
-        
-        $activeSales = GrowthOrder::forSeller($user->id)
-            ->whereIn('status', ['paid', 'in_progress', 'delivered', 'revision'])
-            ->with('listing', 'buyer')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        $completedSales = GrowthOrder::forSeller($user->id)
-            ->where('status', 'completed')
-            ->with('listing', 'buyer')
-            ->orderBy('completed_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        return view('growth.sales.index', compact('activeSales', 'completedSales'));
-    }
-
-    /**
-     * Show order details
-     */
-    public function showOrder(int $id): View
-    {
-        $order = GrowthOrder::with(['listing', 'buyer', 'seller'])->findOrFail($id);
-
-        // Verify access
-        if ($order->buyer_id !== Auth::id() && $order->seller_id !== Auth::id()) {
-            abort(403);
-        }
-
-        return view('growth.orders.show', compact('order'));
-    }
-
-    /**
-     * Submit proof (seller)
-     */
-    public function submitProof(Request $request, int $orderId)
-    {
-        $validated = $request->validate([
-            'proof_data' => 'required|array',
-            'notes' => 'required|string|min:10',
+        $request->validate([
+            'message' => 'required|string|min:1|max:2000',
         ]);
 
-        $order = GrowthOrder::findOrFail($orderId);
-        $user = Auth::user();
+        $listing = GrowthListing::active()->findOrFail($id);
+        $seller = $listing->seller;
+        $buyer = auth()->user();
 
-        $result = $this->service->submitProof($order, $user, $validated['proof_data'], $validated['notes']);
-
-        return response()->json($result, $result['success'] ? 200 : 400);
-    }
-
-    /**
-     * Approve order (buyer)
-     */
-    public function approveOrder(int $orderId)
-    {
-        $order = GrowthOrder::findOrFail($orderId);
-        $user = Auth::user();
-
-        $result = $this->service->approveProof($order, $user);
-
-        return response()->json($result, $result['success'] ? 200 : 400);
-    }
-
-    /**
-     * Request revision (buyer)
-     */
-    public function requestRevision(Request $request, int $orderId)
-    {
-        $validated = $request->validate([
-            'notes' => 'required|string|min:10',
-        ]);
-
-        $order = GrowthOrder::findOrFail($orderId);
-        $user = Auth::user();
-
-        $result = $this->service->requestRevision($order, $user, $validated['notes']);
-
-        return response()->json($result, $result['success'] ? 200 : 400);
-    }
-
-    /**
-     * Cancel order
-     */
-    public function cancelOrder(int $orderId)
-    {
-        $order = GrowthOrder::findOrFail($orderId);
-        $user = Auth::user();
-
-        $result = $this->service->cancelOrder($order, $user);
-
-        return response()->json($result, $result['success'] ? 200 : 400);
-    }
-
-    /**
-     * Contact a seller
-     */
-    public function contact(Request $request)
-    {
-        $validated = $request->validate([
-            'recipient_id' => 'required|exists:users,id',
-            'listing_id' => 'nullable|exists:growth_listings,id',
-            'subject' => 'required|string|min:3|max:255',
-            'message' => 'required|string|min:10|max:5000',
-        ]);
-
-        $sender = Auth::user();
-        $recipientId = $validated['recipient_id'];
-
-        // Prevent sending message to yourself
-        if ($sender->id == $recipientId) {
+        // Don't allow messaging yourself
+        if ($seller->id === $buyer->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'You cannot send a message to yourself.',
+                'message' => 'You cannot message yourself',
             ], 400);
         }
 
-        try {
-            $recipient = \App\Models\User::find($recipientId);
-            
-            if (!$recipient) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Recipient not found.',
-                ], 404);
-            }
+        // Check for existing conversation
+        $conversation = MarketplaceConversation::where('growth_listing_id', $listing->id)
+            ->where('buyer_id', $buyer->id)
+            ->where('seller_id', $seller->id)
+            ->first();
 
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
-                $recipient,
-                'New Message from ' . $sender->name,
-                "Subject: {$validated['subject']}\n\n{$validated['message']}",
-                \App\Models\Notification::TYPE_SYSTEM,
-                [
-                    'sender_id' => $sender->id,
-                    'sender_name' => $sender->name,
-                    'action_url' => route('growth.index'),
-                ],
-                'notify_chat_messages',
-                true
-            );
-
-            $conversation = MarketplaceConversation::findOrCreate(
-                'growth_service',
-                (int) ($validated['listing_id'] ?? 0),
-                $sender->id,
-                $recipient->id
-            );
-
-            MarketplaceMessage::create([
-                'conversation_id' => $conversation->id,
-                'sender_id' => $sender->id,
-                'message' => "Subject: {$validated['subject']}\n\n{$validated['message']}",
-                'is_read' => false,
+        if (!$conversation) {
+            $conversation = MarketplaceConversation::create([
+                'growth_listing_id' => $listing->id,
+                'buyer_id' => $buyer->id,
+                'seller_id' => $seller->id,
             ]);
-
-            $conversation->update(['last_message_at' => now()]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Message sent successfully!',
-                'chat_url' => route('chat.show', $conversation),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Contact seller error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send message: ' . $e->getMessage(),
-            ], 500);
         }
+
+        // Add message
+        MarketplaceMessage::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $buyer->id,
+            'message' => $request->message,
+        ]);
+
+        // Notify seller
+        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $seller,
+            'New Message on ' . $listing->title,
+            'You have a new message from ' . $buyer->name . ' about your growth listing.',
+            \App\Models\Notification::TYPE_SYSTEM,
+            ['conversation_id' => $conversation->id, 'action_url' => route('messages.show', $conversation->id)],
+            'notify_growth_orders'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Message sent successfully',
+        ]);
+    }
+
+    /**
+     * Get specs fields for a type
+     */
+    public function getSpecsFields(Request $request)
+    {
+        $type = $request->get('type', 'backlinks');
+        
+        $specsFields = GrowthService::getSpecsFields($type);
+
+        return response()->json([
+            'success' => true,
+            'specs_fields' => $specsFields,
+        ]);
     }
 }

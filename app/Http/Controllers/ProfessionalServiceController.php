@@ -36,6 +36,15 @@ class ProfessionalServiceController extends Controller
         $query = ProfessionalService::active()
             ->with(['category', 'seller']);
 
+        // Add buyer category filter
+        $user = auth()->user();
+        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
+            $buyerCategories = $user->getBuyerCategories();
+            if (!empty($buyerCategories)) {
+                $query->whereIn('category_id', $buyerCategories);
+            }
+        }
+
         if ($request->category) {
             $query->ofCategory($request->category);
         }
@@ -118,6 +127,14 @@ class ProfessionalServiceController extends Controller
             'notify_service_orders',
             true
         );
+
+        if ($user->account_type === 'freelancer' && !$user->freelancer_service_created) {
+            // Use centralized service for unlock logic
+            app(\App\Services\TaskGateProgressService::class)->unlockMarketplaceSeller(
+                $user,
+                'freelancer'
+            );
+        }
 
         return response()->json([
             'success' => true,
@@ -558,21 +575,76 @@ class ProfessionalServiceController extends Controller
             'is_available' => 'boolean',
             'hourly_rate' => 'nullable|numeric|min:0',
             'bio' => 'nullable|string|max:1000',
-            'skills' => 'nullable|array',
-            'portfolio_links' => 'nullable|array',
-            'certifications' => 'nullable|array',
+            'skills' => 'nullable|string',
+            'portfolio_links' => 'nullable|string',
+            'certifications' => 'nullable|string',
+        ], [
+            'skills.array' => 'Skills must be a valid list. Please provide skills as a comma-separated list or an array.',
+            'portfolio_links.array' => 'Portfolio links must be a valid list of URLs.',
+            'certifications.array' => 'Certifications must be a valid list.',
+            'hourly_rate.numeric' => 'Hourly rate must be a valid number.',
+            'hourly_rate.min' => 'Hourly rate cannot be negative.',
+            'bio.max' => 'Bio cannot exceed 1000 characters.',
         ]);
+
+        // Convert skills from JSON string to array
+        if (isset($validated['skills']) && is_string($validated['skills'])) {
+            $decoded = json_decode($validated['skills'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $validated['skills'] = array_filter($decoded);
+            } else {
+                // Fall back to comma-separated
+                $validated['skills'] = array_filter(array_map('trim', explode(',', $validated['skills'])));
+            }
+        } else {
+            $validated['skills'] = $validated['skills'] ?? [];
+        }
+
+        // Convert portfolio_links from JSON string to array
+        if (isset($validated['portfolio_links']) && is_string($validated['portfolio_links'])) {
+            $decoded = json_decode($validated['portfolio_links'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $validated['portfolio_links'] = array_filter($decoded);
+            } else {
+                $validated['portfolio_links'] = array_filter(array_map('trim', explode(',', $validated['portfolio_links'])));
+            }
+        } else {
+            $validated['portfolio_links'] = $validated['portfolio_links'] ?? [];
+        }
+
+        // Convert certifications from JSON string to array
+        if (isset($validated['certifications']) && is_string($validated['certifications'])) {
+            $decoded = json_decode($validated['certifications'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $validated['certifications'] = array_filter($decoded);
+            } else {
+                $validated['certifications'] = array_filter(array_map('trim', explode(',', $validated['certifications'])));
+            }
+        } else {
+            $validated['certifications'] = $validated['certifications'] ?? [];
+        }
 
         $user = Auth::user();
         $result = $this->service->updateProviderProfile($user, $validated);
 
         if (!$result['success']) {
-            return response()->json($result, 400);
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? 'Failed to update profile. Please check your input and try again.',
+                'errors' => $result['errors'] ?? [],
+            ], 400);
+        }
+
+        // Refresh the user model to get updated values after the profile update
+        $user->refresh();
+
+        if ($user->account_type === 'freelancer' && !$user->freelancer_profile_completed) {
+            $user->update(['freelancer_profile_completed' => true]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Profile updated successfully',
+            'message' => 'Profile updated successfully. Your freelancer profile is now complete.',
         ]);
     }
 

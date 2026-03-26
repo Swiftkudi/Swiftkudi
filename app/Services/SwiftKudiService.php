@@ -166,8 +166,10 @@ class SwiftKudiService
             }
 
             // Determine activation fee using SystemSetting (supports referred users discount)
+            // Activation fee is only required for earners; non-earners get free activation
             $isReferred = $referrer !== null;
-            $activationFeeRequired = SystemSetting::isCompulsoryActivationFee();
+            $isEarner = $user->account_type === 'earner';
+            $activationFeeRequired = SystemSetting::isCompulsoryActivationFee() && $isEarner;
             $activationFee = $activationFeeRequired
                 ? SystemSetting::getActivationFeeForUser($isReferred)
                 : 0;

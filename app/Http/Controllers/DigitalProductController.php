@@ -27,6 +27,15 @@ class DigitalProductController extends Controller
     {
         $query = DigitalProduct::active()->with(['user', 'category']);
 
+        // Add buyer category filter
+        $user = auth()->user();
+        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
+            $buyerCategories = $user->getBuyerCategories();
+            if (!empty($buyerCategories)) {
+                $query->whereIn('category_id', $buyerCategories);
+            }
+        }
+
         if ($request->category) {
             $query->byCategory($request->category);
         }
@@ -49,7 +58,22 @@ class DigitalProductController extends Controller
         }
 
         $products = $query->paginate(12);
-        $categories = MarketplaceCategory::where('type', 'digital_product')->get();
+        
+        // Get categories - buyers only see their selected categories
+        $user = auth()->user();
+        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
+            $buyerCategories = $user->getBuyerCategories();
+            if (!empty($buyerCategories)) {
+                // Only show buyer's selected categories
+                $categories = MarketplaceCategory::where('type', 'digital_product')
+                    ->whereIn('id', $buyerCategories)
+                    ->get();
+            } else {
+                $categories = MarketplaceCategory::where('type', 'digital_product')->get();
+            }
+        } else {
+            $categories = MarketplaceCategory::where('type', 'digital_product')->get();
+        }
 
         return view('digital-products.index', compact('products', 'categories'));
     }
@@ -142,6 +166,14 @@ class DigitalProductController extends Controller
             'notify_product_orders',
             true
         );
+
+        if (Auth::user()->account_type === 'digital_seller' && !Auth::user()->digital_product_uploaded) {
+            // Use centralized service for unlock logic
+            app(\App\Services\TaskGateProgressService::class)->unlockMarketplaceSeller(
+                Auth::user(),
+                'digital_seller'
+            );
+        }
 
         return redirect()->route('digital-products.show', $product)
             ->with('success', 'Product created successfully!');

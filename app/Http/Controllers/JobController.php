@@ -19,6 +19,15 @@ class JobController extends Controller
             ->where('status', 'active')
             ->where('expires_at', '>', now());
 
+        // Add buyer category filter
+        $user = auth()->user();
+        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
+            $buyerCategories = $user->getBuyerCategories();
+            if (!empty($buyerCategories)) {
+                $query->whereIn('category_id', $buyerCategories);
+            }
+        }
+
         // Filter by category
         if ($request->has('category') && $request->category) {
             $query->where('category_id', $request->category);

@@ -78,6 +78,141 @@
             </div>
         </div>
 
+        @if($isEarner || auth()->user()->account_type === 'task_creator')
+        <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg border border-gray-100 dark:border-dark-700 p-6 mb-6">
+            <h2 class="text-xl font-bold mb-3">
+                @if($accountType === 'buyer')
+                    Buyer Features
+                @elseif($accountType === 'earner')
+                    Earner Features
+                @elseif($accountType === 'task_creator')
+                    Task Creator Features
+                @elseif($accountType === 'freelancer')
+                    Freelancer Features
+                @elseif($accountType === 'digital_seller')
+                    Digital Seller Features
+                @elseif($accountType === 'growth_seller')
+                    Growth Seller Features
+                @else
+                    Onboarding
+                @endif
+            </h2>
+
+            @if($accountType === 'buyer')
+                <div class="mb-4 p-4 rounded-lg bg-blue-50 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-700">
+                    <p>As a buyer, you have view access to marketplaces. Unlock additional features below.</p>
+                </div>
+            @elseif($isEarner && !$activationPaid)
+                <div class="mb-4 p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-700">
+                    <p>You must pay the earnings activation fee to unlock platform worker features.</p>
+                    <p class="font-semibold">Fee: ₦{{ number_format($activationFee, 2) }}</p>
+                </div>
+                <form method="POST" action="{{ route('onboarding.earn.activate') }}">
+                    @csrf
+                    <button type="submit" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">Pay Activation Fee</button>
+                </form>
+            @else
+                <div class="mb-4 p-4 rounded-lg bg-green-50 dark:bg-green-900 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-700">
+                    @if($accountType === 'earner')
+                        <p>Earnings activation paid. You can now access Micro Tasks, UGC Tasks, and Referral system.</p>
+                    @elseif($accountType === 'task_creator')
+                        <p>As Task Creator you may now create your first task and unlock marketplace access.</p>
+                    @elseif($accountType === 'freelancer')
+                        <p>As Freelancer you can access professional services. Unlock additional features below.</p>
+                    @elseif($accountType === 'digital_seller')
+                        <p>As Digital Seller you have access to digital products. Unlock additional features below.</p>
+                    @elseif($accountType === 'growth_seller')
+                        <p>As Growth Seller you have access to growth listings. Unlock additional features below.</p>
+                    @endif
+                </div>
+
+                @if($accountType === 'earner')
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                    <div class="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900">
+                        <h3 class="font-semibold">Micro Tasks</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-200">Start with quick engagements and earn instantly.</p>
+                    </div>
+                    <div class="p-3 rounded-lg bg-green-50 dark:bg-green-900">
+                        <h3 class="font-semibold">UGC Tasks</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-200">Create content, post video/testimonials and earn more.</p>
+                    </div>
+                    <div class="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900">
+                        <h3 class="font-semibold">Referral System</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-200">Refer users and earn bonuses.</p>
+                    </div>
+                </div>
+                @endif
+
+                @if(auth()->user()->account_type === 'task_creator' && !$user->has_completed_mandatory_creation)
+                    <div class="mb-4 p-4 rounded-lg bg-red-50 dark:bg-red-900 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-700">
+                        <p class="font-semibold">Create your first task to activate marketplace access.</p>
+                        <p>You can still create a task below. Once your first task is live, you can browse the marketplace.</p>
+                        <a href="{{ route('tasks.create') }}" class="mt-2 inline-block px-4 py-2 rounded-lg bg-indigo-600 text-white">Create First Task</a>
+                    </div>
+                @endif
+
+                @if($accountType === 'earner' && !$referralTaskCompleted && !$referralTaskSkipped)
+                    <div class="mb-4 p-4 border border-dashed border-blue-200 dark:border-blue-800 rounded-lg bg-blue-50 dark:bg-blue-900">
+                        <h3 class="font-bold">Referral Task — Earn ₦{{ number_format($referralOnboardingTask['reward'], 2) }}</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-200 mb-3">{{ $referralOnboardingTask['description'] }}</p>
+                        <div class="flex items-center gap-2">
+                            <form method="POST" action="{{ route('onboarding.earn.referral.complete') }}">
+                                @csrf
+                                <button type="submit" class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white">Complete Referral Task</button>
+                            </form>
+                            <form method="POST" action="{{ route('onboarding.earn.referral.skip') }}">
+                                @csrf
+                                <button type="submit" class="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-700">Skip</button>
+                            </form>
+                        </div>
+                    </div>
+                @elseif($accountType === 'earner' && $referralTaskCompleted)
+                    <div class="mb-4 p-3 rounded-lg bg-green-100 dark:bg-green-800 text-green-800">Referral task completed — ₦{{ number_format($referralOnboardingTask['reward'], 2) }} credited.</div>
+                @elseif($accountType === 'earner' && $referralTaskSkipped)
+                    <div class="mb-4 p-3 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-800">Referral task skipped.</div>
+                @endif
+            @endif
+
+            @if($accountType !== 'buyer' || ($accountType === 'buyer' && count($roleFeatures) > 0))
+                <div class="mb-4">
+                    <h3 class="font-semibold mb-2">Unlock Additional Marketplace Features</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        @foreach($roleFeatures as $key => $feature)
+                        <div class="border rounded-lg p-4 bg-white dark:bg-dark-900">
+                            <h4 class="text-md font-bold">{{ $feature['label'] }}</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                                {{ $feature['unlocked'] ? 'Unlocked until ' . $feature['expires']->format('M j, Y') : 'Walk-through access not activated.' }}
+                            </p>
+                            <form method="POST" action="{{ route($featureRoute) }}" class="inline-flex gap-2 flex-wrap">
+                                @csrf
+                                <input type="hidden" name="feature" value="{{ $key }}" />
+                                <input type="hidden" name="period" value="initial" />
+                                <button class="px-3 py-1 rounded-lg bg-indigo-600 text-white" type="submit">Unlock ₦1,000 / 3 months</button>
+                            </form>
+                            @if($feature['unlocked'])
+                            <div class="mt-2 inline-flex gap-2">
+                                <form method="POST" action="{{ route($featureRoute) }}">
+                                    @csrf
+                                    <input type="hidden" name="feature" value="{{ $key }}" />
+                                    <input type="hidden" name="period" value="monthly" />
+                                    <button class="px-2 py-1 rounded bg-green-500 text-white text-xs">Renew ₦500/month</button>
+                                </form>
+                                <form method="POST" action="{{ route($featureRoute) }}">
+                                    @csrf
+                                    <input type="hidden" name="feature" value="{{ $key }}" />
+                                    <input type="hidden" name="period" value="quarterly" />
+                                    <button class="px-2 py-1 rounded bg-blue-500 text-white text-xs">Renew ₦1,000/quarter</button>
+                                </form>
+                            </div>
+                            @endif
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </div>
+        @endif
+
         <!-- Quick Start Bundles -->
         @if(count($bundles) > 0)
         <div class="mb-6">

@@ -5,11 +5,25 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Providers\RouteServiceProvider;
+use App\Services\AccountTypeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AuthenticatedSessionController extends Controller
 {
+    /**
+     * Account type service instance.
+     */
+    protected AccountTypeService $accountTypeService;
+
+    /**
+     * Constructor.
+     */
+    public function __construct(AccountTypeService $accountTypeService)
+    {
+        $this->accountTypeService = $accountTypeService;
+    }
+
     /**
      * Display the login view.
      *
@@ -41,6 +55,19 @@ class AuthenticatedSessionController extends Controller
             return back()->withErrors([
                 'email' => 'Your account has been suspended. Please contact support.',
             ]);
+        }
+
+        // Send onboarding reminder to users without account type (non-blocking)
+        if ($user) {
+            try {
+                $this->accountTypeService->sendOnboardingReminder($user);
+            } catch (\Exception $e) {
+                // Log but don't block login if notification fails
+                \Illuminate\Support\Facades\Log::warning('Onboarding reminder failed during login', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $request->session()->regenerate();

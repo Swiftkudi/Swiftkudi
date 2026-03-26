@@ -3,12 +3,20 @@
 @section('title', 'Dashboard - SwiftKudi')
 
 @section('content')
+@php
+$user = auth()->user();
+$accountType = $user->account_type ?? '';
+@endphp
 <div class="py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Welcome Header -->
         <div class="mb-8">
             <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Welcome back, {{ Auth::user()->name }}!</h1>
             <p class="mt-2 text-gray-600 dark:text-gray-400">
+               
+                <span class="text-green-600 dark:text-green-400 flex items-center gap-2">
+                    <i class="fas fa-check-circle"></i> Welcome to your {{ ucfirst($accountType) }} dashboard.
+                </span>
                 @if(!$isActivated)
                 <span class="text-yellow-500 dark:text-yellow-400 flex items-center gap-2">
                     <i class="fas fa-exclamation-triangle"></i> Please activate your account to start earning.
@@ -28,11 +36,17 @@
                 <div class="text-center md:text-left">
                     <h2 class="text-2xl font-bold mb-2">Activate Your Account</h2>
                     <p class="text-indigo-100 mb-4">
+                        @if($accountType === 'earner')
+                            To unlock all features and start earning, please activate your account.
                         @if($activationFeeEnabled)
                             Pay ₦{{ number_format($activationFee, 0) }} activation fee to unlock all features and start earning.
                         @else
                             Activate your account for free to unlock all features and start earning.
                         @endif
+                        @else
+                            Activate your account for free to unlock all {{ ucfirst($accountType) }} features.
+                        @endif
+
                     </p>
                     <a href="{{ route('wallet.activate') }}" class="inline-flex items-center px-6 py-3 bg-white text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition-all shadow-lg">
                         <i class="fas fa-rocket mr-2"></i>Activate Now
@@ -40,15 +54,23 @@
                 </div>
                 <div class="text-center">
                     <div class="text-5xl font-bold">
+                        @if($accountType === 'earner')
                         @if($activationFeeEnabled)
                             ₦{{ number_format($activationFee, 0) }}
                         @else
                             Free
                         @endif
+                        @else
+                            Free
+                        @endif
                     </div>
                     <div class="text-indigo-200 mt-1">
+                        @if($accountType === 'earner')
                         @if($activationFeeEnabled)
                             One-time activation
+                        @else
+                            No charge required
+                        @endif
                         @else
                             No charge required
                         @endif
@@ -58,7 +80,7 @@
         </div>
         @endif
 
-        @if($isActivated)
+        @if($isActivated )
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Balance -->
@@ -131,6 +153,12 @@
 
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            @php
+            $user = auth()->user();
+            $accountType = $user->account_type ?? '';
+            @endphp
+
+            @if($accountType === 'task_creator')
             <!-- Create Task -->
             <a href="{{ route('tasks.create') }}" class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white hover:shadow-xl hover:shadow-indigo-500/30 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
@@ -143,7 +171,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(!in_array($accountType, ['buyer', 'freelancer', 'task_creator', 'digital_seller', 'growth_seller']))
             <!-- Available Tasks -->
             <a href="{{ route('tasks.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
@@ -156,8 +186,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
-            <!-- Wallet -->
+            <!-- Wallet (Always visible) -->
             <a href="{{ route('wallet.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
@@ -170,6 +201,7 @@
                 </div>
             </a>
 
+            @if(!in_array($accountType, ['task_creator', 'digital_seller', 'growth_seller', 'earner', 'buyer']))
             <!-- Hire (Professional Services) -->
             <a href="{{ route('professional-services.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
@@ -182,7 +214,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(!in_array($accountType, ['task_creator', 'freelancer', 'digital_seller', 'earner']))
             <!-- Growth Marketplace -->
             <a href="{{ route('growth.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
@@ -195,7 +229,9 @@
                     </div>
                 </div>
             </a>
+            @endif
 
+            @if(!in_array($accountType, ['task_creator', 'freelancer', 'growth_seller', 'earners']))
             <!-- Digital Products -->
             <a href="{{ route('digital-products.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
@@ -208,7 +244,26 @@
                     </div>
                 </div>
             </a>
+            @endif
         </div>
+
+        <!-- Feature Unlock CTA -->
+        @if(!empty($accountType) && in_array($accountType, ['task_creator', 'freelancer', 'digital_seller', 'growth_seller', 'earner', 'buyer']))
+        <div class="mb-8">
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-500/10 dark:to-purple-500/10 rounded-2xl p-6 border border-indigo-100 dark:border-indigo-500/20">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Unlock More Features</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">Get access to additional features and capabilities</p>
+                    </div>
+                    <a href="{{ route('onboarding.features') }}" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-all flex items-center gap-2">
+                        <i class="fas fa-unlock"></i>
+                        View Features
+                    </a>
+                </div>
+            </div>
+        </div>
+        @endif
 
         <!-- Recent Activity & Referrals -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

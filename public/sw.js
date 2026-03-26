@@ -3,10 +3,6 @@
  * Registered at the root scope so it covers all pages.
  */
 
-const CACHE_NAME = 'swiftkudi-v1';
-const APP_ICON   = '/favicon.svg';
-const DEFAULT_BADGE = '/favicon.ico';
-
 // ─── Push event ──────────────────────────────────────────────────────────────
 self.addEventListener('push', function (event) {
     let data = {};
@@ -21,18 +17,19 @@ self.addEventListener('push', function (event) {
     const title   = data.title  || 'SwiftKudi';
     const options = {
         body:    data.body    || 'You have a new notification.',
-        icon:    data.icon    || APP_ICON,
-        badge:   data.badge   || DEFAULT_BADGE,
-        tag:     data.tag     || 'swiftkudi-push',
-        renotify: true,
+        icon:    data.icon    || '/favicon.svg',
+        tag:     data.tag     || 'swiftkudi-' + Date.now(),
+        requireInteraction: false,
         data: {
-            url: data.url || '/',
+            url: data.url || '/dashboard',
         },
-        actions: data.actions || [],
     };
 
     event.waitUntil(
         self.registration.showNotification(title, options)
+            .catch(function (err) {
+                console.error('[SW] showNotification failed:', err);
+            })
     );
 });
 

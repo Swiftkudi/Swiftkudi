@@ -17,9 +17,16 @@ class MarketplaceDataSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * Only runs in non-production environments
      */
     public function run(): void
     {
+        // Skip in production
+        if (app()->environment('production')) {
+            $this->command->info('MarketplaceDataSeeder skipped in production');
+            return;
+        }
+
         // Create service providers
         $this->createServiceProviders();
         

@@ -900,4 +900,6 @@ class SettingsController extends Controller
             return redirect()->back()->with('error', 'Failed to send test email: ' . $message . $hint);
         }
     }
+
+    
 }

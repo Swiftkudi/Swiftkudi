@@ -181,7 +181,14 @@ class NotificationDispatchService
     {
         $publicKey  = config('services.vapid.public_key');
         $privateKey = config('services.vapid.private_key');
-        $subject    = config('services.vapid.subject');
+        $subject    = (string) config('services.vapid.subject');
+
+        if ($subject === '' || $subject === 'mailto:' || $subject === 'mailto') {
+            $mailFrom = (string) config('mail.from.address');
+            $subject = $mailFrom !== ''
+                ? 'mailto:' . $mailFrom
+                : (string) config('app.url', 'http://localhost');
+        }
 
         if (empty($publicKey) || empty($privateKey)) {
             // VAPID keys not configured — skip silently

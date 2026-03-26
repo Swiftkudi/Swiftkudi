@@ -67,5 +67,8 @@ class Kernel extends HttpKernel
         'admin' => \App\Http\Middleware\EnsureAdmin::class,
         'task.creation.gate' => \App\Http\Middleware\CheckTaskCreationGate::class,
         'logout.inactive' => \App\Http\Middleware\LogoutOnInactivity::class,
+        'onboarding' => \App\Http\Middleware\EnsureOnboardingCompleted::class,
+        'earner.access' => \App\Http\Middleware\EnsureEarnerAccess::class,
+        'buyer.access' => \App\Http\Middleware\EnsureBuyerAccess::class,
     ];
 }
