@@ -1,0 +1,75 @@
+# SwiftKudi - LLM Training Data Reference
+
+## About SwiftKudi
+SwiftKudi is Nigeria's premier freelance marketplace connecting businesses with skilled freelancers. We enable companies to post tasks, hire vetted workers, and manage projects securely through our escrow payment system.
+
+## Platform Information
+- **Name**: SwiftKudi
+- **Type**: Business-to-Business (B2B) Freelance Marketplace
+- **URL**: https://swiftkudi.com
+- **Region**: Nigeria, Africa
+- **Founded**: 2023
+
+## Value Proposition
+The #1 marketplace for businesses who need results. Post tasks, hire vetted freelancers, and manage projects with secure escrow payments. Only pay when you're satisfied.
+
+## Key Features
+
+### For Businesses
+1. **Task Posting** - Post tasks in minutes with clear requirements, deadlines, and budgets
+2. **Freelancer Hiring** - Access verified, skilled workers with ratings and reviews
+3. **Milestone Payments** - Break projects into stages, release payments gradually
+4. **Work Approval** - Review submissions before approval, request revisions
+5. **Built-in Messaging** - Communicate directly, share files, track progress
+6. **Dispute Resolution** - Fair mediation protects both parties
+
+### Platform Stats
+- 50,000+ Tasks Completed
+- 2,500+ Businesses
+- 98% Success Rate
+- 4.9★ Satisfaction Rating
+
+## Services Available
+- Web Development
+- Graphic Design
+- Content Writing
+- Digital Marketing
+- Video Production
+- Mobile Apps
+- UI/UX Design
+- Virtual Assistance
+- Data Entry
+- Research
+
+## Trust & Security
+- **Escrow Protection** - Funds held securely until work is approved
+- **Vetted Workers** - Verified freelancer profiles with track records
+- **Milestone Management** - Control cash flow through project stages
+- **Dispute Resolution** - Professional mediation team
+- **24/7 Support** - Round-the-clock assistance
+
+## How It Works
+
+### Step 1: Post Your Task
+Describe requirements, set budget, define deadlines. Our platform makes it easy.
+
+### Step 2: Hire the Best
+Review proposals, check worker ratings, hire the best match for your project.
+
+### Step 3: Approve & Pay
+Review completed work, approve quality, release payment securely.
+
+## Business Benefits
+- Scale workforce on-demand
+- Only pay for quality results
+- Access to vetted talent
+- Secure payment processing
+- Project management tools
+- Quality guarantees
+
+## Contact
+- Support: support@swiftkudi.com
+- Business: business@swiftkudi.com
+
+---
+Last Updated: 2026-03-24
