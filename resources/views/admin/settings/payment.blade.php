@@ -239,6 +239,121 @@
                     <i class="fas fa-save mr-2"></i> Save Payment Settings
                 </button>
             </div>
+
+            <!-- Development Settings -->
+            <div class="bg-white shadow rounded-lg mb-6 mt-6">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="bg-green-100 rounded-lg p-2 mr-3">
+                            <i class="fas fa-tools text-green-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">Development Settings</h3>
+                            <p class="text-sm text-gray-500">Local development and testing configuration</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 space-y-4">
+                    <!-- Mock Mode -->
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">
+                                <i class="fas fa-flask mr-1 text-purple-500"></i> Mock Mode
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Enable to simulate payments without calling real gateway APIs. 
+                                Perfect for local development and testing.
+                            </p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payment_mock_enabled" value="true"
+                                {{ ($settingsByKey['payment_mock_enabled'] ?? false) ? 'checked' : '' }}
+                                class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            <span class="ml-3 text-sm font-medium text-gray-700">Enabled</span>
+                        </label>
+                    </div>
+
+                    <!-- Auto Sandbox -->
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">
+                                <i class="fas fa-cloud mr-1 text-yellow-500"></i> Auto Sandbox Mode
+                            </label>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Automatically use sandbox mode when running on local environment (localhost).
+                                Disable this to use live API in local development.
+                            </p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payment_sandbox_auto" value="true"
+                                {{ ($settingsByKey['payment_sandbox_auto'] ?? true) ? 'checked' : '' }}
+                                class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                            <span class="ml-3 text-sm font-medium text-gray-700">Enabled</span>
+                        </label>
+                    </div>
+
+                    <!-- Custom Callback URL -->
+                    <div>
+                        <label for="payment_callback_url" class="block text-sm font-medium text-gray-700">
+                            <i class="fas fa-link mr-1 text-blue-500"></i> Custom Callback URL
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 mb-2">
+                            Override the default payment callback URL. Useful for local testing with ngrok or similar.
+                        </p>
+                        <input type="text" name="payment_callback_url" id="payment_callback_url"
+                            value="{{ old('payment_callback_url', $settingsByKey['payment_callback_url'] ?? '') }}"
+                            placeholder="https://your-domain.com/payment/callback"
+                            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                    </div>
+
+                    <!-- Mode Status Indicator -->
+                    @php
+                        $paymentService = app(\App\Services\PaymentGatewayService::class);
+                        $isMock = $paymentService->isMockMode();
+                        $currentGateway = $paymentService->getGateway();
+                        $currentMode = $paymentService->getMode();
+                    @endphp
+                    <div class="p-4 rounded-lg {{ $isMock ? 'bg-purple-50 border border-purple-200' : (app()->environment('local') ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200') }}">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                @if($isMock)
+                                    <i class="fas fa-flask text-purple-500"></i>
+                                @elseif(app()->environment('local'))
+                                    <i class="fas fa-cloud text-yellow-500"></i>
+                                @else
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                @endif
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium">
+                                    <strong>Current Mode:</strong> 
+                                    @if($isMock)
+                                        <span class="text-purple-600">MOCK (Simulated Payments)</span>
+                                    @elseif(app()->environment('local'))
+                                        <span class="text-yellow-600">SANDBOX (Test API)</span>
+                                    @else
+                                        <span class="text-green-600">LIVE (Production)</span>
+                                    @endif
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Environment: {{ app()->environment() }} | 
+                                    Gateway: {{ $currentGateway }} | 
+                                    Mode: {{ $currentMode }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button (repeated for Development Settings) -->
+            <div class="flex justify-end">
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                    <i class="fas fa-save mr-2"></i> Save Payment Settings
+                </button>
+            </div>
         </form>
     </div>
 </div>

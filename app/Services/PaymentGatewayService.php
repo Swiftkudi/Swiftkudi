@@ -115,10 +115,24 @@ class PaymentGatewayService
             return true;
         }
 
-        // Fall back to env config
-        return $this->mode === self::MODE_MOCK || 
-               config('services.payment.mock_enabled', false) ||
-               app()->environment('local');
+        // Fall back to env config (only if explicitly set)
+        return config('services.payment.mock_enabled', false) === true;
+    }
+
+    /**
+     * Get current gateway name
+     */
+    public function getGateway(): string
+    {
+        return $this->gateway ?? self::GATEWAY_PAYSTACK;
+    }
+
+    /**
+     * Get current mode
+     */
+    public function getMode(): string
+    {
+        return $this->mode ?? self::MODE_LIVE;
     }
 
     /**
