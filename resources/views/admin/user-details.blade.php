@@ -75,6 +75,30 @@
                             </div>
                         </div>
                         <div class="py-2 border-b border-gray-100 dark:border-dark-700">
+                            <span class="text-gray-500 dark:text-gray-400">Account Type</span>
+                            <div class="mt-2">
+                                @if($user->account_type)
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                                    {{ ucfirst(str_replace('_', ' ', $user->account_type)) }}
+                                </span>
+                                @else
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-500/20 text-gray-700 dark:text-gray-400">
+                                    <i class="fas fa-user-clock mr-1"></i>Not Selected
+                                </span>
+                                @endif
+                            </div>
+                            @if($user->account_type && $user->id !== auth()->id())
+                            <div class="mt-3">
+                                <form action="{{ route('admin.users.remove-account-type', $user) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-xs px-3 py-1 bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-500/30 rounded-lg transition-colors" onclick="return confirm('Remove account type for this user? They will need to go through onboarding again to select their account type.')">
+                                        <i class="fas fa-undo mr-1"></i>Remove Account Type
+                                    </button>
+                                </form>
+                            </div>
+                            @endif
+                        </div>
+                        <div class="py-2 border-b border-gray-100 dark:border-dark-700">
                             <span class="text-gray-500 dark:text-gray-400">Admin Status</span>
                             <div class="mt-2">
                                 @if($user->is_admin)

@@ -364,7 +364,7 @@ class OnboardingController extends Controller
             ->first();
         
         if ($existingTx) {
-            return redirect()->route('start-your-journey')->with('info', 'This feature unlock is already being processed.');
+            return redirect()->route('dashboard')->with('info', 'This feature unlock is already being processed.');
         }
 
         if ($user->wallet_balance < $amount) {

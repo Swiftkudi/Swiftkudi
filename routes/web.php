@@ -284,6 +284,8 @@ Route::middleware(['auth', 'verified', 'logout.inactive', 'onboarding'])->group(
         Route::post('/users/{user}/promote', [AdminController::class, 'promoteToAdmin'])->name('users.promote');
         Route::post('/users/{user}/demote', [AdminController::class, 'demoteFromAdmin'])->name('users.demote');
         Route::post('/users/{user}/clear-wallet', [AdminController::class, 'clearUserWallet'])->name('users.clear-wallet');
+        Route::post('/users/{user}/remove-account-type', [AdminController::class, 'removeAccountType'])->name('users.remove-account-type');
+        Route::post('/users/mass-remove-account-type', [AdminController::class, 'massRemoveAccountType'])->name('users.mass-remove-account-type');
         Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.delete');
 
         // Task management (admin)
@@ -293,6 +295,11 @@ Route::middleware(['auth', 'verified', 'logout.inactive', 'onboarding'])->group(
         Route::post('/tasks/{task}/reject', [AdminController::class, 'rejectTask'])->name('tasks.reject');
         Route::post('/tasks/{task}/feature', [AdminController::class, 'featureTask'])->name('tasks.feature');
         Route::delete('/tasks/{task}', [AdminController::class, 'deleteTask'])->name('tasks.delete');
+
+        // Job management (admin)
+        Route::get('/jobs', [AdminController::class, 'jobs'])->name('jobs');
+        Route::get('/jobs/{job}', [AdminController::class, 'jobDetails'])->name('job-details');
+        Route::delete('/jobs/{job}', [AdminController::class, 'deleteJob'])->name('jobs.delete');
 
         // Marketplace Management
         Route::get('/marketplace', [\App\Http\Controllers\Admin\MarketplaceController::class, 'index'])->name('marketplace.index');

@@ -215,11 +215,12 @@ class WalletController extends Controller
         if ($result['success']) {
             // Check if mandatory task creation gate is enabled
             $gateEnabled = \App\Models\SystemSetting::get('mandatory_task_creation_enabled', true);
-            
+            if($user->account_type === 'task_creator' && $gateEnabled) {
             if ($gateEnabled) {
                 // Redirect to start-your-journey page for new activation
                 return redirect()->route('start-your-journey')
-                    ->with('success', $result['message'] . ' Now create your first campaign to unlock earning!');
+                    ->with('success', $result['message'] . ' Now create your first campaign to unlock task creation!');
+            }
             }
             
             return redirect()->route('dashboard')

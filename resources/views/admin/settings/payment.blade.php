@@ -310,10 +310,16 @@
 
                     <!-- Mode Status Indicator -->
                     @php
-                        $paymentService = app(\App\Services\PaymentGatewayService::class);
-                        $isMock = $paymentService->isMockMode();
-                        $currentGateway = $paymentService->getGateway();
-                        $currentMode = $paymentService->getMode();
+                        try {
+                            $paymentService = app(\App\Services\PaymentGatewayService::class);
+                            $isMock = $paymentService->isMockMode();
+                            $currentGateway = $paymentService->getGateway();
+                            $currentMode = $paymentService->getMode();
+                        } catch (\Exception $e) {
+                            $isMock = false;
+                            $currentGateway = 'N/A';
+                            $currentMode = 'N/A';
+                        }
                     @endphp
                     <div class="p-4 rounded-lg {{ $isMock ? 'bg-purple-50 border border-purple-200' : (app()->environment('local') ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200') }}">
                         <div class="flex items-center">

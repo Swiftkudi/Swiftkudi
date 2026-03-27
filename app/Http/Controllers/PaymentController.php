@@ -82,7 +82,7 @@ class PaymentController extends Controller
             $transaction->update([
                 'reference' => $result['reference'],
                 'metadata' => json_encode(array_merge(
-                    json_decode($transaction->metadata, true),
+                    json_decode($transaction->metadata, true) ?? [],
                     ['gateway_reference' => $result['reference']]
                 )),
             ]);
@@ -193,7 +193,7 @@ class PaymentController extends Controller
                         'status' => 'completed',
                         'completed_at' => now(),
                         'metadata' => json_encode(array_merge(
-                            json_decode($transaction->metadata, true) ?? [],
+                            (array) json_decode($transaction->metadata, true),
                             [
                                 'verified_at' => now()->toIso8601String(),
                                 'gateway_response' => $verificationData,
@@ -227,7 +227,7 @@ class PaymentController extends Controller
                 $transaction->update([
                     'status' => 'failed',
                     'metadata' => json_encode(array_merge(
-                        json_decode($transaction->metadata, true) ?? [],
+                        (array) json_decode($transaction->metadata, true),
                         ['verification_failed' => $verificationData]
                     )),
                 ]);
@@ -458,7 +458,7 @@ class PaymentController extends Controller
                 'status' => 'completed',
                 'completed_at' => now(),
                 'metadata' => json_encode(array_merge(
-                    json_decode($transaction->metadata, true) ?? [],
+                    (array) json_decode($transaction->metadata, true),
                     [
                         'webhook_processed_at' => now()->toIso8601String(),
                         'webhook_data' => $data,

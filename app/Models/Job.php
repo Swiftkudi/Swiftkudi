@@ -28,6 +28,7 @@ class Job extends Model
         'expires_at',
         'views_count',
         'applications_count',
+        'positions_available',
     ];
 
     protected $casts = [
@@ -36,6 +37,7 @@ class Job extends Model
         'expires_at' => 'datetime',
         'views_count' => 'integer',
         'applications_count' => 'integer',
+        'positions_available' => 'integer',
     ];
 
     public function user(): BelongsTo
@@ -96,5 +98,25 @@ class Job extends Model
             'expert' => 'Expert',
         ];
         return $levels[$this->experience_level] ?? ucfirst($this->experience_level);
+    }
+
+    public function getHiredCountAttribute()
+    {
+        return $this->applications()->where('status', 'hired')->count();
+    }
+
+    public function getPositionsRemainingAttribute()
+    {
+        return max(0, $this->positions_available - $this->hired_count);
+    }
+
+    public function getIsFullyHiredAttribute()
+    {
+        return $this->positions_remaining <= 0;
+    }
+
+    public function hiredApplications()
+    {
+        return $this->hasMany(JobApplication::class, 'job_id')->where('status', 'hired');
     }
 }

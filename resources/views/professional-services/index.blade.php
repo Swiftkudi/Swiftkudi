@@ -3,32 +3,43 @@
 @section('title', 'Hire Professionals - SwiftKudi')
 
 @section('content')
+@php
+$user = auth()->user();
+$accountType = $user->account_type ?? '';
+@endphp
 <div class="py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
         <div class="mb-8">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                @if($accountType === 'task_creator') 
                 <div>
                     <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Hire Professionals</h1>
                     <p class="mt-2 text-gray-600 dark:text-gray-400">Find skilled professionals for your projects</p>
                 </div>
+                @endif
+                @if($accountType === 'freelancer')
                 <a href="{{ route('professional-services.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-plus mr-2"></i> Create Service
                 </a>
+                @endif
             </div>
         </div>
 
         <!-- Navigation Tabs -->
         <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-2 mb-6">
             <div class="flex flex-wrap gap-2">
+                @if($accountType === 'task_creator')
                 <a href="{{ route('professional-services.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-th-large mr-2"></i> Browse
                 </a>
-                <a href="{{ route('professional-services.my-services') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
-                    <i class="fas fa-briefcase mr-2"></i> My Services
-                </a>
                 <a href="{{ route('professional-services.orders.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
                     <i class="fas fa-shopping-cart mr-2"></i> My Orders
+                </a>
+                @endif
+                @if($accountType === 'freelancer') 
+                <a href="{{ route('professional-services.my-services') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
+                    <i class="fas fa-briefcase mr-2"></i> My Services
                 </a>
                 <a href="{{ route('professional-services.sales.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
                     <i class="fas fa-chart-line mr-2"></i> Sales
@@ -36,10 +47,12 @@
                 <a href="{{ route('professional-services.edit-profile') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
                     <i class="fas fa-user-cog mr-2"></i> Profile
                 </a>
+                @endif
             </div>
         </div>
 
         <!-- Category Filters -->
+         @if($accountType === 'task_creator') 
         <div class="flex flex-wrap gap-2 mb-6">
             <a href="{{ route('professional-services.index') }}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {{ !request('category') ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-dark-600' }}">
                 All Services
@@ -50,6 +63,7 @@
                 </a>
             @endforeach
         </div>
+        @endif
 
         <!-- Search -->
         <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 mb-8">
@@ -72,9 +86,12 @@
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No services found</h3>
                 <p class="text-gray-500 dark:text-gray-400 mb-4">Try adjusting your search or browse all categories</p>
+
+                @if($accountType === 'freelancer') 
                 <a href="{{ route('professional-services.create') }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:opacity-90">
                     <i class="fas fa-plus mr-2"></i> Create a Service
                 </a>
+                @endif
             </div>
         @else
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

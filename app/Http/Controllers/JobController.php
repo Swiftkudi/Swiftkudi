@@ -130,6 +130,7 @@ class JobController extends Controller
             'budget_max' => 'required|numeric|gte:budget_min',
             'duration' => 'nullable|string|max:100',
             'location' => 'nullable|string|max:255',
+            'positions_available' => 'required|integer|min:1|max:50',
             'requirements' => 'nullable|string',
             'benefits' => 'nullable|string',
         ]);
@@ -255,6 +256,7 @@ class JobController extends Controller
             'budget_max' => 'required|numeric|gte:budget_min',
             'duration' => 'nullable|string|max:100',
             'location' => 'nullable|string|max:255',
+            'positions_available' => 'required|integer|min:1|max:50',
             'requirements' => 'nullable|string',
             'benefits' => 'nullable|string',
         ]);
@@ -298,7 +300,7 @@ class JobController extends Controller
     /**
      * Hire an applicant (for job owner).
      */
-    public function hireApplicant(JobApplication $application)
+    public function hireApplicant(Request $request, JobApplication $application)
     {
         $job = $application->job;
 
@@ -307,12 +309,16 @@ class JobController extends Controller
         }
 
         $application->status = 'hired';
+        $application->employer_notes = $request->input('employer_notes');
         $application->save();
 
-        // Reject other applications
-        JobApplication::where('job_id', $job->id)
-            ->where('id', '!=', $application->id)
-            ->update(['status' => 'rejected']);
+        // Only reject remaining pending applications when all positions are filled
+        $hiredCount = $job->hiredApplications()->count();
+        if ($hiredCount >= $job->positions_available) {
+            JobApplication::where('job_id', $job->id)
+                ->where('status', 'pending')
+                ->update(['status' => 'rejected']);
+        }
 
         return back()->with('success', 'Applicant hired successfully!');
     }

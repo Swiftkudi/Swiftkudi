@@ -14,6 +14,7 @@ use App\Models\ActivationLog;
 use App\Models\Currency;
 use App\Models\TaskCategory;
 use App\Models\Badge;
+use App\Models\Job;
 use App\Services\RevenueAnalyticsService;
 use App\Services\SwiftKudiService;
 use Illuminate\Http\Request;
@@ -263,6 +264,56 @@ class AdminController extends Controller
 
         return redirect()->back()
             ->with('success', 'Task featured status changed.');
+    }
+
+    /**
+     * Jobs management
+     */
+    public function jobs(Request $request)
+    {
+        $query = Job::with('user', 'category');
+
+        if ($request->has('status')) {
+            if ($request->status === 'active') {
+                $query->active();
+            } elseif ($request->status === 'expired') {
+                $query->expired();
+            }
+        }
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $jobs = $query->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return view('admin.jobs', compact('jobs'));
+    }
+
+    /**
+     * View job details
+     */
+    public function jobDetails(Job $job)
+    {
+        $applications = $job->applications()->with('user')->get();
+
+        return view('admin.job-details', compact('job', 'applications'));
+    }
+
+    /**
+     * Delete job
+     */
+    public function deleteJob(Job $job)
+    {
+        $job->delete();
+
+        return redirect()->route('admin.jobs')
+            ->with('success', 'Job deleted successfully.');
     }
 
     /**
@@ -1178,6 +1229,82 @@ class AdminController extends Controller
             ]);
 
             return redirect()->back()->with('error', 'Unable to clear this wallet right now.');
+        }
+    }
+
+    /**
+     * Remove account type for user (so they can go through onboarding again)
+     */
+    public function removeAccountType(User $user)
+    {
+        if ($user->id === Auth::id()) {
+            return redirect()->back()
+                ->with('error', 'You cannot remove your own account type.');
+        }
+
+        try {
+            $user->update([
+                'account_type' => null,
+                'onboarding_completed' => false,
+                'onboarding_completed_at' => null,
+            ]);
+
+            return redirect()->back()->with(
+                'success',
+                'Account type removed for ' . $user->name . '. They will need to go through onboarding again to select their account type.'
+            );
+        } catch (\Throwable $e) {
+            Log::error('Admin failed to remove account type', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Unable to remove account type right now.');
+        }
+    }
+
+    /**
+     * Mass remove account type for multiple users
+     */
+    public function massRemoveAccountType(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:users,id',
+        ]);
+
+        $userIds = $request->input('ids');
+        $currentUserId = Auth::id();
+
+        // Filter out the current admin user
+        $userIds = array_filter($userIds, function ($id) use ($currentUserId) {
+            return $id != $currentUserId;
+        });
+
+        if (empty($userIds)) {
+            return redirect()->back()->with('error', 'No valid users selected.');
+        }
+
+        try {
+            $count = User::whereIn('id', $userIds)
+                ->whereNotNull('account_type')
+                ->update([
+                    'account_type' => null,
+                    'onboarding_completed' => false,
+                    'onboarding_completed_at' => null,
+                ]);
+
+            return redirect()->back()->with(
+                'success',
+                "Account type removed for {$count} user(s). They will need to go through onboarding again to select their account type."
+            );
+        } catch (\Throwable $e) {
+            Log::error('Admin failed to mass remove account type', [
+                'user_ids' => $userIds,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Unable to remove account types right now.');
         }
     }
 

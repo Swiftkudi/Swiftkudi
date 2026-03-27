@@ -63,6 +63,20 @@
                                 <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{{ $application->cover_letter }}</p>
                             </div>
                         @endif
+
+                        @if($application->status === 'hired' && $application->employer_notes)
+                            <div class="mt-4 pt-4 border-t border-gray-100 dark:border-dark-700">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                        <i class="fas fa-check mr-1"></i>Hired
+                                    </span>
+                                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Message from Employer</h4>
+                                </div>
+                                <div class="p-4 bg-white dark:bg-dark-800 border border-green-200 dark:border-green-700/50 rounded-xl">
+                                    <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ $application->employer_notes }}</p>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>

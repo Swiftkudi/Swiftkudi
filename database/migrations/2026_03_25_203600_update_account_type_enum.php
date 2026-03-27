@@ -14,7 +14,7 @@ class UpdateAccountTypeEnum extends Migration
     {
         // MySQL requires changing enum columns via a workaround
         // We'll modify the column using raw SQL
-        DB::statement("ALTER TABLE users MODIFY COLUMN account_type ENUM('earner', 'task_creator', 'freelancer', 'digital_seller', 'growth_seller', 'buyer') DEFAULT 'earner'");
+        DB::statement("ALTER TABLE users MODIFY COLUMN account_type ENUM('earner', 'task_creator', 'freelancer', 'digital_seller', 'growth_seller', 'buyer') DEFAULT NULL");
     }
 
     /**

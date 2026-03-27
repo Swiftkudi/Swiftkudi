@@ -239,6 +239,14 @@
                         </a>
                     </li>
 
+                    <!-- Jobs -->
+                    <li>
+                        <a href="{{ route('admin.jobs') }}" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('admin.jobs') || request()->routeIs('admin.job-details') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }}">
+                            <i class="fas fa-briefcase w-5 mr-2"></i>
+                            Jobs
+                        </a>
+                    </li>
+
                     <!-- Completions -->
                     <li>
                         <a href="{{ route('admin.completions') }}" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('admin.completions') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }}">

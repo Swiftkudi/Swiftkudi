@@ -3,12 +3,27 @@
 @section('title', 'Job Board - SwiftKudi')
 
 @section('content')
+@php
+$user = auth()->user();
+$accountType = $user->account_type ?? '';
+@endphp
 <div class="py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
+
         <div class="mb-8">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">Job Board</h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">Find your next opportunity or hire talent</p>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                
+                <div>
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Job Board</h1>
+                    <p class="mt-2 text-gray-600 dark:text-gray-400">Find your next opportunity or hire talent</p>
+                </div>
+                
+               <a href="{{ route('jobs.applications') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
+                  <i class="fas fa-map-marker-alt mr-2"></i> Track Your Application
+               </a>
+               
+            </div>
         </div>
 
         <!-- Search & Filters -->
@@ -76,9 +91,11 @@
                         <button type="submit" class="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-xl transition-colors">
                             <i class="fas fa-filter mr-2"></i>Filter
                         </button>
+                        @if($accountType === 'task_crea') 
                         <a href="{{ route('jobs.create') }}" class="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-medium rounded-xl transition-colors">
                             <i class="fas fa-plus mr-2"></i>Post a Job
                         </a>
+                        @endif
                     </div>
                 </div>
             </form>
@@ -144,9 +161,11 @@
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">No jobs found</h3>
                 <p class="text-gray-500 dark:text-gray-400 mb-6">Try adjusting your search filters or post a new job</p>
+                @if($accountType === 'task_creator') 
                 <a href="{{ route('jobs.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-medium rounded-xl transition-colors">
                     <i class="fas fa-plus mr-2"></i>Post a Job
                 </a>
+                @endif
             </div>
         @endif
     </div>

@@ -27,7 +27,7 @@ class EnsureEarnerAccess
         }
 
         // Earner activation fee must be paid first
-        if ($user->account_type === 'earner' && !$user->activation_paid) {
+        if ($user->account_type === 'earner' && !$isActivated) {
             $routeName = $request->route() ? $request->route()->getName() : null;
             // Allow onboarding routes to proceed
             $onboardingAllowed = [

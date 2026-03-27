@@ -40,6 +40,12 @@ class CheckTaskCreationGate
             return $next($request);
         }
 
+        if ($user->account_type !== 'task_creator') {
+            return $next($request);
+        }
+            
+
+
         // Skip if user has already completed mandatory creation
         if ($user->has_completed_mandatory_creation) {
             return $next($request);

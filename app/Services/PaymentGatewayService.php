@@ -240,20 +240,33 @@ class PaymentGatewayService
      */
     protected function getApiUrl()
     {
+        // Mock mode doesn't need an API URL
+        if ($this->mode === self::MODE_MOCK || $this->gateway === self::GATEWAY_MOCK) {
+            return '';
+        }
+
         $urls = [
             self::GATEWAY_PAYSTACK => [
                 self::MODE_SANDBOX => 'https://api.paystack.co',
                 self::MODE_LIVE => 'https://api.paystack.co',
+                self::MODE_MOCK => 'https://api.paystack.co', // Mock uses same URL
             ],
             self::GATEWAY_KORA => [
                 self::MODE_SANDBOX => 'https://api.korapay.com',
                 self::MODE_LIVE => 'https://api.korapay.com',
+                self::MODE_MOCK => 'https://api.korapay.com', // Mock uses same URL
             ],
             self::GATEWAY_STRIPE => [
                 self::MODE_SANDBOX => 'https://api.stripe.com/v1',
                 self::MODE_LIVE => 'https://api.stripe.com/v1',
+                self::MODE_MOCK => 'https://api.stripe.com/v1', // Mock uses same URL
             ],
         ];
+
+        // Fallback to live mode if the specific mode isn't defined
+        if (!isset($urls[$this->gateway][$this->mode])) {
+            return $urls[$this->gateway][self::MODE_LIVE] ?? '';
+        }
 
         return $urls[$this->gateway][$this->mode];
     }
@@ -599,12 +612,34 @@ class PaymentGatewayService
      */
     protected function verifyMockPayment($reference): array
     {
-        Log::info('Mock payment verified', ['reference' => $reference]);
+        // Find the transaction to get the amount
+        $transaction = Transaction::where('reference', $reference)->first();
+        
+        $amount = 0;
+        $currency = 'NGN';
+        
+        if ($transaction) {
+            // Get the original amount from the transaction
+            $amount = (float) $transaction->amount;
+            $currency = $transaction->currency ?? 'NGN';
+            
+            // Convert to NGN if needed
+            if ($currency !== 'NGN') {
+                $amount = $this->convertToNgn($amount, $currency);
+                $currency = 'NGN';
+            }
+        }
+        
+        Log::info('Mock payment verified', [
+            'reference' => $reference,
+            'amount' => $amount,
+            'currency' => $currency,
+        ]);
 
         return [
             'success' => true,
-            'amount' => 0, // Will be fetched from transaction
-            'currency' => 'NGN',
+            'amount' => $amount,
+            'currency' => $currency,
             'metadata' => ['mock' => true],
             'status' => 'success',
         ];
