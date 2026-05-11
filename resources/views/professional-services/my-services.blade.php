@@ -24,15 +24,12 @@ $accountType = $user->account_type ?? '';
         <!-- Navigation Tabs -->
         <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-2 mb-6">
             <div class="flex flex-wrap gap-2">
-                @if($accountType === 'task_creator')
                 <a href="{{ route('professional-services.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-th-large mr-2"></i> Browse
                 </a>
                 <a href="{{ route('professional-services.orders.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
                     <i class="fas fa-shopping-cart mr-2"></i> My Orders
                 </a>
-                @endif
-                @if($accountType === 'freelancer') 
                 <a href="{{ route('professional-services.my-services') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
                     <i class="fas fa-briefcase mr-2"></i> My Services
                 </a>
@@ -42,7 +39,6 @@ $accountType = $user->account_type ?? '';
                 <a href="{{ route('professional-services.edit-profile') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
                     <i class="fas fa-user-cog mr-2"></i> Profile
                 </a>
-                @endif
             </div>
         </div>
 

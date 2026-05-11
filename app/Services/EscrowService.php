@@ -5,11 +5,66 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\Transaction;
+use App\Models\SystemSetting;
 use Illuminate\Support\Facades\DB;
 
 class EscrowService
 {
-    protected $defaultPlatformFeePercent = 10;
+    /**
+     * Get platform fee percentage from settings
+     */
+    public function getPlatformFeePercent(): float
+    {
+        return SystemSetting::getNumber('escrow_platform_fee_percent', 10);
+    }
+
+    /**
+     * Check if escrow is enabled
+     */
+    public function isEnabled(): bool
+    {
+        return SystemSetting::isModuleEnabled('escrow');
+    }
+
+    /**
+     * Get auto-release days from settings
+     */
+    public function getAutoReleaseDays(): int
+    {
+        return SystemSetting::getEscrowAutoReleaseDays();
+    }
+
+    /**
+     * Get dispute window in days
+     */
+    public function getDisputeWindowDays(): int
+    {
+        return SystemSetting::getEscrowDisputeWindowDays();
+    }
+
+    /**
+     * Check if partial refund is allowed
+     */
+    public function isPartialRefundAllowed(): bool
+    {
+        return SystemSetting::isEscrowPartialRefundAllowed();
+    }
+
+    /**
+     * Get max revision cycles
+     */
+    public function getMaxRevisionCycles(): int
+    {
+        return SystemSetting::getEscrowMaxRevisionCycles();
+    }
+
+    /**
+     * Get auto-accept days
+     */
+    public function getAutoAcceptDays(): int
+    {
+        return SystemSetting::getEscrowAutoAcceptDays();
+    }
 
     /**
      * Hold funds in escrow from buyer
@@ -31,15 +86,16 @@ class EscrowService
             // Add to escrow balance
             $wallet->increment('escrow_balance', $amount);
 
-            // Record transaction
-            Transaction::create([
-                'user_id' => $buyerId,
-                'type' => 'escrow_hold',
-                'amount' => $amount,
-                'description' => $description,
-                'reference' => $reference,
-                'status' => 'completed',
-            ]);
+             // Record transaction
+             Transaction::create([
+                 'wallet_id' => $wallet->id,
+                 'user_id' => $buyerId,
+                 'type' => 'escrow_hold',
+                 'amount' => $amount,
+                 'description' => $description,
+                 'reference' => $reference,
+                 'status' => 'completed',
+             ]);
 
             return true;
         });
@@ -61,15 +117,16 @@ class EscrowService
             // Add to seller's available balance
             $wallet->increment('balance', $sellerEarnings);
 
-            // Record seller earnings transaction
-            Transaction::create([
-                'user_id' => $sellerId,
-                'type' => 'earning',
-                'amount' => $sellerEarnings,
-                'description' => $description,
-                'reference' => $reference,
-                'status' => 'completed',
-            ]);
+             // Record seller earnings transaction
+             Transaction::create([
+                 'wallet_id' => $wallet->id,
+                 'user_id' => $sellerId,
+                 'type' => 'earning',
+                 'amount' => $sellerEarnings,
+                 'description' => $description,
+                 'reference' => $reference,
+                 'status' => 'completed',
+             ]);
 
             // Record platform fee
             Transaction::create([
@@ -154,7 +211,7 @@ class EscrowService
      */
     public function calculatePlatformFee(float $amount, ?float $customRate = null): float
     {
-        $rate = $customRate ?? $this->defaultPlatformFeePercent;
+        $rate = $customRate ?? $this->getPlatformFeePercent();
         return $amount * ($rate / 100);
     }
 

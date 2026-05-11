@@ -64,11 +64,13 @@ class Kernel extends HttpKernel
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \App\Http\Middleware\EnsureEmailIsVerifiedWhenRequired::class,
+        'check.email.required' => \App\Http\Middleware\CheckEmailVerificationRequired::class,
         'admin' => \App\Http\Middleware\EnsureAdmin::class,
         'task.creation.gate' => \App\Http\Middleware\CheckTaskCreationGate::class,
         'logout.inactive' => \App\Http\Middleware\LogoutOnInactivity::class,
         'onboarding' => \App\Http\Middleware\EnsureOnboardingCompleted::class,
         'earner.access' => \App\Http\Middleware\EnsureEarnerAccess::class,
         'buyer.access' => \App\Http\Middleware\EnsureBuyerAccess::class,
+        'feature.access' => \App\Http\Middleware\FeatureAccessGate::class,
     ];
 }

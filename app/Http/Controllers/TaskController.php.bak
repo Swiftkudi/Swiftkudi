@@ -1,0 +1,1647 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Task;
+use App\Models\TaskCategory;
+use App\Models\TaskCompletion;
+use App\Models\TaskBundle;
+use App\Models\TaskNew;
+use App\Models\TaskSubmissionNew;
+use App\Models\User;
+use App\Models\Wallet;
+use App\Models\SystemSetting;
+use App\Services\SwiftKudiService;
+use App\Services\TaskGateProgressService;
+use App\Services\TaskCreationService;
+use App\Services\TaskService;
+use App\Services\NotificationManager;
+use App\Notifications\EarningsUnlocked;
+use App\Http\Requests\Task\CreateTaskRequest;
+use App\Http\Requests\Task\SaveTaskDraftRequest;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\View\View;
+use App\Notifications\TaskAvailable;
+use App\Notifications\TaskApproved;
+use App\Notifications\TaskRejected;
+
+/**
+ * Unified Task Controller
+ * 
+ * This controller handles ALL task-related operations for the platform.
+ * It merges functionality from the previous three controllers:
+ * - TaskController (root) - Legacy task system
+ * - CreateTaskController - Modern task creation with idempotency
+ * - Task\TaskController - New escrow-based task system
+ * 
+ * @deprecated Use this controller for all new development
+ */
+class TaskController extends Controller
+{
+    protected $earnDeskService;
+    protected $gateProgressService;
+    protected $notificationManager;
+    protected $taskCreationService;
+    protected $taskService;
+
+    public function __construct(
+        SwiftKudiService $earnDeskService,
+        TaskGateProgressService $gateProgressService,
+        NotificationManager $notificationManager,
+        TaskCreationService $taskCreationService,
+        TaskService $taskService
+    ) {
+        $this->earnDeskService = $earnDeskService;
+        $this->gateProgressService = $gateProgressService;
+        $this->notificationManager = $notificationManager;
+        $this->taskCreationService = $taskCreationService;
+        $this->taskService = $taskService;
+    }
+
+    /**
+     * Remove or null sensitive user fields for non-admin viewers so emails and personal data
+     * are not exposed in templates. This is intentionally defensive: controllers should call
+     * this before passing models that include `user` to non-admin views.
+     */
+    private function sanitizeUserForNonAdmin(User $user)
+    {
+        if (!$user) return;
+
+        $sensitive = ['email', 'phone', 'phone_number', 'address', 'dob', 'date_of_birth', 'national_id', 'nin'];
+
+        // Only null attributes that actually exist on the model to avoid notices
+        $attrs = $user->getAttributes();
+        foreach ($sensitive as $field) {
+            if (array_key_exists($field, $attrs)) {
+                $user->{$field} = null;
+            }
+        }
+    }
+
+    /**
+     * Display available tasks (for workers)
+     */
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $query = Task::active()->where('user_id', '!=', $user->id);
+
+        // Hide seeded/demo tasks in non-production environments when requested
+        if (env('HIDE_SEED_TASKS', true)) {
+            $query->where('is_sample', false);
+        }
+
+        // Filter by task type group (micro, ugc, referral, premium)
+        if ($request->has('task_group') && $request->task_group) {
+            $categoryIds = TaskCategory::where('task_type', $request->task_group)->pluck('id');
+            $query->whereIn('category_id', $categoryIds);
+        }
+
+        // Filter by platform
+        if ($request->has('platform') && $request->platform) {
+            $query->where('platform', $request->platform);
+        }
+
+        // Filter by task type
+        if ($request->has('task_type') && $request->task_type) {
+            $query->where('task_type', $request->task_type);
+        }
+
+        // Filter by category
+        if ($request->has('category') && $request->category) {
+            $query->where('category_id', $request->category);
+        }
+
+        // Filter by reward range
+        if ($request->has('min_reward') && $request->min_reward) {
+            $query->where('worker_reward_per_task', '>=', $request->min_reward);
+        }
+
+        // Filter by featured
+        if ($request->has('featured') && $request->featured) {
+            $query->where('is_featured', true);
+        }
+
+        // Exclude completed tasks
+        $completedTaskIds = TaskCompletion::where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->pluck('task_id');
+        
+        $query->whereNotIn('id', $completedTaskIds);
+
+        $tasks = $query->withCount(['completions as task_completions_count' => function ($completionQuery) {
+                $completionQuery->where('status', TaskCompletion::STATUS_APPROVED);
+            }])
+            ->orderBy('is_featured', 'desc')
+            ->orderBy('worker_reward_per_task', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        $categories = TaskCategory::getActiveCategories();
+        
+        // Get categories grouped by type
+        $categoriesByGroup = [
+            'micro' => TaskCategory::where('task_type', 'micro')->get(),
+            'ugc' => TaskCategory::where('task_type', 'ugc')->get(),
+            'referral' => TaskCategory::where('task_type', 'referral')->get(),
+            'premium' => TaskCategory::where('task_type', 'premium')->get(),
+        ];
+
+        return view('tasks.index', compact('tasks', 'categories', 'categoriesByGroup'));
+    }
+
+    /**
+     * Display task details
+     */
+    public function show(Task $task)
+    {
+        $user = Auth::user();
+
+        // Check if user can perform this task
+        $canPerform = $task->canUserPerform($user);
+
+        // Check if user has already submitted
+        $existingSubmission = TaskCompletion::where('task_id', $task->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        return view('tasks.show', compact('task', 'canPerform', 'existingSubmission'));
+    }
+
+    /**
+     * Display user's tasks (created and completed)
+     */
+    public function myTasks()
+    {
+        $user = Auth::user();
+
+        // Tasks created by user
+        // include a count of pending submissions per task for quick badges
+        $createdTasks = Task::where('user_id', $user->id)
+            ->withCount(['completions as pending_submissions_count' => function($q) {
+                $q->where('status', 'pending');
+            }])
+            ->withCount(['completions as task_completions_count' => function($q) {
+                $q->where('status', TaskCompletion::STATUS_APPROVED);
+            }])
+             ->orderBy('created_at', 'desc')
+             ->paginate(10);
+
+        // Tasks completed/submitted by user
+        $completedTasks = TaskCompletion::where('user_id', $user->id)
+            ->with('task')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        // Submissions received on tasks owned by this user (for review)
+        $receivedSubmissions = TaskCompletion::whereHas('task', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->with(['task', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10, ['*'], 'received_page');
+
+        // Hide worker personal data for non-admins
+        if (!($user->is_admin ?? false)) {
+            foreach ($receivedSubmissions as $c) {
+                if ($c->relationLoaded('user') && $c->user) {
+                    $this->sanitizeUserForNonAdmin($c->user);
+                }
+            }
+        }
+
+        return view('tasks.my-tasks', compact('createdTasks', 'completedTasks', 'receivedSubmissions'));
+    }
+
+    /**
+     * Show edit form for a task owner/admin.
+     */
+    public function edit(Task $task)
+    {
+        $user = Auth::user();
+        $isAdmin = (bool) ($user->is_admin ?? false);
+
+        if (!$isAdmin && (int) $task->user_id !== (int) $user->id) {
+            abort(403, 'You are not authorized to edit this task.');
+        }
+
+        return view('tasks.edit', compact('task'));
+    }
+
+    /**
+     * Show analytics for a task owner/admin.
+     */
+    public function analytics(Task $task)
+    {
+        $user = Auth::user();
+        $isAdmin = (bool) ($user->is_admin ?? false);
+
+        if (!$isAdmin && (int) $task->user_id !== (int) $user->id) {
+            abort(403, 'You are not authorized to view analytics for this task.');
+        }
+
+        $completions = TaskCompletion::where('task_id', $task->id)
+            ->with('user')
+            ->latest()
+            ->get();
+
+        $stats = [
+            'total_submissions' => $completions->count(),
+            'pending' => $completions->where('status', TaskCompletion::STATUS_PENDING)->count(),
+            'approved' => $completions->where('status', TaskCompletion::STATUS_APPROVED)->count(),
+        ];
+
+        return view('tasks.analytics', compact('task', 'completions', 'stats'));
+    }
+
+    /**
+     * Update task editable fields.
+     */
+    public function update(Request $request, Task $task)
+    {
+        $user = Auth::user();
+        $isAdmin = (bool) ($user->is_admin ?? false);
+
+        if (!$isAdmin && (int) $task->user_id !== (int) $user->id) {
+            abort(403, 'You are not authorized to update this task.');
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string|max:5000',
+            'proof_type' => 'required|string|in:' . implode(',', array_keys(Task::PROOF_TYPES)),
+        ]);
+
+        $task->update($validated);
+
+        return redirect()->route('tasks.edit', $task)->with('success', 'Task updated successfully.');
+    }
+
+    /**
+     * Pause an active task.
+     */
+    public function pause(Task $task)
+    {
+        $user = Auth::user();
+        $isAdmin = (bool) ($user->is_admin ?? false);
+
+        if (!$isAdmin && (int) $task->user_id !== (int) $user->id) {
+            abort(403, 'You are not authorized to pause this task.');
+        }
+
+        $task->update(['is_active' => false]);
+
+        return back()->with('success', 'Task paused successfully.');
+    }
+
+    /**
+     * Resume a paused task.
+     */
+    public function resume(Task $task)
+    {
+        $user = Auth::user();
+        $isAdmin = (bool) ($user->is_admin ?? false);
+
+        if (!$isAdmin && (int) $task->user_id !== (int) $user->id) {
+            abort(403, 'You are not authorized to resume this task.');
+        }
+
+        $task->update(['is_active' => true]);
+
+        return back()->with('success', 'Task resumed successfully.');
+    }
+
+    /**
+     * Delete a task.
+     */
+    public function destroy(Task $task)
+    {
+        $user = Auth::user();
+        $isAdmin = (bool) ($user->is_admin ?? false);
+
+        if (!$isAdmin && (int) $task->user_id !== (int) $user->id) {
+            abort(403, 'You are not authorized to delete this task.');
+        }
+
+        $task->delete();
+
+        return redirect()->route('tasks.my-tasks')->with('success', 'Task deleted successfully.');
+    }
+
+    /**
+     * Review a specific submission for a task owner/admin.
+     */
+    public function submissionReview(TaskCompletion $completion)
+    {
+        $user = Auth::user();
+        $task = $completion->task;
+
+        if (!$task) {
+            return redirect()->route('tasks.my-tasks')->with('error', 'Submission task was not found.');
+        }
+
+        $isAdmin = (bool) ($user->is_admin ?? false);
+        if (!$isAdmin && (int) $task->user_id !== (int) $user->id) {
+            abort(403, 'You are not authorized to review this submission.');
+        }
+
+        $completion->loadMissing('user');
+
+        return view('tasks.submission-review', compact('completion', 'task'));
+    }
+
+    /**
+     * Approve a submission from task owner/admin.
+     */
+    public function approve(Request $request, TaskCompletion $completion)
+    {
+        $user = Auth::user();
+        $task = $completion->task;
+
+        if (!$task) {
+            return redirect()->route('tasks.my-tasks')->with('error', 'Submission task was not found.');
+        }
+
+        $isAdmin = (bool) ($user->is_admin ?? false);
+        if (!$isAdmin && (int) $task->user_id !== (int) $user->id) {
+            abort(403, 'You are not authorized to approve this submission.');
+        }
+
+        if (!$completion->isPending()) {
+            return back()->with('error', 'This submission has already been reviewed.');
+        }
+
+        $request->validate([
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $resolvedReward = (float) ($completion->reward_amount ?? 0);
+        if ($resolvedReward <= 0) {
+            $resolvedReward = (float) ($task->worker_reward_per_task ?? 0);
+        }
+
+        if ($resolvedReward <= 0 && Schema::hasColumn('tasks', 'reward_amount')) {
+            $resolvedReward = (float) ($task->reward_amount ?? 0);
+        }
+
+        if ($resolvedReward <= 0 && Schema::hasColumn('tasks', 'reward_per_user')) {
+            $resolvedReward = (float) ($task->reward_per_user ?? 0);
+        }
+
+        if ($resolvedReward <= 0) {
+            return back()->with('error', 'This task has no valid worker reward configured.');
+        }
+
+        if (Schema::hasColumn('task_completions', 'reward_amount')) {
+            $completion->reward_amount = $resolvedReward;
+        }
+
+        if ($request->filled('notes') && Schema::hasColumn('task_completions', 'admin_notes')) {
+            $completion->admin_notes = $request->input('notes');
+        }
+
+        $completion->save();
+
+        $result = $this->earnDeskService->awardTaskEarnings($completion->fresh(['task', 'user.wallet']));
+
+        if (!($result['success'] ?? false)) {
+            return back()->with('error', $result['message'] ?? 'Failed to approve submission.');
+        }
+
+        return back()->with('success', 'Submission approved and reward credited successfully.');
+    }
+
+    /**
+     * Reject a submission from task owner/admin.
+     */
+    public function reject(Request $request, TaskCompletion $completion)
+    {
+        $user = Auth::user();
+        $task = $completion->task;
+
+        if (!$task) {
+            return redirect()->route('tasks.my-tasks')->with('error', 'Submission task was not found.');
+        }
+
+        $isAdmin = (bool) ($user->is_admin ?? false);
+        if (!$isAdmin && (int) $task->user_id !== (int) $user->id) {
+            abort(403, 'You are not authorized to reject this submission.');
+        }
+
+        if (!$completion->isPending()) {
+            return back()->with('error', 'This submission has already been reviewed.');
+        }
+
+        $request->validate([
+            'reason' => 'required|string|in:' . implode(',', array_keys(TaskCompletion::REJECTION_REASONS)),
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $completion->reject($request->input('reason'), $request->input('notes'));
+
+        return back()->with('success', 'Submission rejected successfully.');
+    }
+
+    /**
+     * Show create task form
+     */
+    public function create()
+    {
+        $categories = TaskCategory::getActiveCategories();
+
+        // Check for bundle data from session (when user clicks "Use This Bundle" on start-journey page)
+        $bundleData = session('bundle_data');
+        $prefillData = null;
+
+        if ($bundleData) {
+            // Pre-fill with bundle data
+            $prefillData = [
+                'title' => $bundleData['name'] ?? 'New Campaign',
+                'description' => $bundleData['description'] ?? 'Campaign created from bundle',
+                'budget' => $bundleData['price'] ?? 2500,
+                'quantity' => $bundleData['quantity'] ?? 1,
+                'task_type' => $bundleData['task_type'] ?? null,
+                'category_id' => $bundleData['category_id'] ?? null,
+                'platform' => $bundleData['platform'] ?? null,
+                'is_featured' => $bundleData['is_featured'] ?? false,
+            ];
+        }
+
+        // Build a light-weight categoryConfig structure expected by the create view JS
+        $categoryConfig = [];
+        $groups = ['micro', 'ugc', 'referral', 'premium'];
+        foreach ($groups as $g) {
+            $groupCats = $categories->where('task_type', $g);
+            if ($groupCats->isEmpty()) {
+                // keep an empty group entry so the JS can rely on its existence if needed
+                $categoryConfig[$g] = ['label' => $g, 'badge' => '', 'badgeText' => '', 'minBudget' => 0, 'platforms' => []];
+                continue;
+            }
+
+            $platforms = [];
+            foreach ($groupCats as $cat) {
+                $pid = $cat->platform ?? 'other';
+                if (!isset($platforms[$pid])) {
+                    $platforms[$pid] = ['id' => $pid, 'name' => $pid, 'icon' => '', 'tasks' => []];
+                }
+                $platforms[$pid]['tasks'][] = [
+                    'value' => $cat->id,
+                    'name' => $cat->name,
+                    'price' => [
+                        'min' => (float) ($cat->min_price ?? $cat->base_price ?? 0),
+                        'max' => (float) ($cat->max_price ?? $cat->base_price ?? 0),
+                    ],
+                    'categoryName' => $cat->name,
+                    'proof_type' => $cat->proof_type ?? null,
+                    'min_level' => (int) ($cat->min_level ?? 1),
+                ];
+            }
+
+            $categoryConfig[$g] = ['label' => $g, 'badge' => '', 'badgeText' => '', 'minBudget' => 0, 'platforms' => array_values($platforms)];
+        }
+
+        return view('tasks.create', compact('categories', 'prefillData', 'categoryConfig'));
+    }
+
+    /**
+     * Display saved/draft tasks page.
+     * This is the page users see after saving a task draft or when returning to complete a saved task.
+     */
+    public function savedCreate()
+    {
+        $user = Auth::user();
+
+        // Get draft tasks (tasks created but not yet funded/published)
+        $draftTasks = Task::where('user_id', $user->id)
+            ->where('is_active', false)
+            ->where('is_sample', false)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Get pending task form data from session
+        $pendingFormData = session('pending_task_form', []);
+
+        return view('tasks.saved', compact('draftTasks', 'pendingFormData'));
+    }
+
+    /**
+     * Process payment for task creation.
+     * Called when user submits payment for a task after creating it.
+     * Now redirects to the modern CreateTaskController flow.
+     */
+    public function payCreate(Request $request)
+    {
+        $taskId = $request->input('task_id');
+
+        if ($taskId) {
+            $task = Task::where('id', $taskId)
+                ->where('user_id', Auth::id())
+                ->first();
+
+            if ($task) {
+                return redirect()->route('tasks.show', $task);
+            }
+        }
+
+        // Fallback to the create form
+        return redirect()->route('tasks.create.new');
+    }
+
+    /**
+     * Suggest task bundles based on budget.
+     * AJAX endpoint that returns matching bundles for the given budget range.
+     */
+    public function suggestBundles(Request $request)
+    {
+        $budget = (float) $request->input('budget', 0);
+
+        if ($budget <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please specify a valid budget.',
+                'bundles' => [],
+            ]);
+        }
+
+        // Get bundles that fit within the budget
+        $bundles = \App\Models\TaskBundle::where('is_active', true)
+            ->where('price', '<=', $budget * 1.5) // Allow some flexibility
+            ->where('price', '>=', $budget * 0.5) // Only show relevant bundles
+            ->orderBy('price', 'asc')
+            ->limit(5)
+            ->get(['id', 'name', 'description', 'price', 'quantity', 'task_type', 'is_featured']);
+
+        return response()->json([
+            'success' => true,
+            'bundles' => $bundles,
+            'budget' => $budget,
+        ]);
+    }
+
+    /**
+     * Display available task bundles.
+     */
+    public function bundles(Request $request)
+    {
+        $taskType = $request->query('type');
+        $minPrice = $request->query('min_price');
+        $maxPrice = $request->query('max_price');
+
+        $query = \App\Models\TaskBundle::where('is_active', true);
+
+        if ($taskType) {
+            $query->where('task_type', $taskType);
+        }
+
+        if ($minPrice) {
+            $query->where('price', '>=', (float) $minPrice);
+        }
+
+        if ($maxPrice) {
+            $query->where('price', '<=', (float) $maxPrice);
+        }
+
+        $bundles = $query->orderBy('is_featured', 'desc')
+            ->orderBy('price', 'asc')
+            ->paginate(20);
+
+        return view('tasks.bundles', compact('bundles'));
+    }
+
+    /**
+     * Track platform click analytics.
+     * Records when users click on platform links in task descriptions.
+     */
+    public function trackPlatformClick(Request $request)
+    {
+        $validated = $request->validate([
+            'task_id' => 'required|exists:tasks,id',
+            'platform' => 'required|string',
+            'click_type' => 'nullable|string|in:link,button,external',
+        ]);
+
+        // Log the click for analytics (could be expanded to store in DB)
+        Log::info('Task platform click', [
+            'task_id' => $validated['task_id'],
+            'user_id' => Auth::id(),
+            'platform' => $validated['platform'],
+            'click_type' => $validated['click_type'] ?? 'link',
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Click tracked',
+        ]);
+    }
+
+    /**
+     * Save an in-progress draft to session (AJAX)
+     */
+    public function saveDraft(Request $request)
+    {
+        $user = Auth::user();
+        $data = $request->all();
+
+        // Minimal normalization
+        $data['budget'] = isset($data['budget']) ? floatval($data['budget']) : 0;
+        $data['quantity'] = isset($data['quantity']) ? intval($data['quantity']) : 0;
+        $data['worker_reward_per_task'] = isset($data['worker_reward_per_task']) ? floatval($data['worker_reward_per_task']) : null;
+
+        session()->put('pending_task_form', $data);
+        session()->put('deposit_success_redirect', route('tasks.create.saved'));
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Save a new task (and draft if applicable)
+     */
+    public function store(Request $request)
+    {
+        $user = Auth::user();
+
+        // Validate incoming data
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'budget' => 'required|numeric|min:0',
+            'quantity' => 'required|integer|min:1',
+            'task_type' => 'required|string',
+            'category_id' => 'required|exists:task_categories,id',
+            'platform' => 'required|string',
+            'is_featured' => 'boolean',
+        ]);
+
+        // Create the task
+        $task = Task::create([
+            'user_id' => $user->id,
+            'title' => $request->title,
+            'description' => $request->description,
+            'budget' => $request->budget,
+            'quantity' => $request->quantity,
+            'task_type' => $request->task_type,
+            'category_id' => $request->category_id,
+            'platform' => $request->platform,
+            'is_featured' => $request->is_featured ? true : false,
+        ]);
+
+        // Handle draft saving separately
+        if ($request->has('save_draft') && $request->save_draft) {
+            // Store draft data in session
+            session()->put('pending_task_form', $request->all());
+            session()->put('deposit_success_redirect', route('tasks.create.saved'));
+
+            return response()->json(['success' => true, 'task_id' => $task->id]);
+        }
+
+        // Update user's task creation progress and check unlock status
+        $this->gateProgressService->updateProgress($user, $request->budget);
+
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_TASK_CREATED,
+            $user,
+            ['task_title' => $task->title, 'task_id' => $task->id]
+        );
+
+        \App\Models\User::query()
+            ->where('id', '!=', $user->id)
+            ->where(function ($query) {
+                $query->where('is_admin', false)
+                    ->orWhereNull('admin_role_id');
+            })
+            ->chunkById(200, function ($workers) use ($task) {
+                foreach ($workers as $worker) {
+                    $this->notificationManager->notify(
+                        NotificationManager::EVENT_TASK_BUNDLE_AVAILABLE,
+                        $worker,
+                        [
+                            'task_title' => $task->title,
+                            'task_id' => $task->id,
+                            'bundle_name' => $task->title
+                        ]
+                    );
+                }
+            });
+
+        return response()->json(['success' => true, 'task_id' => $task->id]);
+    }
+
+    /**
+     * Mark a task as completed (worker action)
+     */
+    public function submit(Request $request, Task $task)
+    {
+        $user = Auth::user();
+
+        $rules = [
+            'proof_description' => 'required|string|max:255',
+            'notes' => 'nullable|string|max:1000',
+        ];
+
+        if ($task->proof_type === 'link') {
+            $rules['proof_data.link'] = 'required|url|max:2048';
+        } else {
+            $rules['proof_data.file'] = 'required|file|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,mkv,webm|max:65536';
+        }
+
+        $validated = $request->validate($rules);
+
+        if (!$task->canUserPerform($user)) {
+            return back()->with('error', 'You cannot perform this task.');
+        }
+
+        $existingSubmission = TaskCompletion::where('task_id', $task->id)
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->first();
+
+        if ($existingSubmission) {
+            return back()->with('error', 'You have already submitted this task.');
+        }
+
+        try {
+            $proofData = [];
+            $storedFilePath = null;
+
+            if ($task->proof_type === 'link') {
+                $proofData = [
+                    'type' => 'link',
+                    'link' => $validated['proof_data']['link'],
+                ];
+            } else {
+                $file = $request->file('proof_data.file');
+                $path = $file->store('task-proofs', 'public');
+                $storedFilePath = $path;
+
+                $proofData = [
+                    'type' => 'file',
+                    'path' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getClientMimeType(),
+                    'size' => $file->getSize(),
+                ];
+            }
+
+            $completionPayload = [
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+                'status' => TaskCompletion::STATUS_PENDING,
+                'proof_description' => $validated['proof_description'],
+            ];
+
+            if (Schema::hasColumn('task_completions', 'proof_data')) {
+                $completionPayload['proof_data'] = json_encode($proofData);
+            }
+
+            if ($storedFilePath && Schema::hasColumn('task_completions', 'proof_screenshot')) {
+                $completionPayload['proof_screenshot'] = $storedFilePath;
+            }
+
+            if (Schema::hasColumn('task_completions', 'worker_notes')) {
+                $completionPayload['worker_notes'] = $validated['notes'] ?? null;
+            }
+
+            if (Schema::hasColumn('task_completions', 'admin_note') && !Schema::hasColumn('task_completions', 'worker_notes')) {
+                $completionPayload['admin_note'] = $validated['notes'] ?? null;
+            }
+
+            if (Schema::hasColumn('task_completions', 'submitted_at')) {
+                $completionPayload['submitted_at'] = now();
+            }
+
+            if (Schema::hasColumn('task_completions', 'ip_address')) {
+                $completionPayload['ip_address'] = $request->ip();
+            }
+
+            if (Schema::hasColumn('task_completions', 'user_agent')) {
+                $completionPayload['user_agent'] = substr((string) $request->userAgent(), 0, 1000);
+            }
+
+            TaskCompletion::create($completionPayload);
+
+            return redirect()->route('tasks.show', $task)->with('success', 'Task submitted successfully. Awaiting review.');
+        } catch (\Exception $e) {
+            Log::error('Task submission failed', [
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withInput()->with('error', 'Failed to submit task. Please try again.');
+        }
+    }
+
+    /**
+     * Mark a task as completed (worker action)
+     */
+    public function completeTask(Request $request, Task $task)
+    {
+        $user = Auth::user();
+
+        // Validate request
+        $request->validate([
+            'submission_notes' => 'nullable|string',
+        ]);
+
+        // Check if task is already completed by this user
+        $existingCompletion = TaskCompletion::where('task_id', $task->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existingCompletion) {
+            return response()->json(['error' => 'Task already submitted.'], 400);
+        }
+
+        // Create task completion record
+        $completion = TaskCompletion::create([
+            'task_id' => $task->id,
+            'user_id' => $user->id,
+            'submission_notes' => $request->submission_notes,
+            'status' => 'pending',
+        ]);
+
+        // Note: Task submission notification is handled by the centralized system
+        // No direct notification needed here as it's an internal status update
+
+        return response()->json(['success' => true, 'completion_id' => $completion->id]);
+    }
+
+    /**
+     * Approve a task completion (admin action)
+     */
+    public function approveCompletion(Request $request, TaskCompletion $completion)
+    {
+        $request->validate([
+            'notes' => 'nullable|string',
+        ]);
+
+        // Update completion status
+        $completion->status = 'approved';
+        $completion->admin_notes = $request->notes;
+        $completion->save();
+
+        $worker = User::find($completion->user_id);
+        $task = Task::find($completion->task_id);
+        if ($worker) {
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_TASK_APPROVED,
+                $worker,
+                [
+                    'task_title' => $task ? $task->title : '',
+                    'amount' => $task ? $task->worker_reward_per_task : 0,
+                    'completion_id' => $completion->id,
+                    'task_id' => $completion->task_id,
+                ]
+            );
+        }
+
+        // Optionally, update task status or other logic
+        // $task->status = 'completed';
+        // $task->save();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Reject a task completion (admin action)
+     */
+    public function rejectCompletion(Request $request, TaskCompletion $completion)
+    {
+        $request->validate([
+            'notes' => 'nullable|string',
+        ]);
+
+        // Update completion status
+        $completion->status = 'rejected';
+        $completion->admin_notes = $request->notes;
+        $completion->save();
+
+        $worker = User::find($completion->user_id);
+        $task   = Task::find($completion->task_id);
+        if ($worker) {
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_TASK_REJECTED,
+                $worker,
+                [
+                    'task_title' => $task ? $task->title : '',
+                    'reason' => $request->notes ?: 'Please review and resubmit.',
+                    'completion_id' => $completion->id,
+                    'task_id' => $completion->task_id,
+                ]
+            );
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Resend approval notification for a task completion (admin action)
+     */
+    public function resendApprovalNotification(TaskCompletion $completion)
+    {
+        // Find the user associated with the completion
+        $user = User::find($completion->user_id);
+
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_TASK_APPROVED,
+            $user,
+            [
+                'task_title' => $completion->task ? $completion->task->title : '',
+                'amount' => $completion->task ? $completion->task->worker_reward_per_task : 0,
+                'completion_id' => $completion->id,
+                'task_id' => $completion->task_id,
+            ]
+        );
+
+        return response()->json(['success' => true]);
+    }
+
+    // ============================================================================
+    // METHODS FROM CreateTaskController (Modern Task Creation)
+    // ============================================================================
+
+    /**
+     * Show the task creation form (modern with idempotency).
+     * Step 1 of the task creation wizard.
+     */
+    public function showCreateForm(Request $request): View
+    {
+        $user = Auth::user();
+        
+        $categoryConfig = $this->taskCreationService->getCategoryConfig();
+        $categories = TaskCategory::getActiveCategories();
+
+        $prefillData = $this->getPrefillData($request) ?? session('task_creation_data');
+        $draftData = $this->taskCreationService->getDraft($user);
+
+        $idempotencyToken = $this->taskCreationService->generateIdempotencyToken();
+        $request->session()->put('task_idempotency_token', $idempotencyToken);
+
+        return view('tasks.create', compact(
+            'categories',
+            'categoryConfig',
+            'prefillData',
+            'draftData',
+            'idempotencyToken'
+        ));
+    }
+
+    /**
+     * Store a new task (modern with idempotency).
+     * Handles the final submission of the task creation form.
+     */
+    public function storeTask(CreateTaskRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        $idempotencyToken = $request->input('idempotency_token');
+
+        if (!$user->canCreateTasks()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to create tasks at the moment.',
+            ], 403);
+        }
+
+        $result = $this->taskCreationService->createTask(
+            $user,
+            $request->validated(),
+            $idempotencyToken,
+            $request
+        );
+
+        if ($result['success']) {
+            $this->taskCreationService->clearDraft($user);
+            session()->forget([
+                'task_creation_data',
+                'insufficient_balance_required',
+                'deposit_success_redirect',
+                'payment_success_redirect',
+            ]);
+
+            if ($user->account_type === 'task_creator' && !$user->first_task_created) {
+                $user->update([
+                    'first_task_created' => true,
+                    'has_completed_mandatory_creation' => true,
+                    'task_creation_unlocked_at' => now(),
+                ]);
+                
+                $user->refresh();
+                $nextStep = app(\App\Services\AccessGateService::class)->getNextOnboardingStep($user);
+                
+                if ($nextStep) {
+                    $response['next_step_redirect'] = route($nextStep['route']);
+                    $response['next_step_message'] = $nextStep['message'];
+                }
+            }
+        }
+
+        $response = [
+            'success' => $result['success'],
+            'message' => $result['message'],
+        ];
+
+        if ($result['success'] && isset($result['task'])) {
+            $response['task_id'] = $result['task']->id;
+            $response['redirect'] = route('tasks.my-tasks');
+        }
+
+        if (isset($result['redirect'])) {
+            $response['redirect'] = $result['redirect'];
+        }
+
+        if (isset($result['required_amount'])) {
+            $response['required_amount'] = $result['required_amount'];
+        }
+
+        $nextToken = $this->taskCreationService->generateIdempotencyToken();
+        $request->session()->put('task_idempotency_token', $nextToken);
+        $response['idempotency_token'] = $nextToken;
+
+        return response()->json($response, $result['status']);
+    }
+
+    /**
+     * Save task draft (autosave).
+     * AJAX endpoint for autosaving draft data.
+     */
+    public function saveTaskDraft(SaveTaskDraftRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        $result = $this->taskCreationService->saveDraft($user, $request->validated());
+
+        session([
+            'deposit_success_redirect' => route('tasks.create.resume'),
+            'task_creation_data' => $request->validated(),
+        ]);
+
+        if (!empty($request->input('budget'))) {
+            session(['insufficient_balance_required' => (float) $request->input('budget')]);
+        }
+
+        return response()->json($result, $result['status']);
+    }
+
+    /**
+     * Get saved draft data.
+     */
+    public function getDraft(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $draft = $this->taskCreationService->getDraft($user);
+
+        return response()->json([
+            'success' => true,
+            'draft' => $draft,
+        ]);
+    }
+
+    /**
+     * Resume task creation after deposit.
+     * Called after user deposits money to complete the task creation.
+     */
+    public function resumeCreation(Request $request)
+    {
+        $user = Auth::user();
+        
+        $sessionData = (array) session('task_creation_data', []);
+        $draftData = $this->taskCreationService->getDraft($user) ?? [];
+        $storedData = array_merge($draftData, $sessionData);
+        $requiredAmount = session('insufficient_balance_required');
+
+        if (!$storedData) {
+            return redirect()->route('tasks.create.new')
+                ->with('error', 'No saved task form was found. Please fill the form again.');
+        }
+
+        session(['deposit_success_redirect' => route('tasks.create.resume')]);
+
+        if (!$requiredAmount && !empty($storedData['budget'])) {
+            $requiredAmount = (float) $storedData['budget'];
+            session(['insufficient_balance_required' => $requiredAmount]);
+        }
+        
+        $categoryConfig = $this->taskCreationService->getCategoryConfig();
+        $categories = TaskCategory::getActiveCategories();
+        
+        $idempotencyToken = $this->taskCreationService->generateIdempotencyToken();
+        $request->session()->put('task_idempotency_token', $idempotencyToken);
+        
+        $wallet = $user->wallet;
+        $canProceed = false;
+        $message = '';
+        $prefillData = $storedData;
+        $draftData = $draftData ?: null;
+        
+        if ($wallet && $requiredAmount) {
+            $totalBalance = $wallet->withdrawable_balance + $wallet->promo_credit_balance;
+            $canProceed = $totalBalance >= $requiredAmount;
+            $message = $canProceed 
+                ? 'Your deposit was successful! You can now submit your task.'
+                : 'You still need more funds. Required: ₦' . number_format($requiredAmount, 2) . ', Available: ₦' . number_format($totalBalance, 2);
+        }
+        
+        return view('tasks.create', compact(
+            'categories',
+            'categoryConfig',
+            'prefillData',
+            'draftData',
+            'idempotencyToken'
+        ))->with([
+            'resumeMessage' => $message,
+            'canProceed' => $canProceed,
+        ]);
+    }
+
+    /**
+     * Clear saved draft.
+     */
+    public function clearDraft(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $this->taskCreationService->clearDraft($user);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Draft cleared successfully.',
+        ]);
+    }
+
+    /**
+     * Generate a new idempotency token.
+     */
+    public function refreshToken(Request $request): JsonResponse
+    {
+        $newToken = $this->taskCreationService->generateIdempotencyToken();
+        $request->session()->put('task_idempotency_token', $newToken);
+
+        return response()->json([
+            'success' => true,
+            'token' => $newToken,
+        ]);
+    }
+
+    /**
+     * Validate task data without saving.
+     * AJAX endpoint to validate form data in real-time.
+     */
+    public function validateTaskData(Request $request): JsonResponse
+    {
+        $createRequest = new CreateTaskRequest($request->all());
+        $validator = \Illuminate\Support\Facades\Validator::make(
+            $request->all(),
+            $createRequest->rules()
+        );
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Validation passed.',
+        ]);
+    }
+
+    /**
+     * Calculate cost preview.
+     * AJAX endpoint to calculate cost breakdown based on budget and quantity.
+     */
+    public function calculateCost(Request $request): JsonResponse
+    {
+        $budget = (float) $request->input('budget', 0);
+        $quantity = (int) $request->input('quantity', 0);
+
+        if ($budget <= 0 || $quantity <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter valid budget and quantity.',
+            ], 422);
+        }
+
+        $workerReward = ($budget * 0.75) / $quantity;
+        $platformFee = $budget * 0.25;
+        $rewardPerTask = $budget / $quantity;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'budget' => $budget,
+                'quantity' => $quantity,
+                'reward_per_task' => round($workerReward, 2),
+                'platform_fee' => round($platformFee, 2),
+                'total_cost' => $budget,
+                'per_task_total' => round($rewardPerTask, 2),
+            ],
+        ]);
+    }
+
+    /**
+     * Get prefill data from session (e.g., from bundle selection).
+     */
+    private function getPrefillData(Request $request): ?array
+    {
+        $bundleData = $request->session()->get('bundle_data');
+
+        if ($bundleData) {
+            return [
+                'title' => $bundleData['name'] ?? 'New Campaign',
+                'description' => $bundleData['description'] ?? 'Campaign created from bundle',
+                'budget' => $bundleData['price'] ?? 2500,
+                'quantity' => $bundleData['quantity'] ?? 1,
+                'task_type' => $bundleData['task_type'] ?? null,
+                'category_id' => $bundleData['category_id'] ?? null,
+                'platform' => $bundleData['platform'] ?? null,
+                'is_featured' => $bundleData['is_featured'] ?? false,
+            ];
+        }
+
+        return null;
+    }
+
+    // ============================================================================
+    // METHODS FROM Task\TaskController (Escrow-based New Task System)
+    // ============================================================================
+
+    /**
+     * Fund a task (moves funds from wallet to escrow).
+     * This is step 2 of the new task creation flow.
+     */
+    public function fund(Request $request)
+    {
+        $taskId = session('pending_task_id');
+        
+        if (!$taskId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No pending task found',
+            ], 400);
+        }
+
+        $task = TaskNew::find($taskId);
+        
+        if (!$task) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Task not found',
+            ], 404);
+        }
+
+        $user = Auth::user();
+        $result = $this->taskService->fundTask($task, $user);
+
+        session()->forget('pending_task_id');
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+                'required' => $result['required'] ?? null,
+                'available' => $result['available'] ?? null,
+                'redirect' => $result['message'] === 'Insufficient funds to fund this task' 
+                    ? route('wallet.deposit') 
+                    : null,
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'task' => $task,
+            'funded_amount' => $result['funded_amount'],
+        ]);
+    }
+
+    /**
+     * Fund task - moves funds from wallet to escrow (from task details page).
+     */
+    public function fundTask(Request $request, int $task)
+    {
+        $task = TaskNew::findOrFail($task);
+        $user = Auth::user();
+        
+        if ($task->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+        
+        $result = $this->taskService->fundTask($task, $user);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+                'required' => $result['required'] ?? null,
+                'available' => $result['available'] ?? null,
+                'redirect' => str_contains($result['message'], 'Insufficient') 
+                    ? route('wallet.deposit') 
+                    : null,
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'task' => $task,
+            'funded_amount' => $result['funded_amount'],
+        ]);
+    }
+
+    /**
+     * Work tasks - available tasks for workers to do.
+     */
+    public function workTasks(Request $request): View
+    {
+        $category = $request->get('category');
+        $search = $request->get('search');
+        
+        $query = TaskNew::active()
+            ->where('status', TaskNew::STATUS_ACTIVE)
+            ->whereRaw('workers_accepted_count < max_workers')
+            ->where('user_id', '!=', Auth::id());
+
+        if ($category) {
+            $query->ofCategory($category);
+        }
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $tasks = $query->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        $categories = [
+            'micro' => 'Micro Tasks',
+            'ugc' => 'UGC Tasks',
+            'growth' => 'Growth Tasks',
+            'premium' => 'Premium Tasks',
+        ];
+
+        return view('tasks.new.work', compact('tasks', 'categories', 'category', 'search'));
+    }
+
+    /**
+     * Submit work for a task (new escrow system).
+     */
+    public function submitWork(Request $request, int $task)
+    {
+        $task = TaskNew::findOrFail($task);
+        
+        $validated = $request->validate([
+            'proof_data' => 'required|array',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $user = Auth::user();
+        $result = $this->taskService->submitWork($task, $user, $validated['proof_data'], $validated['notes'] ?? null);
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Show submissions for my task (new escrow system).
+     */
+    public function submissions(int $id): View
+    {
+        $task = TaskNew::with(['submissions' => function($q) {
+            $q->where('status', TaskSubmissionNew::STATUS_PENDING)
+              ->with('worker');
+        }])->findOrFail($id);
+
+        if ($task->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $pendingSubmissions = $task->submissions()
+            ->where('status', TaskSubmissionNew::STATUS_PENDING)
+            ->with('worker')
+            ->get();
+
+        $approvedSubmissions = $task->submissions()
+            ->where('status', TaskSubmissionNew::STATUS_APPROVED)
+            ->with('worker')
+            ->get();
+
+        $rejectedSubmissions = $task->submissions()
+            ->where('status', TaskSubmissionNew::STATUS_REJECTED)
+            ->with('worker')
+            ->get();
+
+        return view('tasks.new.submissions', compact('task', 'pendingSubmissions', 'approvedSubmissions', 'rejectedSubmissions'));
+    }
+
+    /**
+     * Approve a submission (new escrow system).
+     */
+    public function approveSubmission(Request $request, int $submissionId)
+    {
+        $submission = TaskSubmissionNew::findOrFail($submissionId);
+        $user = Auth::user();
+
+        $result = $this->taskService->approveSubmission($submission, $user);
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Reject a submission (new escrow system).
+     */
+    public function rejectSubmission(Request $request, int $submissionId)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|min:10',
+        ]);
+
+        $submission = TaskSubmissionNew::findOrFail($submissionId);
+        $user = Auth::user();
+
+        $result = $this->taskService->rejectSubmission($submission, $user, $validated['reason']);
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Cancel a task (new escrow system).
+     */
+    public function cancelTask(int $task)
+    {
+        $task = TaskNew::findOrFail($task);
+        $user = Auth::user();
+
+        $result = $this->taskService->cancelTask($task, $user);
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Pause a task (new escrow system).
+     */
+    public function pauseTask(int $task)
+    {
+        $task = TaskNew::findOrFail($task);
+        $user = Auth::user();
+
+        if ($task->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        $result = $this->taskService->pauseTask($task, $user);
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Resume a paused task (new escrow system).
+     */
+    public function resumeTask(int $task)
+    {
+        $task = TaskNew::findOrFail($task);
+        $user = Auth::user();
+
+        if ($task->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        $result = $this->taskService->resumeTask($task, $user);
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Get work opportunities (tasks user can do).
+     */
+    public function opportunities(Request $request): View
+    {
+        $user = Auth::user();
+        
+        $tasks = TaskNew::active()
+            ->where('user_id', '!=', $user->id)
+            ->whereRaw('workers_accepted_count < max_workers')
+            ->whereDoesntHave('submissions', function($q) use ($user) {
+                $q->where('worker_id', $user->id);
+            })
+            ->orderBy('reward_per_user', 'desc')
+            ->paginate(20);
+
+        return view('tasks.opportunities', compact('tasks'));
+    }
+
+    // ============================================================================
+    // ESCROW TASK SYSTEM METHODS (for /new-tasks/* routes)
+    // ============================================================================
+    // These methods handle the new escrow-based task system (TaskNew model)
+    // ============================================================================
+
+    /**
+     * Show task creation form for new escrow system.
+     */
+    public function createNewEscrowTask(): View
+    {
+        $settings = $this->taskService->getSettings();
+        
+        $categories = [
+            'micro' => 'Micro Tasks',
+            'ugc' => 'UGC Tasks',
+            'growth' => 'Growth Tasks',
+            'premium' => 'Premium Tasks',
+        ];
+
+        return view('tasks.new.create', compact('categories', 'settings'));
+    }
+
+    /**
+     * Store new escrow task.
+     */
+    public function storeNewEscrowTask(Request $request)
+    {
+        $validated = $request->validate([
+            'category' => 'required|in:micro,ugc,growth,premium',
+            'title' => 'required|string|min:5|max:255',
+            'description' => 'required|string|min:20|max:5000',
+            'proof_instructions' => 'nullable|string|max:2000',
+            'reward_per_user' => 'required|numeric|min:10',
+            'max_workers' => 'required|integer|min:1|max:10000',
+            'expires_at' => 'nullable|date|after:now',
+        ]);
+
+        $user = Auth::user();
+        
+        if (!$user instanceof \App\Models\User) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required.',
+            ], 401);
+        }
+
+        // Ensure user has wallet
+        if (!$user->wallet) {
+            \App\Models\Wallet::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'withdrawable_balance' => 0,
+                    'promo_credit_balance' => 0,
+                    'total_earned' => 0,
+                    'total_spent' => 0,
+                    'pending_balance' => 0,
+                    'escrow_balance' => 0,
+                ]
+            );
+            $user->refresh();
+        }
+
+        $result = $this->taskService->createTask($user, $validated);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 400);
+        }
+
+        session(['pending_task_id' => $result['task']->id]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Task created! Now fund it to make it active.',
+            'task' => $result['task'],
+            'required_funding' => $result['required_funding'],
+            'next_step' => 'fund',
+        ]);
+    }
+
+    /**
+     * Show new escrow task details.
+     */
+    public function showNewEscrowTask(int $id): View
+    {
+        $task = TaskNew::with(['creator', 'submissions' => function($q) {
+            $q->where('worker_id', Auth::id());
+        }])->findOrFail($id);
+
+        $userHasSubmitted = $task->submissions()->where('worker_id', Auth::id())->exists();
+
+        return view('tasks.new.show', compact('task', 'userHasSubmitted'));
+    }
+}

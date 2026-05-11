@@ -19,6 +19,11 @@ class Dispute extends Model
     const PRIORITY_HIGH = 'high';
     const PRIORITY_URGENT = 'urgent';
 
+    const RESOLUTION_BUYER_WINS = 'buyer_wins';
+    const RESOLUTION_SELLER_WINS = 'seller_wins';
+    const RESOLUTION_REFUND = 'refund';
+    const RESOLUTION_SPLIT = 'split';
+
     protected $fillable = [
         'order_id',
         'order_type',
@@ -55,16 +60,6 @@ class Dispute extends Model
     public function order()
     {
         return $this->morphTo('order');
-    }
-
-    public function evidence()
-    {
-        return $this->morphMany(DisputeEvidence::class, 'disputable');
-    }
-
-    public function messages()
-    {
-        return $this->morphMany(DisputeMessage::class, 'dispute');
     }
 
     public function scopeOpen($query)

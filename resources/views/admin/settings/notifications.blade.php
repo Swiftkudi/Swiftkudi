@@ -453,6 +453,7 @@
                         Send Test Push to My Browser
                     </button>
                     <span id="testPushStatus" class="text-sm font-medium hidden"></span>
+                    <span id="browserNotificationStatus" class="block mt-2 text-xs text-gray-400 dark:text-gray-500 hidden"></span>
                 </div>
                 <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
                     <i class="fas fa-info-circle mr-1"></i>
@@ -462,6 +463,26 @@
         </div>
 
         <script>
+        function updateBrowserNotificationStatus() {
+            var status = document.getElementById('browserNotificationStatus');
+            if (!status || !('Notification' in window)) {
+                return;
+            }
+
+            var permission = Notification.permission;
+            if (permission === 'granted') {
+                status.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Browser notifications are enabled for this site. <span class="text-xs opacity-75">(Note: Your OS may still block notifications for this browser)</span>';
+                status.className = 'block mt-2 text-xs text-green-600';
+            } else if (permission === 'denied') {
+                status.innerHTML = '<i class="fas fa-times-circle mr-1"></i>Browser notifications are blocked for this site. Please allow notifications in your browser settings.';
+                status.className = 'block mt-2 text-xs text-red-600';
+            } else {
+                status.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>Notification permission has not been granted yet. Please allow notifications when prompted.';
+                status.className = 'block mt-2 text-xs text-yellow-500';
+            }
+            status.classList.remove('hidden');
+        }
+
         document.getElementById('testPushBtn').addEventListener('click', function () {
             var btn = this;
             var status = document.getElementById('testPushStatus');
@@ -491,8 +512,11 @@
             .finally(function () {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-bell mr-2"></i>Send Test Push to My Browser';
+                updateBrowserNotificationStatus();
             });
         });
+
+        updateBrowserNotificationStatus();
         </script>
 
         <!-- Send Push Notification Section -->

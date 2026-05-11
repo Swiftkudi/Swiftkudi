@@ -27,17 +27,35 @@
                         Bundles
                     </x-nav-link>
 
+                    @php
+                        $showHire = in_array(auth()->user()?->account_type, ['task_creator', 'freelancer', 'digital_seller', 'growth_seller', 'buyer']) 
+                            || (auth()->user()?->hasFeatureAccess('professional_services'));
+                    @endphp
+                    @if($showHire)
                     <x-nav-link :href="route('professional-services.index')" :active="request()->routeIs('professional-services.*')">
                         Hire
                     </x-nav-link>
+                    @endif
 
+                    @php
+                        $showGrowth = in_array(auth()->user()?->account_type, ['growth_seller']) 
+                            || (auth()->user()?->hasFeatureAccess('growth_listings'));
+                    @endphp
+                    @if($showGrowth)
                     <x-nav-link :href="route('growth.index')" :active="request()->routeIs('growth.*')">
                         Growth
                     </x-nav-link>
+                    @endif
 
+                    @php
+                        $showProducts = in_array(auth()->user()?->account_type, ['digital_seller']) 
+                            || (auth()->user()?->hasFeatureAccess('digital_products'));
+                    @endphp
+                    @if($showProducts)
                     <x-nav-link :href="route('digital-products.index')" :active="request()->routeIs('digital-products.*')">
                         Products
                     </x-nav-link>
+                    @endif
 
                     <x-nav-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')">
                         Jobs
@@ -127,6 +145,7 @@
                             <i class="fas fa-rocket mr-2"></i> Boost & Promo
                         </x-dropdown-link>
 
+                        @if(in_array(auth()->user()?->account_type, ['task_creator', 'freelancer', 'digital_seller', 'growth_seller', 'buyer']) || auth()->user()?->hasFeatureAccess('professional_services'))
                         <!-- Professional Services -->
                         <div class="px-4 py-2 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Professional Services
@@ -146,7 +165,9 @@
                         <x-dropdown-link :href="route('professional-services.directory')">
                             <i class="fas fa-users mr-2"></i> Provider Directory
                         </x-dropdown-link>
+                        @endif
 
+                        @if(in_array(auth()->user()?->account_type, ['growth_seller']) || auth()->user()?->hasFeatureAccess('growth_listings'))
                         <!-- Growth Marketplace -->
                         <div class="px-4 py-2 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Growth Marketplace
@@ -163,7 +184,9 @@
                         <x-dropdown-link :href="route('growth.sales.index')">
                             <i class="fas fa-chart-line mr-2"></i> My Sales
                         </x-dropdown-link>
+                        @endif
 
+                        @if(in_array(auth()->user()?->account_type, ['digital_seller']) || auth()->user()?->hasFeatureAccess('digital_products'))
                         <!-- Digital Products -->
                         <div class="px-4 py-2 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Digital Products
@@ -248,12 +271,20 @@
             <x-responsive-nav-link :href="route('dashboard.leaderboard')" :active="request()->routeIs('dashboard.leaderboard')">
                 Leaderboard
             </x-responsive-nav-link>
+
+            @if(in_array(auth()->user()?->account_type, ['task_creator', 'freelancer', 'digital_seller', 'growth_seller', 'buyer']) || auth()->user()?->hasFeatureAccess('professional_services'))
             <x-responsive-nav-link :href="route('professional-services.index')" :active="request()->routeIs('professional-services.*')">
                 Hire
             </x-responsive-nav-link>
+            @endif
+
+            @if(in_array(auth()->user()?->account_type, ['growth_seller']) || auth()->user()?->hasFeatureAccess('growth_listings'))
             <x-responsive-nav-link :href="route('growth.index')" :active="request()->routeIs('growth.*')">
                 Growth
             </x-responsive-nav-link>
+            @endif
+
+            @if(in_array(auth()->user()?->account_type, ['digital_seller']) || auth()->user()?->hasFeatureAccess('digital_products'))
             <x-responsive-nav-link :href="route('digital-products.index')" :active="request()->routeIs('digital-products.*')">
                 Products
             </x-responsive-nav-link>
@@ -263,9 +294,14 @@
             <x-responsive-nav-link :href="route('digital-products.my-purchases')" :active="request()->routeIs('digital-products.my-purchases')">
                 My Purchases
             </x-responsive-nav-link>
+            @endif
+
+            @if(in_array(auth()->user()?->account_type, ['growth_seller']) || auth()->user()?->hasFeatureAccess('growth_listings'))
             <x-responsive-nav-link :href="route('growth.my-listings')" :active="request()->routeIs('growth.my-listings')">
                 Growth My Listings
             </x-responsive-nav-link>
+            @endif
+
             <x-responsive-nav-link :href="route('chat.index')" :active="request()->routeIs('chat.*')">
                 Messages
             </x-responsive-nav-link>

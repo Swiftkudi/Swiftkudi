@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Notifications\AccountTypeReminder;
 use App\Notifications\CompleteOnboardingReminder;
+use App\Services\NotificationManager;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -13,9 +14,9 @@ use Illuminate\Support\Facades\Log;
 class AccountTypeService
 {
     /**
-     * Notification dispatch service instance.
+     * Notification manager instance.
      */
-    protected ?NotificationDispatchService $notificationService = null;
+    protected NotificationManager $notificationManager;
 
     /**
      * Valid account types in the system.
@@ -27,7 +28,16 @@ class AccountTypeService
         'digital_seller',
         'growth_seller',
         'buyer',
+        'admin',
     ];
+
+    /**
+     * Constructor.
+     */
+    public function __construct(NotificationManager $notificationManager)
+    {
+        $this->notificationManager = $notificationManager;
+    }
 
     /**
      * Check if user already has an account type.
@@ -54,15 +64,16 @@ class AccountTypeService
             return 'None';
         }
 
-        return match ($accountType) {
-            'earner' => 'Earner',
-            'task_creator' => 'Task Creator',
-            'freelancer' => 'Freelancer',
-            'digital_seller' => 'Digital Product Seller',
-            'growth_seller' => 'Growth Seller',
-            'buyer' => 'Buyer',
-            default => ucfirst(str_replace('_', ' ', $accountType)),
-        };
+         return match ($accountType) {
+             'earner' => 'Earner',
+             'task_creator' => 'Task Creator',
+             'freelancer' => 'Freelancer',
+             'digital_seller' => 'Digital Product Seller',
+             'growth_seller' => 'Growth Seller',
+             'buyer' => 'Buyer',
+             'admin' => 'Admin',
+             default => ucfirst(str_replace('_', ' ', $accountType)),
+         };
     }
 
     /**
@@ -106,22 +117,13 @@ class AccountTypeService
     public function sendAccountTypeReminder(User $user): void
     {
         try {
-            // Use NotificationDispatchService for multi-channel notifications
-            $notificationService = $this->getNotificationService();
-            
-            $notificationService->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_ACCOUNT_TYPE_REMINDER,
                 $user,
-                'You Already Have an Account Type',
-                "Your account type is already set to: {$this->getAccountTypeLabel($user->account_type)}. No action needed.",
-                'account_type_reminder',
                 [
                     'account_type' => $user->account_type,
                     'account_type_label' => $this->getAccountTypeLabel($user->account_type),
-                ],
-                null, // setting key - no specific setting for this
-                false, // don't notify admins
-                true, // send in-app
-                true, // send email
+                ]
             );
 
             Log::info('Account type reminder sent', [
@@ -148,21 +150,12 @@ class AccountTypeService
         }
 
         try {
-            // Use NotificationDispatchService for multi-channel notifications
-            $notificationService = $this->getNotificationService();
-            
-            $notificationService->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_ONBOARDING_REMINDER,
                 $user,
-                'Complete Your SwiftKudi Setup',
-                'Choose your account type to get started with SwiftKudi',
-                'complete_onboarding_reminder',
                 [
                     'action_url' => route('onboarding.select'),
-                ],
-                null, // setting key - no specific setting for this
-                false, // don't notify admins
-                true, // send in-app
-                true, // send email
+                ]
             );
 
             Log::info('Onboarding reminder sent to user without account type', [
@@ -198,18 +191,6 @@ class AccountTypeService
         Log::info("Sent onboarding reminders to {$sentCount} users without account type");
 
         return $sentCount;
-    }
-
-    /**
-     * Get notification service instance.
-     */
-    protected function getNotificationService(): NotificationDispatchService
-    {
-        if ($this->notificationService === null) {
-            $this->notificationService = app(NotificationDispatchService::class);
-        }
-
-        return $this->notificationService;
     }
 
     /**

@@ -55,7 +55,8 @@ class NotificationDispatchService
 
         if ($userEventEnabled && $sendEmail && $emailEnabled) {
             [$emailSubject, $emailMessage] = $this->resolveEmailTemplate($settingKey, $title, $message, $user, $data);
-            $this->sendEmail($user, $emailSubject, $emailMessage);
+            // Queue email to avoid blocking HTTP requests
+            \App\Jobs\SendUserEmail::dispatch($user, $emailSubject, $emailMessage)->onQueue('notifications');
         }
 
         if ($userEventEnabled) {
@@ -82,12 +83,15 @@ class NotificationDispatchService
         $inAppEnabled = SystemSetting::getBool('notify_in_app_enabled', true);
         $emailEnabled = SystemSetting::getBool('notify_email_enabled', true);
 
-        $admins = User::query()
-            ->where(function ($query) {
-                $query->where('is_admin', true)
-                    ->orWhereNotNull('admin_role_id');
-            })
-            ->get();
+        // Cache admin users for 5 minutes to avoid repeated DB queries
+        $admins = \Illuminate\Support\Facades\Cache::remember('admin_users', 300, function () {
+            return User::query()
+                ->where(function ($query) {
+                    $query->where('is_admin', true)
+                        ->orWhereNotNull('admin_role_id');
+                })
+                ->get();
+        });
 
         foreach ($admins as $admin) {
             if (!$admin instanceof User) {
@@ -169,9 +173,28 @@ class NotificationDispatchService
     /**
      * Public alias so controllers can trigger a push directly.
      */
-    public function sendPushToUser(User $user, string $title, string $message, array $data = []): void
+    /**
+     * Send push notification to multiple users (batched for scalability)
+     */
+    public function sendPushToUsers(array $userIds, string $title, string $message, array $data = []): void
     {
-        $this->sendPush($user, $title, $message, $data);
+        if (empty($userIds)) {
+            return;
+        }
+
+        // For small batches, process immediately
+        if (count($userIds) <= 5) {
+            foreach ($userIds as $userId) {
+                $user = User::find($userId);
+                if ($user) {
+                    $this->sendPushToUser($user, $title, $message, $data);
+                }
+            }
+            return;
+        }
+
+        // For large batches, queue the job
+        \App\Jobs\SendBulkPushNotifications::dispatch($userIds, $title, $message, $data);
     }
 
     /**
@@ -214,8 +237,6 @@ class NotificationDispatchService
             $payload = json_encode([
                 'title' => $title,
                 'body'  => $message,
-                'icon'  => '/favicon.svg',
-                'badge' => '/favicon.ico',
                 'url'   => $data['action_url'] ?? $data['url'] ?? '/dashboard',
             ]);
 

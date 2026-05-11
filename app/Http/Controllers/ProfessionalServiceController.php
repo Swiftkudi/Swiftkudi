@@ -10,6 +10,7 @@ use App\Models\MarketplaceConversation;
 use App\Models\MarketplaceMessage;
 use App\Models\ServiceProviderProfile;
 use App\Services\ProfessionalServiceService;
+use App\Services\NotificationManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -18,11 +19,13 @@ use Illuminate\View\View;
 class ProfessionalServiceController extends Controller
 {
     protected $service;
+    protected NotificationManager $notificationManager;
 
-    public function __construct(ProfessionalServiceService $service)
+    public function __construct(ProfessionalServiceService $service, NotificationManager $notificationManager)
     {
         $this->service = $service;
-        $this->middleware(['auth', 'verified']);
+        $this->notificationManager = $notificationManager;
+        $this->middleware(['auth', 'check.email.required']);
     }
 
     /**
@@ -38,10 +41,16 @@ class ProfessionalServiceController extends Controller
 
         // Add buyer category filter
         $user = auth()->user();
-        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
-            $buyerCategories = $user->getBuyerCategories();
-            if (!empty($buyerCategories)) {
-                $query->whereIn('category_id', $buyerCategories);
+        if ($user && $user->account_type === 'buyer') {
+            // Check if buyer onboarding is enabled and category selection is required
+            if (\App\Services\OnboardingSettingsService::isBuyerOnboardingEnabled() &&
+                \App\Services\OnboardingSettingsService::isBuyerCategorySelectionRequired() &&
+                $user->buyer_onboarding_completed) {
+
+                $buyerCategories = $user->getBuyerCategories();
+                if (!empty($buyerCategories)) {
+                    $query->whereIn('category_id', $buyerCategories);
+                }
             }
         }
 
@@ -118,14 +127,14 @@ class ProfessionalServiceController extends Controller
             return response()->json($result, 400);
         }
 
-        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_SERVICE_CREATED,
             $user,
-            'Service Created',
-            'Your service "' . ($result['service']->title ?? $validated['title']) . '" has been submitted successfully.',
-            \App\Models\Notification::TYPE_SYSTEM,
-            ['service_id' => $result['service']->id ?? null, 'action_url' => route('professional-services.my-services')],
-            'notify_service_orders',
-            true
+            [
+                'service_id' => $result['service']->id ?? null,
+                'service_title' => $result['service']->title ?? $validated['title'],
+                'action_url' => route('professional-services.my-services'),
+            ]
         );
 
         if ($user->account_type === 'freelancer' && !$user->freelancer_service_created) {
@@ -136,11 +145,25 @@ class ProfessionalServiceController extends Controller
             );
         }
 
-        return response()->json([
+        // Check for next onboarding step after service creation
+        $nextStep = null;
+        if ($user->account_type === 'freelancer' && $user->freelancer_service_created) {
+            $user->refresh(); // Refresh to get updated fields
+            $nextStep = app(\App\Services\AccessGateService::class)->getNextOnboardingStep($user);
+        }
+
+        $response = [
             'success' => true,
             'message' => $result['message'],
             'redirect' => route('professional-services.my-services'),
-        ]);
+        ];
+
+        if ($nextStep) {
+            $response['next_step_redirect'] = route($nextStep['route']);
+            $response['next_step_message'] = $nextStep['message'];
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -217,23 +240,24 @@ class ProfessionalServiceController extends Controller
                 $result['order']->seller_id
             );
 
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_SERVICE_ORDER_SELLER,
                 $result['order']->seller,
-                'New Service Order Received',
-                'You received a new order for "' . ($result['order']->service->title ?? 'Professional Service') . '".',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $result['order']->id, 'action_url' => route('professional-services.orders.show', $result['order']->id)],
-                'notify_service_orders',
-                true
+                [
+                    'order_id' => $result['order']->id,
+                    'service_title' => $result['order']->service->title ?? 'Professional Service',
+                    'action_url' => route('professional-services.orders.show', $result['order']->id),
+                ]
             );
 
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_SERVICE_ORDER_BUYER,
                 $result['order']->buyer,
-                'Service Order Confirmed',
-                'Your order for "' . ($result['order']->service->title ?? 'Professional Service') . '" has been placed successfully.',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $result['order']->id, 'action_url' => route('professional-services.orders.show', $result['order']->id)],
-                'notify_service_orders'
+                [
+                    'order_id' => $result['order']->id,
+                    'service_title' => $result['order']->service->title ?? 'Professional Service',
+                    'action_url' => route('professional-services.orders.show', $result['order']->id),
+                ]
             );
 
             MarketplaceMessage::create([
@@ -299,14 +323,14 @@ class ProfessionalServiceController extends Controller
                 $result['order']->seller_id
             );
 
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_SERVICE_ORDER_SELLER,
                 $result['order']->seller,
-                'Service Checkout Resumed',
-                'A buyer resumed checkout and confirmed order for "' . ($result['order']->service->title ?? 'Professional Service') . '".',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $result['order']->id, 'action_url' => route('professional-services.orders.show', $result['order']->id)],
-                'notify_service_orders',
-                true
+                [
+                    'order_id' => $result['order']->id,
+                    'service_title' => $result['order']->service->title ?? 'Professional Service',
+                    'action_url' => route('professional-services.orders.show', $result['order']->id),
+                ]
             );
 
             MarketplaceMessage::create([
@@ -569,7 +593,8 @@ class ProfessionalServiceController extends Controller
     /**
      * Update provider profile
      */
-    public function updateProfile(Request $request)
+
+ public function updateProfile(Request $request)
     {
         $validated = $request->validate([
             'is_available' => 'boolean',
@@ -642,11 +667,30 @@ class ProfessionalServiceController extends Controller
             $user->update(['freelancer_profile_completed' => true]);
         }
 
-        return response()->json([
+        // Check for next onboarding step after profile completion
+        $nextStep = null;
+        if ($user->account_type === 'freelancer' && $user->freelancer_profile_completed) {
+            $user->refresh(); // Refresh to get updated fields
+            $nextStep = app(\App\Services\AccessGateService::class)->getNextOnboardingStep($user);
+        }
+
+        $response = [
             'success' => true,
-            'message' => 'Profile updated successfully. Your freelancer profile is now complete.',
-        ]);
+            'message' => $nextStep
+                ? 'Profile updated successfully. Please complete the next step.'
+                : 'Profile updated successfully. Your freelancer profile is now complete.',
+      ];
+
+        if ($nextStep) {
+            $response['next_step_redirect'] = route($nextStep['route']);
+            $response['next_step_message'] = $nextStep['message'];
+        }
+
+        return response()->json($response);
     }
+
+
+
 
     /**
      * Service provider directory
@@ -711,18 +755,16 @@ class ProfessionalServiceController extends Controller
                 ], 404);
             }
 
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_SERVICE_MESSAGE_RECEIVED,
                 $recipient,
-                'New Message from ' . $sender->name,
-                "Subject: {$validated['subject']}\n\n{$validated['message']}",
-                \App\Models\Notification::TYPE_SYSTEM,
                 [
                     'sender_id' => $sender->id,
                     'sender_name' => $sender->name,
+                    'subject' => $validated['subject'],
+                    'message' => $validated['message'],
                     'action_url' => route('professional-services.provider-profile', $sender->id),
-                ],
-                'notify_chat_messages',
-                true
+                ]
             );
 
             $conversation = MarketplaceConversation::findOrCreate(

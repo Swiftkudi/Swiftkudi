@@ -6,6 +6,7 @@ use App\Models\SystemSetting;
 use App\Models\Task;
 use App\Models\Wallet;
 use App\Services\AccountTypeService;
+use App\Services\OnboardingSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -71,6 +72,24 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Show earner subtype selection (UCG vs Freelancing) when user picks Earner.
+     */
+    public function selectEarnerType()
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        if ($user->account_type && $user->onboarding_completed) {
+            return redirect()->route('dashboard');
+        }
+
+        return view('onboarding.earner-type');
+    }
+
+    /**
      * API: Check user's account type status.
      * Returns JSON response with account type information.
      */
@@ -109,191 +128,239 @@ class OnboardingController extends Controller
         ]);
 
         $user = Auth::user();
+        $accountType = $request->account_type;
+
+        // Get onboarding requirements for this account type
+        $requirements = OnboardingSettingsService::getOnboardingRequirements($accountType);
 
         $updateData = [
-            'account_type' => $request->account_type,
+            'account_type' => $accountType,
             'onboarding_started_at' => now(),
         ];
 
-        if (in_array($request->account_type, ['earner', 'task_creator', 'freelancer'])) {
-            // Onboarding flow selected; keep user moving into primary journey path.
+        // Set initial onboarding completion based on requirements
+        if (!$requirements['enabled']) {
+            // If onboarding is disabled for this type, mark as complete
             $updateData['onboarding_completed'] = true;
             $updateData['onboarding_completed_at'] = now();
-        }
-
-        if ($request->account_type === 'buyer') {
-            // Buyers need to select categories before completing onboarding
+        } elseif ($accountType === 'buyer' && !$requirements['category_selection_required']) {
+            // Buyers don't need category selection, mark complete
+            $updateData['onboarding_completed'] = true;
+            $updateData['onboarding_completed_at'] = now();
+            $updateData['buyer_onboarding_completed'] = true;
+        } elseif ($accountType === 'buyer' && $requirements['category_selection_required']) {
+            // Buyers need category selection
             $updateData['onboarding_completed'] = false;
             $updateData['buyer_onboarding_completed'] = false;
+        } else {
+            // For other types, check if they have simple onboarding (no additional requirements)
+            $simpleTypes = ['earner', 'task_creator'];
+            if (in_array($accountType, $simpleTypes)) {
+                $updateData['onboarding_completed'] = true;
+                $updateData['onboarding_completed_at'] = now();
+            } else {
+                $updateData['onboarding_completed'] = false;
+            }
         }
 
-        if ($request->account_type === 'task_creator') {
-            // Task creators must create first task before full marketplace access.
-            $updateData['has_completed_mandatory_creation'] = false;
-        }
+        // Set account-type specific flags based on requirements
+        switch ($accountType) {
+            case 'task_creator':
+                if ($requirements['first_task_required']) {
+                    $updateData['has_completed_mandatory_creation'] = false;
+                }
+                break;
 
-        if ($request->account_type === 'earner') {
-            // Earner will follow the start journey gate, no direct activation gateway.
-            $updateData['has_completed_mandatory_creation'] = false;
-        }
+            case 'earner':
+                $updateData['has_completed_mandatory_creation'] = false;
+                break;
 
-        if ($request->account_type === 'freelancer') {
-            $updateData['has_completed_mandatory_creation'] = false;
-            $updateData['freelancer_activation_paid'] = false;
-            $updateData['freelancer_profile_completed'] = false;
-            $updateData['freelancer_service_created'] = false;
-        }
+            case 'freelancer':
+                $updateData['has_completed_mandatory_creation'] = false;
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('freelancer');
+                if ($activationRequired) {
+                    $updateData['freelancer_activation_paid'] = false;
+                }
+                if ($requirements['profile_required']) {
+                    $updateData['freelancer_profile_completed'] = false;
+                }
+                if ($requirements['service_required']) {
+                    $updateData['freelancer_service_created'] = false;
+                }
+                break;
 
-        if ($request->account_type === 'digital_seller') {
-            $updateData['has_completed_mandatory_creation'] = false;
-            $updateData['digital_activation_paid'] = false;
-            $updateData['digital_product_uploaded'] = false;
-        }
+            case 'digital_seller':
+                $updateData['has_completed_mandatory_creation'] = false;
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('digital_seller');
+                if ($activationRequired) {
+                    $updateData['digital_activation_paid'] = false;
+                }
+                if ($requirements['product_required']) {
+                    $updateData['digital_product_uploaded'] = false;
+                }
+                break;
 
-        if ($request->account_type === 'growth_seller') {
-            $updateData['has_completed_mandatory_creation'] = false;
-            $updateData['growth_activation_paid'] = false;
-            $updateData['growth_listing_created'] = false;
+            case 'growth_seller':
+                $updateData['has_completed_mandatory_creation'] = false;
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('growth_seller');
+                if ($activationRequired) {
+                    $updateData['growth_activation_paid'] = false;
+                }
+                if ($requirements['listing_required']) {
+                    $updateData['growth_listing_created'] = false;
+                }
+                break;
+
+            case 'buyer':
+                if ($requirements['default_to_all']) {
+                    // Auto-select all categories for buyers
+                    $updateData['buyer_categories_selected'] = $this->getAllCategoryIds();
+                    $updateData['buyer_onboarding_completed'] = true;
+                    $updateData['onboarding_completed'] = true;
+                    $updateData['onboarding_completed_at'] = now();
+                }
+                break;
         }
 
         $user->update($updateData);
 
-        if ($request->account_type === 'earner' || $request->account_type === 'task_creator') {
-            return redirect()->route('start-your-journey');
-        }
-
-        if ($request->account_type === 'freelancer') {
-            return redirect()->route('onboarding.freelancer')->with('success', 'Freelancer onboarding complete. Please verify profile and create your first service to unlock the marketplace.');
-        }
-
-        if ($request->account_type === 'digital_seller') {
-            return redirect()->route('onboarding.digital-product')->with('success', 'Digital product onboarding started. Upload your first product to unlock marketplace browsing.');
-        }
-
-        if ($request->account_type === 'growth_seller') {
-            return redirect()->route('onboarding.growth')->with('success', 'Growth marketplace onboarding started. Create your first listing to unlock marketplace browsing.');
-        }
-
-        if ($request->account_type === 'buyer') {
-            return redirect()->route('onboarding.buyer.categories')->with('success', 'Please select your preferred categories to personalize your marketplace experience.');
-        }
-
-        return redirect()->route('dashboard')->with('success', 'Onboarding complete.');
+        // Redirect based on account type and requirements
+        return $this->getRedirectForAccountType($accountType, $requirements);
     }
 
+    /**
+     * Get all marketplace category IDs
+     */
+    private function getAllCategoryIds(): array
+    {
+        $ids = [];
+
+        // Professional service categories
+        $ids = array_merge($ids, \App\Models\ProfessionalServiceCategory::where('is_active', true)->pluck('id')->toArray());
+
+        // Digital product categories
+        $ids = array_merge($ids, \App\Models\MarketplaceCategory::where('type', 'digital_product')->where('is_active', true)->pluck('id')->toArray());
+
+        // Growth categories
+        $ids = array_merge($ids, \App\Models\MarketplaceCategory::where('type', 'growth')->where('is_active', true)->pluck('id')->toArray());
+
+        // Job categories
+        $ids = array_merge($ids, \App\Models\MarketplaceCategory::where('type', 'job')->where('is_active', true)->pluck('id')->toArray());
+
+        return $ids;
+    }
+
+    /**
+     * Get redirect route based on account type and requirements
+     */
+    private function getRedirectForAccountType(string $accountType, array $requirements)
+    {
+        if (!$requirements['enabled']) {
+            return redirect()->route('dashboard')->with('success', 'Account type set successfully.');
+        }
+
+        switch ($accountType) {
+            case 'earner':
+            case 'task_creator':
+                return redirect()->route('wallet.activate')->with('success', 'Account type set successfully. Please activate your wallet to start using your account.');
+
+            case 'freelancer':
+                $message = 'Freelancer onboarding started.';
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('freelancer');
+                if ($activationRequired) {
+                    $message .= ' Please activate your wallet to continue.';
+                }
+                if ($requirements['profile_required'] || $requirements['service_required']) {
+                    $message .= ' Please complete your profile and create your first service.';
+                }
+                return redirect()->route('onboarding.freelancer')->with('success', $message);
+
+            case 'digital_seller':
+                $message = 'Digital seller onboarding started.';
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('digital_seller');
+                if ($activationRequired) {
+                    $message .= ' Please activate your wallet to continue.';
+                }
+                if ($requirements['product_required']) {
+                    $message .= ' Upload your first product to unlock marketplace browsing.';
+                }
+                return redirect()->route('onboarding.digital-product')->with('success', $message);
+
+            case 'growth_seller':
+                $message = 'Growth seller onboarding started.';
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('growth_seller');
+                if ($activationRequired) {
+                    $message .= ' Please activate your wallet to continue.';
+                }
+                if ($requirements['listing_required']) {
+                    $message .= ' Create your first listing to unlock marketplace browsing.';
+                }
+                return redirect()->route('onboarding.growth')->with('success', $message);
+
+            case 'buyer':
+                $message = 'Buyer onboarding started.';
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('buyer');
+                if ($activationRequired) {
+                    $message .= ' Please activate your wallet to continue.';
+                }
+                if ($requirements['category_selection_required'] && !$requirements['default_to_all']) {
+                    return redirect()->route('onboarding.buyer.categories')
+                        ->with('success', 'Please select your preferred categories to personalize your marketplace experience.');
+                }
+                return redirect()->route('dashboard')->with('success', 'Buyer account setup complete.');
+
+            default:
+                return redirect()->route('dashboard')->with('success', 'Onboarding complete.');
+        }
+    }
+
+    /**
+     * DEPRECATED: Use wallet.activate instead
+     * This method is kept for backward compatibility but redirects to wallet activation
+     */
     public function activateEarner(Request $request)
     {
-        $user = Auth::user();
-        $fee = SystemSetting::get('activation_fee', 1500);
-
-        if ($user->wallet_balance < $fee) {
-            return redirect()->route('start-your-journey')->with('error', 'Insufficient balance for earnings activation.');
-        }
-
-        DB::transaction(function () use ($user, $fee) {
-            $user->decrement('wallet_balance', $fee);
-            $user->update(['activation_paid' => true]);
-
-            \App\Models\FinancialTransaction::create([
-                'user_id' => $user->id,
-                'type' => 'debit',
-                'amount' => $fee,
-                'description' => 'Earnings activation fee',
-                'reference' => 'earn_activation_' . $user->id,
-            ]);
-        });
-
-        return redirect()->route('start-your-journey')->with('success', 'Earnings activation successful. You now have access to Micro, UGC and Referral tasks.');
+        return redirect()->route('wallet.activate')
+            ->with('info', 'Please use the wallet activation page for secure activation.');
     }
 
+    /**
+     * DEPRECATED: Use wallet.activate instead
+     */
     public function activateFreelancer(Request $request)
     {
-        $user = Auth::user();
-        // Freelancers get free activation
-        $fee = 0;
-
-        if ($fee > 0 && $user->wallet_balance < $fee) {
-            return redirect()->route('onboarding.freelancer')->with('error', 'Insufficient balance for freelancer activation.');
-        }
-
-        if ($fee > 0) {
-            DB::transaction(function () use ($user, $fee) {
-                $user->decrement('wallet_balance', $fee);
-                
-                \App\Models\FinancialTransaction::create([
-                    'user_id' => $user->id,
-                    'type' => 'debit',
-                    'amount' => $fee,
-                    'description' => 'Freelancer activation fee',
-                    'reference' => 'freelancer_activation_' . $user->id,
-                ]);
-            });
-        }
-        
-        $user->update(['freelancer_activation_paid' => true]);
-
-        return redirect()->route('onboarding.freelancer')->with('success', 'Freelancer activation successful. Now complete your profile and create your first service.');
+        return redirect()->route('wallet.activate')
+            ->with('info', 'Please use the wallet activation page for secure activation.');
     }
 
+/**
+     * DEPRECATED: Use wallet.activate instead
+     */
     public function activateDigitalProduct(Request $request)
     {
-        $user = Auth::user();
-        // Digital sellers get free activation
-        $fee = 0;
-
-        if ($fee > 0 && $user->wallet_balance < $fee) {
-            return redirect()->route('onboarding.digital-product')->with('error', 'Insufficient balance for digital product activation.');
-        }
-
-        if ($fee > 0) {
-            DB::transaction(function () use ($user, $fee) {
-                $user->decrement('wallet_balance', $fee);
-                
-                \App\Models\FinancialTransaction::create([
-                    'user_id' => $user->id,
-                    'type' => 'debit',
-                    'amount' => $fee,
-                    'description' => 'Digital product activation fee',
-                    'reference' => 'digital_activation_' . $user->id,
-                ]);
-            });
-        }
-        
-        $user->update(['digital_activation_paid' => true]);
-
-        return redirect()->route('onboarding.digital-product')->with('success', 'Digital product activation successful. Upload your first product next.');
+        return redirect()->route('wallet.activate')
+            ->with('info', 'Please use the wallet activation page for secure activation.');
     }
 
+    /**
+     * DEPRECATED: Use wallet.activate instead
+     */
     public function activateGrowth(Request $request)
     {
-        $user = Auth::user();
-        // Growth sellers get free activation
-        $fee = 0;
-
-        if ($fee > 0 && $user->wallet_balance < $fee) {
-            return redirect()->route('onboarding.growth')->with('error', 'Insufficient balance for growth marketplace activation.');
-        }
-
-        if ($fee > 0) {
-            DB::transaction(function () use ($user, $fee) {
-                $user->decrement('wallet_balance', $fee);
-                
-                \App\Models\FinancialTransaction::create([
-                    'user_id' => $user->id,
-                    'type' => 'debit',
-                    'amount' => $fee,
-                    'description' => 'Growth marketplace activation fee',
-                    'reference' => 'growth_activation_' . $user->id,
-                ]);
-            });
-        }
-        
-        $user->update(['growth_activation_paid' => true]);
-
-        return redirect()->route('onboarding.growth')->with('success', 'Growth marketplace activation successful. Create your first listing next.');
+        return redirect()->route('wallet.activate')
+            ->with('info', 'Please use the wallet activation page for secure activation.');
     }
 
-    public function completeReferralTask(Request $request)
+    /**
+     * DEPRECATED: Use wallet.activate instead
+     */
+public function activateEarnerDeprecated(Request $request)
+    {
+        return redirect()->route('wallet.activate')
+            ->with('info', 'Please use the wallet activation page for secure activation.');
+    }
+
+public function completeReferralTask(Request $request)
     {
         $user = Auth::user();
 
@@ -301,13 +368,24 @@ class OnboardingController extends Controller
             return redirect()->route('start-your-journey')->with('info', 'Referral task already completed.');
         }
 
-        $userWallet = $user->wallet;
-        if (!$userWallet) {
-            return redirect()->route('start-your-journey')->with('error', 'Wallet not available.');
+        if (!SystemSetting::isReferralBonusTaskEnabled()) {
+            return redirect()->route('start-your-journey')->with('info', 'Referral task is currently disabled.');
         }
 
-        $reward = 500;
-        $userWallet->addWithdrawable($reward, 'referral_bonus', 'Earner referral onboarding task reward');
+        $reward = (float) SystemSetting::getReferralBonusAmount();
+        
+        $userWallet = $user->wallet;
+        
+        $accountType = $user->account_type;
+        $isEarnerOrFreelancer = in_array($accountType, ['earner', 'freelancer']);
+        
+        if ($userWallet) {
+            if ($isEarnerOrFreelancer) {
+                $userWallet->addWithdrawable($reward, 'referral_bonus', 'Referral task reward');
+            } else {
+                $userWallet->addPromoCredit($reward, 'referral_task', 'Referral task reward');
+            }
+        }
 
         $user->update(['referral_task_completed' => true]);
 
@@ -315,11 +393,28 @@ class OnboardingController extends Controller
             'user_id' => $user->id,
             'type' => 'credit',
             'amount' => $reward,
-            'description' => 'Referral onboarding task reward',
+            'description' => 'Referral task reward',
             'reference' => 'referral_task_reward_' . $user->id,
         ]);
 
-        return redirect()->route('start-your-journey')->with('success', 'Referral task completed; ₦500 credited to your wallet.');
+        $rewardType = $isEarnerOrFreelancer ? 'withdrawable' : 'platform credits';
+        $message = sprintf(
+            'Referral task completed; ₦%s %s credited to your wallet.',
+            number_format($reward, 0),
+            $rewardType
+        );
+
+        app(\App\Services\NotificationManager::class)->notify(
+            \App\Services\NotificationManager::EVENT_REFERRAL_BONUS,
+            $user,
+            [
+                'bonus_amount' => $reward,
+                'source' => 'referral_task',
+                'reward_type' => $rewardType,
+            ]
+        );
+
+        return redirect()->route('start-your-journey')->with('success', $message);
     }
 
     public function skipReferralTask(Request $request)
@@ -333,7 +428,7 @@ class OnboardingController extends Controller
     public function unlockEarnerFeature(Request $request)
     {
         $request->validate([
-            'feature' => 'required|in:professional_services,digital_products,growth_marketplace,task_creation',
+            'feature' => 'required|in:professional_services,digital_products,growth_listings,task_creation',
             'period' => 'nullable|in:initial,monthly,quarterly',
         ]);
 
@@ -367,7 +462,7 @@ class OnboardingController extends Controller
             return redirect()->route('dashboard')->with('info', 'This feature unlock is already being processed.');
         }
 
-        if ($user->wallet_balance < $amount) {
+        if (($user->wallet ? $user->wallet->withdrawable_balance : 0) < $amount) {
             // Store pending feature unlock in session
             $pendingData = [
                 'idempotency_key' => $idempotencyKey,
@@ -383,7 +478,7 @@ class OnboardingController extends Controller
             session(['pending_feature_unlock' => $pendingData]);
             
             // Calculate required amount
-            $requiredAmount = $amount - $user->wallet_balance;
+            $requiredAmount = $amount - ($user->wallet ? $user->wallet->withdrawable_balance : 0);
             
             // Redirect to deposit with success redirect back to complete the unlock
             return redirect()->route('wallet.deposit', [
@@ -402,12 +497,13 @@ class OnboardingController extends Controller
 
         try {
             DB::transaction(function () use ($user, $feature, $amount, $months, $idempotencyKey) {
-                $user->decrement('wallet_balance', $amount);
+                $user->wallet->deductWithdrawable($amount, "feature_unlock", "Feature unlock deduction");
                 $user->unlockEarnerFeature($feature, $months);
 
                 \App\Models\FinancialTransaction::create([
                     'user_id' => $user->id,
-                    'type' => 'debit',
+                    'transaction_type' => 'expense',
+                'category' => 'feature_unlock',
                     'amount' => $amount,
                     'description' => 'Earner feature unlock: ' . $feature,
                     'reference' => 'earner_feature_' . $feature . '_' . $user->id . '_' . time(),
@@ -440,9 +536,9 @@ class OnboardingController extends Controller
         // Verify the user has sufficient funds now
         $requiredAmount = $pendingUnlock['amount'];
         
-        if ($user->wallet_balance < $requiredAmount) {
+        if (($user->wallet ? $user->wallet->withdrawable_balance : 0) < $requiredAmount) {
             // Still insufficient, redirect to deposit again
-            $shortfall = $requiredAmount - $user->wallet_balance;
+            $shortfall = $requiredAmount - ($user->wallet ? $user->wallet->withdrawable_balance : 0);
             return redirect()->route('wallet.deposit', [
                 'required' => $shortfall,
             ])->with('deposit_success_redirect', route('onboarding.feature.unlock.complete'))
@@ -462,7 +558,7 @@ class OnboardingController extends Controller
 
         try {
             DB::transaction(function () use ($user, $pendingUnlock) {
-                $user->decrement('wallet_balance', $pendingUnlock['amount']);
+                $user->wallet->deductWithdrawable($pendingUnlock["amount"], "feature_unlock", "Pending feature unlock deduction");
                 
                 // Call the appropriate unlock method based on account type
                 $accountType = $pendingUnlock['account_type'];
@@ -489,7 +585,8 @@ class OnboardingController extends Controller
 
                 \App\Models\FinancialTransaction::create([
                     'user_id' => $user->id,
-                    'type' => 'debit',
+                    'transaction_type' => 'expense',
+                'category' => 'feature_unlock',
                     'amount' => $pendingUnlock['amount'],
                     'description' => ucfirst($accountType) . ' feature unlock: ' . $pendingUnlock['feature'],
                     'reference' => $accountType . '_feature_' . $pendingUnlock['feature'] . '_' . $user->id . '_' . time(),
@@ -514,7 +611,7 @@ class OnboardingController extends Controller
     public function unlockBuyerFeature(Request $request)
     {
         $request->validate([
-            'feature' => 'required|in:professional_services,task_creation,available_tasks',
+            'feature' => 'required|in:professional_services,task_creation,available_tasks,growth_listings',
             'period' => 'nullable|in:initial,monthly,quarterly',
         ]);
 
@@ -548,7 +645,7 @@ class OnboardingController extends Controller
             return redirect()->route('dashboard')->with('info', 'This feature unlock is already being processed.');
         }
 
-        if ($user->wallet_balance < $amount) {
+        if (($user->wallet ? $user->wallet->withdrawable_balance : 0) < $amount) {
             // Store pending feature unlock in session
             $pendingData = [
                 'idempotency_key' => $idempotencyKey,
@@ -564,7 +661,7 @@ class OnboardingController extends Controller
             session(['pending_feature_unlock' => $pendingData]);
             
             // Calculate required amount
-            $requiredAmount = $amount - $user->wallet_balance;
+            $requiredAmount = $amount - ($user->wallet ? $user->wallet->withdrawable_balance : 0);
             
             // Redirect to deposit with success redirect back to complete the unlock
             return redirect()->route('wallet.deposit', [
@@ -583,12 +680,13 @@ class OnboardingController extends Controller
 
         try {
             DB::transaction(function () use ($user, $feature, $amount, $months, $idempotencyKey) {
-                $user->decrement('wallet_balance', $amount);
+                $user->wallet->deductWithdrawable($amount, "feature_unlock", "Feature unlock deduction");
                 $user->unlockBuyerFeature($feature, $months);
 
                 \App\Models\FinancialTransaction::create([
                     'user_id' => $user->id,
-                    'type' => 'debit',
+                    'transaction_type' => 'expense',
+                'category' => 'feature_unlock',
                     'amount' => $amount,
                     'description' => 'Buyer feature unlock: ' . $feature,
                     'reference' => 'buyer_feature_' . $feature . '_' . $user->id . '_' . time(),
@@ -645,7 +743,7 @@ class OnboardingController extends Controller
             return redirect()->route('dashboard')->with('info', 'This feature unlock is already being processed.');
         }
 
-        if ($user->wallet_balance < $amount) {
+        if (($user->wallet ? $user->wallet->withdrawable_balance : 0) < $amount) {
             // Store pending feature unlock in session
             $pendingData = [
                 'idempotency_key' => $idempotencyKey,
@@ -661,7 +759,7 @@ class OnboardingController extends Controller
             session(['pending_feature_unlock' => $pendingData]);
             
             // Calculate required amount
-            $requiredAmount = $amount - $user->wallet_balance;
+            $requiredAmount = $amount - ($user->wallet ? $user->wallet->withdrawable_balance : 0);
             
             // Redirect to deposit with success redirect back to complete the unlock
             return redirect()->route('wallet.deposit', [
@@ -680,12 +778,13 @@ class OnboardingController extends Controller
 
         try {
             DB::transaction(function () use ($user, $feature, $amount, $months, $idempotencyKey) {
-                $user->decrement('wallet_balance', $amount);
+                $user->wallet->deductWithdrawable($amount, "feature_unlock", "Feature unlock deduction");
                 $user->unlockTaskCreatorFeature($feature, $months);
 
                 \App\Models\FinancialTransaction::create([
                     'user_id' => $user->id,
-                    'type' => 'debit',
+                    'transaction_type' => 'expense',
+                'category' => 'feature_unlock',
                     'amount' => $amount,
                     'description' => 'Task Creator feature unlock: ' . $feature,
                     'reference' => 'task_creator_feature_' . $feature . '_' . $user->id . '_' . time(),
@@ -742,7 +841,7 @@ class OnboardingController extends Controller
             return redirect()->route('dashboard')->with('info', 'This feature unlock is already being processed.');
         }
 
-        if ($user->wallet_balance < $amount) {
+        if (($user->wallet ? $user->wallet->withdrawable_balance : 0) < $amount) {
             // Store pending unlock in session
             $pendingData = [
                 'idempotency_key' => $idempotencyKey,
@@ -757,7 +856,7 @@ class OnboardingController extends Controller
             ];
             session(['pending_feature_unlock' => $pendingData]);
             
-            $requiredAmount = $amount - $user->wallet_balance;
+            $requiredAmount = $amount - ($user->wallet ? $user->wallet->withdrawable_balance : 0);
             
             return redirect()->route('wallet.deposit', [
                 'required' => $requiredAmount,
@@ -775,12 +874,13 @@ class OnboardingController extends Controller
 
         try {
             DB::transaction(function () use ($user, $feature, $amount, $months, $idempotencyKey) {
-                $user->decrement('wallet_balance', $amount);
+                $user->wallet->deductWithdrawable($amount, "feature_unlock", "Feature unlock deduction");
                 $user->unlockFreelancerFeature($feature, $months);
 
                 \App\Models\FinancialTransaction::create([
                     'user_id' => $user->id,
-                    'type' => 'debit',
+                    'transaction_type' => 'expense',
+                'category' => 'feature_unlock',
                     'amount' => $amount,
                     'description' => 'Freelancer feature unlock: ' . $feature,
                     'reference' => 'freelancer_feature_' . $feature . '_' . $user->id . '_' . time(),
@@ -837,7 +937,7 @@ class OnboardingController extends Controller
             return redirect()->route('dashboard')->with('info', 'This feature unlock is already being processed.');
         }
 
-        if ($user->wallet_balance < $amount) {
+        if (($user->wallet ? $user->wallet->withdrawable_balance : 0) < $amount) {
             $pendingData = [
                 'idempotency_key' => $idempotencyKey,
                 'account_type' => 'digital_seller',
@@ -851,7 +951,7 @@ class OnboardingController extends Controller
             ];
             session(['pending_feature_unlock' => $pendingData]);
             
-            $requiredAmount = $amount - $user->wallet_balance;
+            $requiredAmount = $amount - ($user->wallet ? $user->wallet->withdrawable_balance : 0);
             
             return redirect()->route('wallet.deposit', [
                 'required' => $requiredAmount,
@@ -868,12 +968,13 @@ class OnboardingController extends Controller
 
         try {
             DB::transaction(function () use ($user, $feature, $amount, $months, $idempotencyKey) {
-                $user->decrement('wallet_balance', $amount);
+                $user->wallet->deductWithdrawable($amount, "feature_unlock", "Feature unlock deduction");
                 $user->unlockDigitalSellerFeature($feature, $months);
 
                 \App\Models\FinancialTransaction::create([
                     'user_id' => $user->id,
-                    'type' => 'debit',
+                    'transaction_type' => 'expense',
+                'category' => 'feature_unlock',
                     'amount' => $amount,
                     'description' => 'Digital Seller feature unlock: ' . $feature,
                     'reference' => 'digital_seller_feature_' . $feature . '_' . $user->id . '_' . time(),
@@ -930,7 +1031,7 @@ class OnboardingController extends Controller
             return redirect()->route('dashboard')->with('info', 'This feature unlock is already being processed.');
         }
 
-        if ($user->wallet_balance < $amount) {
+        if (($user->wallet ? $user->wallet->withdrawable_balance : 0) < $amount) {
             $pendingData = [
                 'idempotency_key' => $idempotencyKey,
                 'account_type' => 'growth_seller',
@@ -944,7 +1045,7 @@ class OnboardingController extends Controller
             ];
             session(['pending_feature_unlock' => $pendingData]);
             
-            $requiredAmount = $amount - $user->wallet_balance;
+            $requiredAmount = $amount - ($user->wallet ? $user->wallet->withdrawable_balance : 0);
             
             return redirect()->route('wallet.deposit', [
                 'required' => $requiredAmount,
@@ -961,12 +1062,13 @@ class OnboardingController extends Controller
 
         try {
             DB::transaction(function () use ($user, $feature, $amount, $months, $idempotencyKey) {
-                $user->decrement('wallet_balance', $amount);
+                $user->wallet->deductWithdrawable($amount, "feature_unlock", "Feature unlock deduction");
                 $user->unlockGrowthSellerFeature($feature, $months);
 
                 \App\Models\FinancialTransaction::create([
                     'user_id' => $user->id,
-                    'type' => 'debit',
+                    'transaction_type' => 'expense',
+                'category' => 'feature_unlock',
                     'amount' => $amount,
                     'description' => 'Growth Seller feature unlock: ' . $feature,
                     'reference' => 'growth_seller_feature_' . $feature . '_' . $user->id . '_' . time(),
@@ -984,6 +1086,39 @@ class OnboardingController extends Controller
     }
 
     // Done: earner-specific onboarding removed. Task creator and buyer/freelancer now use start-your-journey/dashboard pathways.
+
+    /**
+     * Simple earner activation onboarding - redirects to wallet activation
+     */
+    public function earnerOnboarding()
+    {
+        $user = Auth::user();
+
+        // If wallet is already activated, redirect to dashboard
+        if ($user->wallet && $user->wallet->is_activated) {
+            return redirect()->route('dashboard')->with('success', 'Your wallet is already activated!');
+        }
+
+        // Redirect to the centralized wallet activation page
+        return redirect()->route('wallet.activate');
+    }
+
+    /**
+     * Complete earner onboarding
+     */
+    public function completeEarnerOnboarding(Request $request)
+    {
+        $user = Auth::user();
+
+        // Mark onboarding as complete
+        $user->update([
+            'onboarding_completed' => true,
+            'onboarding_completed_at' => now()
+        ]);
+
+        return redirect()->route('dashboard')->with('success', 'Welcome to SwiftKudi! Your account is now fully activated and ready to earn.');
+    }
+
     public function taskCreatorOnboarding()
     {
         $user = Auth::user();
@@ -1050,7 +1185,7 @@ class OnboardingController extends Controller
                     'professional_services' => [
                         'label' => 'Professional Services',
                         'unlocked' => $user->hasBuyerFeature('professional_services'),
-                        'expires' => $user->getTaskCreatorFeatureExpiry('professional_services'),
+                        'expires' => $user->getBuyerFeatureExpiry('professional_services'),
                     ],
                     'task_creation' => [
                         'label' => 'Task Creation',
@@ -1204,11 +1339,140 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Get the unlock POST route name for a given account type
+     */
+    protected function getUnlockRouteName(string $accountType): string
+    {
+        return match ($accountType) {
+            'buyer' => 'onboarding.buyer.feature.unlock',
+            'earner' => 'onboarding.earn.feature.unlock',
+            'task_creator' => 'onboarding.task-creator.feature.unlock',
+            'freelancer' => 'onboarding.freelancer.feature.unlock',
+            'digital_seller' => 'onboarding.digital-seller.feature.unlock',
+            'growth_seller' => 'onboarding.growth-seller.feature.unlock',
+            default => throw new \InvalidArgumentException("Unknown account type: {$accountType}"),
+        };
+    }
+
+    /**
+     * Show single feature unlock page based on session prompt or feature parameter
+     */
+    public function showSingleFeatureUnlock(Request $request, $feature = null)
+    {
+        $user = Auth::user();
+        
+        // Admins have all features unlocked; redirect to dashboard
+        if ($user->isAdmin()) {
+            return redirect()->route('dashboard')->with('info', 'Admin accounts have full access to all features.');
+        }
+        
+        // Get feature from route parameter, query string, or session
+        $feature = $feature ?? $request->query('feature');
+        
+        if (!$feature) {
+            $unlockPrompt = session('unlock_prompt');
+            if ($unlockPrompt && isset($unlockPrompt['feature'])) {
+                $feature = $unlockPrompt['feature'];
+            }
+        }
+        
+        if (!$feature) {
+            return redirect()->route('onboarding.features');
+        }
+        
+        // Validate feature exists
+        $featureConfig = config("features.features.{$feature}");
+        if (!$featureConfig) {
+            return redirect()->route('dashboard')->with('error', 'Invalid feature specified.');
+        }
+        
+        $accountType = $user->account_type;
+        
+        // Check if this feature is allowed for user's account type
+        $allowedRoles = $featureConfig['allowed_roles'] ?? [];
+        if (!in_array($accountType, $allowedRoles, true)) {
+            return redirect()->route('dashboard')->with('error', 'This feature is not available for your account type.');
+        }
+        
+        // Determine if feature is already unlocked and its expiry
+        $isUnlocked = false;
+        $expiresAt = null;
+        
+        switch ($accountType) {
+            case 'buyer':
+                $isUnlocked = $user->hasBuyerFeature($feature);
+                $expiresAt = $user->getBuyerFeatureExpiry($feature);
+                break;
+            case 'earner':
+                $isUnlocked = $user->hasEarnerFeature($feature);
+                $expiresAt = $user->getEarnerFeatureExpiry($feature);
+                break;
+            case 'task_creator':
+                $isUnlocked = $user->hasTaskCreatorFeature($feature);
+                $expiresAt = $user->getTaskCreatorFeatureExpiry($feature);
+                break;
+            case 'freelancer':
+                $isUnlocked = $user->hasFreelancerFeature($feature);
+                $expiresAt = $user->getFreelancerFeatureExpiry($feature);
+                break;
+            case 'digital_seller':
+                $isUnlocked = $user->hasDigitalSellerFeature($feature);
+                $expiresAt = $user->getDigitalSellerFeatureExpiry($feature);
+                break;
+            case 'growth_seller':
+                $isUnlocked = $user->hasGrowthSellerFeature($feature);
+                $expiresAt = $user->getGrowthSellerFeatureExpiry($feature);
+                break;
+        }
+        
+        // Determine if feature has ever been unlocked (expiry record exists)
+        // Show renew options for any feature with an expiry (active or expired)
+        // Show initial unlock only if never unlocked (no expiry record)
+        $hasExpiryRecord = $expiresAt !== null;
+        $showRenewOptions = $hasExpiryRecord;
+        
+        // Determine if currently active (for status display)
+        $isActive = $isUnlocked; // already computed
+        $isExpired = $hasExpiryRecord && !$isActive;
+        
+        // If already unlocked and active, still show page but indicate it's active
+        // (allow renewals)
+        
+        // Get pricing periods
+        $periods = $featureConfig['periods'] ?? [];
+        
+        // Compute form action URL (POST to account-type-specific unlock route)
+        $formAction = route($this->getUnlockRouteName($accountType));
+        
+        // Get feature label and description
+        $label = $featureConfig['label'];
+        $description = $featureConfig['context_message'] ?? '';
+        
+        return view('onboarding.single-feature-unlock', compact(
+            'feature',
+            'label',
+            'description',
+            'isUnlocked',
+            'expiresAt',
+            'showRenewOptions',
+            'isExpired',
+            'periods',
+            'formAction',
+            'accountType'
+        ));
+    }
+
+    /**
      * Show buyer category selection page
      */
     public function buyerCategorySelection()
     {
         $user = Auth::user();
+
+        // Check if buyer onboarding is enabled
+        if (!OnboardingSettingsService::isBuyerOnboardingEnabled()) {
+            return redirect()->route('dashboard')->with('info', 'Buyer onboarding is currently disabled.');
+        }
 
         // Get all marketplace categories grouped by type
         $professionalCategories = \App\Models\ProfessionalServiceCategory::where('is_active', true)->get();
@@ -1224,13 +1488,15 @@ class OnboardingController extends Controller
             ->get();
 
         $selectedCategories = $user->getBuyerCategories();
+        $categoryLimits = OnboardingSettingsService::getBuyerCategoryLimits();
 
         return view('onboarding.buyer', compact(
             'professionalCategories',
             'digitalCategories',
             'growthCategories',
             'jobCategories',
-            'selectedCategories'
+            'selectedCategories',
+            'categoryLimits'
         ));
     }
 
@@ -1239,20 +1505,33 @@ class OnboardingController extends Controller
      */
     public function storeBuyerCategories(Request $request)
     {
+        $user = Auth::user();
+
+        // Check if buyer onboarding is enabled
+        if (!OnboardingSettingsService::isBuyerOnboardingEnabled()) {
+            return redirect()->route('dashboard')->with('error', 'Buyer onboarding is currently disabled.');
+        }
+
+        // Get category limits from settings
+        $limits = OnboardingSettingsService::getBuyerCategoryLimits();
+        $minCategories = $limits['min'];
+        $maxCategories = $limits['max'];
+
         // Get all valid category IDs from all category tables
         $professionalIds = \App\Models\ProfessionalServiceCategory::where('is_active', true)->pluck('id')->toArray();
         $digitalIds = \App\Models\MarketplaceCategory::where('type', 'digital_product')->where('is_active', true)->pluck('id')->toArray();
         $growthIds = \App\Models\MarketplaceCategory::where('type', 'growth')->where('is_active', true)->pluck('id')->toArray();
         $jobIds = \App\Models\MarketplaceCategory::where('type', 'job')->where('is_active', true)->pluck('id')->toArray();
-        
+
         $validIds = array_merge($professionalIds, $digitalIds, $growthIds, $jobIds);
 
         $request->validate([
-            'categories' => 'required|array|min:1',
+            'categories' => "required|array|min:{$minCategories}|max:{$maxCategories}",
             'categories.*' => 'integer',
         ], [
             'categories.required' => 'Please select at least one category.',
-            'categories.min' => 'Please select at least one category.',
+            'categories.min' => "Please select at least {$minCategories} category(ies).",
+            'categories.max' => "You can select a maximum of {$maxCategories} categories.",
         ]);
 
         // Validate that all selected IDs exist in any category table
@@ -1261,8 +1540,6 @@ class OnboardingController extends Controller
                 return back()->withErrors(['categories' => 'Invalid category selected.']);
             }
         }
-
-        $user = Auth::user();
 
         // Save selected categories
         $user->setBuyerCategories($request->categories);
@@ -1284,9 +1561,14 @@ class OnboardingController extends Controller
     public function buyerCategoriesForm()
     {
         $user = auth()->user();
-        
+
         if ($user->account_type !== 'buyer') {
             return redirect()->route('dashboard')->with('error', 'This feature is only available for buyers.');
+        }
+
+        // Check if category updates are allowed
+        if (!OnboardingSettingsService::canBuyerUpdateCategories()) {
+            return redirect()->route('dashboard')->with('error', 'Category updates are currently disabled.');
         }
 
         $professionalCategories = \App\Models\ProfessionalServiceCategory::where('is_active', true)->get();
@@ -1302,13 +1584,15 @@ class OnboardingController extends Controller
             ->get();
 
         $selectedCategories = $user->getBuyerCategories();
+        $categoryLimits = OnboardingSettingsService::getBuyerCategoryLimits();
 
         return view('settings.buyer-categories', compact(
             'professionalCategories',
             'digitalCategories',
             'growthCategories',
             'jobCategories',
-            'selectedCategories'
+            'selectedCategories',
+            'categoryLimits'
         ));
     }
 
@@ -1318,25 +1602,36 @@ class OnboardingController extends Controller
     public function updateBuyerCategories(Request $request)
     {
         $user = auth()->user();
-        
+
         if ($user->account_type !== 'buyer') {
             return redirect()->route('dashboard')->with('error', 'This feature is only available for buyers.');
         }
+
+        // Check if category updates are allowed
+        if (!OnboardingSettingsService::canBuyerUpdateCategories()) {
+            return redirect()->route('dashboard')->with('error', 'Category updates are currently disabled.');
+        }
+
+        // Get category limits from settings
+        $limits = OnboardingSettingsService::getBuyerCategoryLimits();
+        $minCategories = $limits['min'];
+        $maxCategories = $limits['max'];
 
         // Get all valid category IDs from all category tables
         $professionalIds = \App\Models\ProfessionalServiceCategory::where('is_active', true)->pluck('id')->toArray();
         $digitalIds = \App\Models\MarketplaceCategory::where('type', 'digital_product')->where('is_active', true)->pluck('id')->toArray();
         $growthIds = \App\Models\MarketplaceCategory::where('type', 'growth')->where('is_active', true)->pluck('id')->toArray();
         $jobIds = \App\Models\MarketplaceCategory::where('type', 'job')->where('is_active', true)->pluck('id')->toArray();
-        
+
         $validIds = array_merge($professionalIds, $digitalIds, $growthIds, $jobIds);
 
         $request->validate([
-            'categories' => 'required|array|min:1',
+            'categories' => "required|array|min:{$minCategories}|max:{$maxCategories}",
             'categories.*' => 'integer',
         ], [
             'categories.required' => 'Please select at least one category.',
-            'categories.min' => 'Please select at least one category.',
+            'categories.min' => "Please select at least {$minCategories} category(ies).",
+            'categories.max' => "You can select a maximum of {$maxCategories} categories.",
         ]);
 
         // Validate that all selected IDs exist in any category table

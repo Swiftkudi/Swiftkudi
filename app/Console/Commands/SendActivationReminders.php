@@ -3,12 +3,23 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Services\OnboardingSettingsService;
+use App\Services\NotificationManager;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class SendActivationReminders extends Command
 {
+    protected OnboardingSettingsService $onboardingSettings;
+    protected NotificationManager $notificationManager;
+
+    public function __construct(OnboardingSettingsService $onboardingSettings, NotificationManager $notificationManager)
+    {
+        parent::__construct();
+        $this->onboardingSettings = $onboardingSettings;
+        $this->notificationManager = $notificationManager;
+    }
     /**
      * The name and signature of the console command.
      *
@@ -51,10 +62,11 @@ class SendActivationReminders extends Command
     protected function sendFirstReminders(Carbon $now): void
     {
         $threshold = $now->copy()->subHours(6);
+        $activationFee = $this->onboardingSettings->getActivationFee('earner');
 
         $users = User::where('created_at', '>=', $threshold)
             ->where('created_at', '<', $now->copy()->subHours(5)->subMinute())
-            ->where('wallet_balance', '<', config('swiftkudi.activation_fee', 1000))
+            ->where('wallet_balance', '<', $activationFee)
             ->whereDoesntHave('notifications', function ($query) {
                 $query->where('type', 'activation_reminder');
             })
@@ -64,12 +76,13 @@ class SendActivationReminders extends Command
 
         foreach ($users as $user) {
             try {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_ACTIVATION_REMINDER,
                     $user,
-                    'Complete Your Registration - Tasks Await! 🎯',
-                    'You registered on SwiftKudi but haven\'t completed your activation yet. Activate now to start completing tasks and earning real money.',
-                    'activation_reminder',
-                    ['reminder_type' => 'first', 'action_url' => route('wallet.activate')]
+                    [
+                        'reminder_type' => 'first',
+                        'action_url' => route('wallet.activate'),
+                    ]
                 );
                 Log::info("First activation reminder sent to user {$user->id}");
             } catch (\Exception $e) {
@@ -84,10 +97,11 @@ class SendActivationReminders extends Command
     protected function sendSecondReminders(Carbon $now): void
     {
         $threshold = $now->copy()->subHours(24);
+        $activationFee = $this->onboardingSettings->getActivationFee('earner');
 
         $users = User::where('created_at', '>=', $threshold)
             ->where('created_at', '<', $now->copy()->subHours(23)->subMinute())
-            ->where('wallet_balance', '<', config('swiftkudi.activation_fee', 1000))
+            ->where('wallet_balance', '<', $activationFee)
             ->whereHas('notifications', function ($query) {
                 $query->where('type', 'activation_reminder')
                     ->where('data', 'LIKE', '%"reminder_type":"first"%');
@@ -102,12 +116,13 @@ class SendActivationReminders extends Command
 
         foreach ($users as $user) {
             try {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_ACTIVATION_REMINDER,
                     $user,
-                    'High-Paying Tasks Available Now! 💰',
-                    'We noticed you haven\'t activated your account yet. High-paying tasks are available now—activate and start earning.',
-                    'activation_reminder',
-                    ['reminder_type' => 'second', 'action_url' => route('wallet.activate')]
+                    [
+                        'reminder_type' => 'second',
+                        'action_url' => route('wallet.activate'),
+                    ]
                 );
                 Log::info("Second activation reminder sent to user {$user->id}");
             } catch (\Exception $e) {
@@ -122,10 +137,11 @@ class SendActivationReminders extends Command
     protected function sendThirdReminders(Carbon $now): void
     {
         $threshold = $now->copy()->subHours(48);
+        $activationFee = $this->onboardingSettings->getActivationFee('earner');
 
         $users = User::where('created_at', '>=', $threshold)
             ->where('created_at', '<', $now->copy()->subHours(47)->subMinute())
-            ->where('wallet_balance', '<', config('swiftkudi.activation_fee', 1000))
+            ->where('wallet_balance', '<', $activationFee)
             ->whereHas('notifications', function ($query) {
                 $query->where('type', 'activation_reminder')
                     ->where('data', 'LIKE', '%"reminder_type":"second"%');
@@ -140,12 +156,13 @@ class SendActivationReminders extends Command
 
         foreach ($users as $user) {
             try {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_ACTIVATION_REMINDER,
                     $user,
-                    'Join Thousands Earning on SwiftKudi - Last Chance! 🚀',
-                    'Last reminder before you miss out. Activate your account now and start earning from available tasks.',
-                    'activation_reminder',
-                    ['reminder_type' => 'third', 'action_url' => route('wallet.activate')]
+                    [
+                        'reminder_type' => 'third',
+                        'action_url' => route('wallet.activate'),
+                    ]
                 );
                 Log::info("Third activation reminder sent to user {$user->id}");
             } catch (\Exception $e) {

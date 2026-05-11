@@ -39,7 +39,7 @@
                                     <p class="text-sm text-gray-500 dark:text-gray-400">Order #{{ $order->id }}</p>
                                 </div>
                                 <div class="text-left sm:text-right">
-                                    <p class="text-lg font-bold text-gray-900 dark:text-gray-100">₦{{ number_format($order->total_amount ?? 0) }}</p>
+                                    <p class="text-lg font-bold text-gray-900 dark:text-gray-100">₦{{ number_format($order->paid_amount ?? 0) }}</p>
                                     <span class="px-2 py-1 text-xs rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">
                                         {{ ucfirst($order->status ?? 'pending') }}
                                     </span>
@@ -79,7 +79,7 @@
                                     </a>
                                 </div>
                                 <div class="text-left sm:text-right">
-                                    <p class="text-lg font-bold text-gray-900 dark:text-gray-100">₦{{ number_format($order->total_amount ?? 0) }}</p>
+                                    <p class="text-lg font-bold text-gray-900 dark:text-gray-100">₦{{ number_format($order->paid_amount ?? 0) }}</p>
                                     <p class="text-sm text-green-600 dark:text-green-400">Earned: ₦{{ number_format($order->seller_payout ?? 0) }}</p>
                                     <span class="px-2 py-1 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
                                         Completed

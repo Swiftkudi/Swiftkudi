@@ -5,8 +5,12 @@
 
 // ─── Push event ──────────────────────────────────────────────────────────────
 self.addEventListener('push', function (event) {
+    console.log('[SW] Push event received at', new Date().toISOString());
+    console.log('[SW] Notification permission:', Notification.permission);
+    
     let data = {};
     if (event.data) {
+        console.log('[SW RAW]', event.data.text());
         try {
             data = event.data.json();
         } catch (_) {
@@ -25,11 +29,19 @@ self.addEventListener('push', function (event) {
         },
     };
 
+    console.log('[SW] About to show notification:', title, options);
+
     event.waitUntil(
-        self.registration.showNotification(title, options)
-            .catch(function (err) {
-                console.error('[SW] showNotification failed:', err);
-            })
+        (async () => {
+            try {
+                const notif = await self.registration.showNotification(title, options);
+                console.log('[SW] ✓ showNotification resolved successfully');
+                return notif;
+            } catch (err) {
+                console.error('[SW] ✗ showNotification error:', err.name, err.message, err);
+                throw err;
+            }
+        })()
     );
 });
 

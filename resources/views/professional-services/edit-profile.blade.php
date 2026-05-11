@@ -164,79 +164,81 @@
 @push('scripts')
 <script>
     // Handle form submission with AJAX
-    document.getElementById('profile-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const form = this;
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        
-        // Update inputs before submitting
-        updateSkillsInput();
-        updatePortfolioInput();
-        updateCertificationsInput();
-        
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
-        
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(Object.fromEntries(new FormData(form)))
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                // Show success message using Swal or alert
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success!',
-                        text: data.message,
-                        timer: 3000,
-                        showConfirmButton: false
-                    });
-                } else {
-                    alert(data.message);
-                }
-                // Optionally redirect or refresh
-                if (data.redirect) {
-                    window.location.href = data.redirect;
-                }
+document.getElementById('profile-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const form = this;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    updateSkillsInput();
+    updatePortfolioInput();
+    updateCertificationsInput();
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify(Object.fromEntries(new FormData(form)))
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: data.next_step_message || data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    if (data.next_step_redirect) {
+                        window.location.href = data.next_step_redirect;
+                    }
+                });
             } else {
-                // Show error message
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: data.message || 'Failed to update profile'
-                    });
-                } else {
-                    alert(data.message || 'Failed to update profile');
+                alert(data.next_step_message || data.message);
+
+                if (data.next_step_redirect) {
+                    window.location.href = data.next_step_redirect;
                 }
             }
-        } catch (error) {
-            console.error('Error:', error);
+        } else {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'An error occurred. Please try again.'
+                    text: data.message || 'Failed to update profile'
                 });
             } else {
-                alert('An error occurred. Please try again.');
+                alert(data.message || 'Failed to update profile');
             }
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
         }
-    });
+    } catch (error) {
+        console.error('Error:', error);
 
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred. Please try again.'
+            });
+        } else {
+            alert('An error occurred. Please try again.');
+        }
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+});
     // Skills management
     function addSkill() {
         const input = document.getElementById('skill-input');

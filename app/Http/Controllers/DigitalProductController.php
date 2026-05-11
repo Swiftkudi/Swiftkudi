@@ -9,6 +9,7 @@ use App\Models\MarketplaceConversation;
 use App\Models\MarketplaceMessage;
 use App\Models\MarketplaceCategory;
 use App\Services\DigitalProductService;
+use App\Services\NotificationManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -17,10 +18,12 @@ use Illuminate\Support\Facades\Storage;
 class DigitalProductController extends Controller
 {
     protected $service;
+    protected NotificationManager $notificationManager;
 
-    public function __construct(DigitalProductService $service)
+    public function __construct(DigitalProductService $service, NotificationManager $notificationManager)
     {
         $this->service = $service;
+        $this->notificationManager = $notificationManager;
     }
 
     public function index(Request $request)
@@ -29,10 +32,16 @@ class DigitalProductController extends Controller
 
         // Add buyer category filter
         $user = auth()->user();
-        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
-            $buyerCategories = $user->getBuyerCategories();
-            if (!empty($buyerCategories)) {
-                $query->whereIn('category_id', $buyerCategories);
+        if ($user && $user->account_type === 'buyer') {
+            // Check if buyer onboarding is enabled and category selection is required
+            if (\App\Services\OnboardingSettingsService::isBuyerOnboardingEnabled() &&
+                \App\Services\OnboardingSettingsService::isBuyerCategorySelectionRequired() &&
+                $user->buyer_onboarding_completed) {
+
+                $buyerCategories = $user->getBuyerCategories();
+                if (!empty($buyerCategories)) {
+                    $query->whereIn('category_id', $buyerCategories);
+                }
             }
         }
 
@@ -61,13 +70,21 @@ class DigitalProductController extends Controller
         
         // Get categories - buyers only see their selected categories
         $user = auth()->user();
-        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
-            $buyerCategories = $user->getBuyerCategories();
-            if (!empty($buyerCategories)) {
-                // Only show buyer's selected categories
-                $categories = MarketplaceCategory::where('type', 'digital_product')
-                    ->whereIn('id', $buyerCategories)
-                    ->get();
+        if ($user && $user->account_type === 'buyer') {
+            // Check if buyer onboarding is enabled and category selection is required
+            if (\App\Services\OnboardingSettingsService::isBuyerOnboardingEnabled() &&
+                \App\Services\OnboardingSettingsService::isBuyerCategorySelectionRequired() &&
+                $user->buyer_onboarding_completed) {
+
+                $buyerCategories = $user->getBuyerCategories();
+                if (!empty($buyerCategories)) {
+                    // Only show buyer's selected categories
+                    $categories = MarketplaceCategory::where('type', 'digital_product')
+                        ->whereIn('id', $buyerCategories)
+                        ->get();
+                } else {
+                    $categories = MarketplaceCategory::where('type', 'digital_product')->get();
+                }
             } else {
                 $categories = MarketplaceCategory::where('type', 'digital_product')->get();
             }
@@ -157,14 +174,14 @@ class DigitalProductController extends Controller
 
         $product = $this->service->createProduct($data, Auth::id());
 
-        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_PRODUCT_CREATED,
             Auth::user(),
-            'Product Created',
-            'Your digital product "' . $product->title . '" has been created successfully.',
-            \App\Models\Notification::TYPE_SYSTEM,
-            ['product_id' => $product->id, 'action_url' => route('digital-products.show', $product)],
-            'notify_product_orders',
-            true
+            [
+                'product_id' => $product->id,
+                'product_title' => $product->title,
+                'action_url' => route('digital-products.show', $product),
+            ]
         );
 
         if (Auth::user()->account_type === 'digital_seller' && !Auth::user()->digital_product_uploaded) {
@@ -173,6 +190,14 @@ class DigitalProductController extends Controller
                 Auth::user(),
                 'digital_seller'
             );
+        }
+
+        // Check for next onboarding step after product upload
+        $user = Auth::user()->fresh(); // Get fresh user data
+        $nextStep = app(\App\Services\AccessGateService::class)->getNextOnboardingStep($user);
+        
+        if ($nextStep) {
+            return redirect()->route($nextStep['route'])->with('success', 'Product created successfully! ' . $nextStep['message']);
         }
 
         return redirect()->route('digital-products.show', $product)
@@ -262,23 +287,28 @@ class DigitalProductController extends Controller
         try {
             $order = $this->service->purchaseProduct($product, Auth::id());
 
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_PRODUCT_PURCHASED_SELLER,
                 $product->user,
-                'New Product Purchase',
-                'Your product "' . $product->title . '" was purchased. Order: ' . $order->order_number . '.',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $order->id, 'product_id' => $product->id, 'action_url' => route('digital-products.my-purchases')],
-                'notify_product_orders',
-                true
+                [
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'product_title' => $product->title,
+                    'order_number' => $order->order_number,
+                    'action_url' => route('digital-products.my-purchases'),
+                ]
             );
 
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_PRODUCT_PURCHASED_BUYER,
                 Auth::user(),
-                'Purchase Successful',
-                'You purchased "' . $product->title . '" successfully. Order: ' . $order->order_number . '.',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $order->id, 'product_id' => $product->id, 'action_url' => route('digital-products.my-purchases')],
-                'notify_product_orders'
+                [
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'product_title' => $product->title,
+                    'order_number' => $order->order_number,
+                    'action_url' => route('digital-products.my-purchases'),
+                ]
             );
 
             try {
@@ -349,14 +379,16 @@ class DigitalProductController extends Controller
         try {
             $order = $this->service->purchaseProduct($product, Auth::id());
 
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_PRODUCT_PURCHASED_SELLER,
                 $product->user,
-                'Product Checkout Resumed',
-                'A buyer resumed checkout and purchased "' . $product->title . '". Order: ' . $order->order_number . '.',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['order_id' => $order->id, 'product_id' => $product->id, 'action_url' => route('digital-products.my-purchases')],
-                'notify_product_orders',
-                true
+                [
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'product_title' => $product->title,
+                    'order_number' => $order->order_number,
+                    'action_url' => route('digital-products.my-purchases'),
+                ]
             );
 
             try {

@@ -15,21 +15,19 @@ class EnsureEarnerAccess
     public function handle(Request $request, Closure $next)
     {
         $user = Auth::user();
-
-        $wallet = $user->wallet;
-
-        // Check activation status
-        $isActivated = $wallet && $wallet->is_activated;
+        $isAjax = $request->expectsJson() || $request->ajax();
 
         // Allow buyers, admins, and non-earner types through without earner checks
         if (!$user || !in_array($user->account_type, ['earner', 'task_creator', 'freelancer', 'digital_seller', 'growth_seller', 'buyer']) || $user->is_admin) {
             return $next($request);
         }
 
+        $wallet = $user->wallet;
+        $isActivated = $wallet && $wallet->is_activated;
+
         // Earner activation fee must be paid first
         if ($user->account_type === 'earner' && !$isActivated) {
             $routeName = $request->route() ? $request->route()->getName() : null;
-            // Allow onboarding routes to proceed
             $onboardingAllowed = [
                 'onboarding.select',
                 'onboarding.select.post',
@@ -46,12 +44,27 @@ class EnsureEarnerAccess
                 'start-journey.apply-bundle',
                 'start-journey.check-status',
                 'start-journey.unlock-success',
+                'wallet.deposit',
+                'wallet.process-deposit',
+                'payment.initialize',
+                'payment.callback',
+                'wallet.activate',
+                'wallet.activate.process',
+                'wallet.activate.skip',
             ];
-            
+
             if (in_array($routeName, $onboardingAllowed)) {
                 return $next($request);
             }
-            
+
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please pay the earnings activation fee to unlock worker tools.',
+                    'redirect' => route('start-your-journey'),
+                ], 403);
+            }
+
             return redirect()->route('start-your-journey')
                 ->with('warning', 'Please pay the earnings activation fee to unlock worker tools.');
         }
@@ -68,6 +81,13 @@ class EnsureEarnerAccess
             ];
 
             if (!$user->freelancer_profile_completed && !in_array($routeName, $profileAllowed)) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Complete your freelancer profile before browsing professional services.',
+                        'redirect' => route('professional-services.edit-profile'),
+                    ], 403);
+                }
                 return redirect()->route('professional-services.edit-profile')
                     ->with('warning', 'Complete your freelancer profile before browsing professional services.');
             }
@@ -79,6 +99,13 @@ class EnsureEarnerAccess
             ]);
 
             if (!$user->freelancer_service_created && !in_array($routeName, $serviceAllowed)) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Create your first professional service to unlock marketplace browsing.',
+                        'redirect' => route('professional-services.create'),
+                    ], 403);
+                }
                 return redirect()->route('professional-services.create')
                     ->with('warning', 'Create your first professional service to unlock marketplace browsing.');
             }
@@ -94,14 +121,35 @@ class EnsureEarnerAccess
                 'onboarding.digital-product',
                 'dashboard',
                 'logout',
+                'wallet.deposit',
+                'wallet.process-deposit',
+                'payment.initialize',
+                'payment.callback',
+                'wallet.activate',
+                'wallet.activate.process',
+                'wallet.activate.skip',
             ];
 
             if (!$isActivated) {
-                return redirect()->route('onboarding.digital-product')
-                    ->with('warning', 'Pay the digital product activation fee to start selling.');
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Please activate your wallet to start selling digital products.',
+                        'redirect' => route('wallet.activate'),
+                    ], 403);
+                }
+                return redirect()->route('wallet.activate')
+                    ->with('warning', 'Please activate your wallet to start selling digital products.');
             }
 
             if (!$user->digital_product_uploaded && !in_array($routeName, $digitalAllowed)) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Upload your first digital product to unlock the marketplace.',
+                        'redirect' => route('digital-products.create'),
+                    ], 403);
+                }
                 return redirect()->route('digital-products.create')
                     ->with('warning', 'Upload your first digital product to unlock the marketplace.');
             }
@@ -117,14 +165,35 @@ class EnsureEarnerAccess
                 'onboarding.growth',
                 'dashboard',
                 'logout',
+                'wallet.deposit',
+                'wallet.process-deposit',
+                'payment.initialize',
+                'payment.callback',
+                'wallet.activate',
+                'wallet.activate.process',
+                'wallet.activate.skip',
             ];
 
             if (!$isActivated) {
-                return redirect()->route('onboarding.growth')
-                    ->with('warning', 'Pay the growth marketplace activation fee to start listing.');
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Please activate your wallet to start listing on growth marketplace.',
+                        'redirect' => route('wallet.activate'),
+                    ], 403);
+                }
+                return redirect()->route('wallet.activate')
+                    ->with('warning', 'Please activate your wallet to start listing on growth marketplace.');
             }
 
             if (!$user->growth_listing_created && !in_array($routeName, $growthAllowed)) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Create your first growth listing to unlock the marketplace.',
+                        'redirect' => route('growth.create'),
+                    ], 403);
+                }
                 return redirect()->route('growth.create')
                     ->with('warning', 'Create your first growth listing to unlock the marketplace.');
             }
@@ -145,154 +214,265 @@ class EnsureEarnerAccess
         }
 
         if ($featureRequired && $user->hasTaskCreatorFeature($featureRequired)) {
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unlock ' . str_replace('_', ' ', $featureRequired) . ' to access this section.',
+                    'redirect' => route('start-your-journey'),
+                ], 403);
+            }
             return redirect()->route('start-your-journey')
                 ->with('warning', 'Unlock ' . str_replace('_', ' ', $featureRequired) . ' to access this section.');
         }
 
-        // =============================================
-        // BUYER FEATURE ACCESS CHECKS
-        // =============================================
+        // Buyer feature access checks
         if ($user->account_type === 'buyer') {
             $routeName = $request->route() ? $request->route()->getName() : null;
-            
-           
+
             if (str_starts_with($routeName ?? '', 'professional-services') && !$user->hasBuyerFeature('professional_services')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock professional services to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock professional services to access this feature.');
             }
-            
-            // Buyers need to unlock task creation
+
             if (str_starts_with($routeName ?? '', 'tasks.create') && !$user->hasBuyerFeature('task_creation')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock task creation to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock task creation to access this feature.');
             }
-            
-            // Buyers need to unlock available tasks access
+
             if (($routeName === 'tasks.index' || str_starts_with($routeName ?? '', 'tasks.available')) && !$user->hasBuyerFeature('available_tasks')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock available tasks to browse tasks.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock available tasks to browse tasks.');
             }
         }
 
-        // =============================================
-        // TASK CREATOR FEATURE ACCESS CHECKS
-        // =============================================
+        // Task Creator feature access checks
         if ($user->account_type === 'task_creator') {
             $routeName = $request->route() ? $request->route()->getName() : null;
-            
-            // Task Creators cannot access available tasks by default
+
             if (($routeName === 'tasks.index' || str_starts_with($routeName ?? '', 'tasks.available')) && !$user->hasTaskCreatorFeature('available_tasks')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock available tasks to browse tasks.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock available tasks to browse tasks.');
             }
-            
-            // Task Creators need to unlock professional services
+
             if (str_starts_with($routeName ?? '', 'professional-services') && !$user->hasTaskCreatorFeature('professional_services')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock professional services to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock professional services to access this feature.');
             }
-            
-            // Task Creators need to unlock growth listings
+
             if (str_starts_with($routeName ?? '', 'growth.') && !$user->hasTaskCreatorFeature('growth_listings')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock growth listings to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock growth listings to access this feature.');
             }
-            
-            // Task Creators need to unlock digital products
+
             if (str_starts_with($routeName ?? '', 'digital-products') && !$user->hasTaskCreatorFeature('digital_products')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock digital products to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock digital products to access this feature.');
             }
         }
 
-        // =============================================
-        // FREELANCER FEATURE ACCESS CHECKS
-        // =============================================
+        // Freelancer feature access checks
         if ($user->account_type === 'freelancer') {
             $routeName = $request->route() ? $request->route()->getName() : null;
-            
-            // Freelancers cannot access task creation by default
+
             if (str_starts_with($routeName ?? '', 'tasks.create') && !$user->hasFreelancerFeature('task_creation')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock task creation to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock task creation to access this feature.');
             }
-            
-            // Freelancers need to unlock available tasks
+
             if (($routeName === 'tasks.index' || str_starts_with($routeName ?? '', 'tasks.available')) && !$user->hasFreelancerFeature('available_tasks')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock available tasks to browse tasks.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock available tasks to browse tasks.');
             }
-            
-            // Freelancers need to unlock growth listings
+
             if (str_starts_with($routeName ?? '', 'growth.') && !$user->hasFreelancerFeature('growth_listings')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock growth listings to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock growth listings to access this feature.');
             }
-            
-            // Freelancers need to unlock digital products
+
             if (str_starts_with($routeName ?? '', 'digital-products') && !$user->hasFreelancerFeature('digital_products')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock digital products to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock digital products to access this feature.');
             }
         }
 
-        // =============================================
-        // DIGITAL SELLER FEATURE ACCESS CHECKS
-        // =============================================
+        // Digital Seller feature access checks
         if ($user->account_type === 'digital_seller') {
             $routeName = $request->route() ? $request->route()->getName() : null;
-            
-            // Digital Sellers cannot access task creation
+
             if (str_starts_with($routeName ?? '', 'tasks.create') && !$user->hasDigitalSellerFeature('task_creation')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock task creation to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock task creation to access this feature.');
             }
-            
-            // Digital Sellers need to unlock available tasks
+
             if (($routeName === 'tasks.index' || str_starts_with($routeName ?? '', 'tasks.available')) && !$user->hasDigitalSellerFeature('available_tasks')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock available tasks to browse tasks.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock available tasks to browse tasks.');
             }
-            
-            // Digital Sellers need to unlock professional services
+
             if (str_starts_with($routeName ?? '', 'professional-services') && !$user->hasDigitalSellerFeature('professional_services')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock professional services to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock professional services to access this feature.');
             }
-            
-            // Digital Sellers need to unlock growth listings
+
             if (str_starts_with($routeName ?? '', 'growth.') && !$user->hasDigitalSellerFeature('growth_listings')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock growth listings to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock growth listings to access this feature.');
             }
         }
 
-        // =============================================
-        // GROWTH SELLER FEATURE ACCESS CHECKS
-        // =============================================
+        // Growth Seller feature access checks
         if ($user->account_type === 'growth_seller') {
             $routeName = $request->route() ? $request->route()->getName() : null;
-            
-            // Growth Sellers cannot access task creation
+
             if (str_starts_with($routeName ?? '', 'tasks.create') && !$user->hasGrowthSellerFeature('task_creation')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock task creation to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock task creation to access this feature.');
             }
-            
-            // Growth Sellers need to unlock available tasks
+
             if (($routeName === 'tasks.index' || str_starts_with($routeName ?? '', 'tasks.available')) && !$user->hasGrowthSellerFeature('available_tasks')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock available tasks to browse tasks.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock available tasks to browse tasks.');
             }
-            
-            // Growth Sellers need to unlock professional services
+
             if (str_starts_with($routeName ?? '', 'professional-services') && !$user->hasGrowthSellerFeature('professional_services')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock professional services to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock professional services to access this feature.');
             }
-            
-            // Growth Sellers need to unlock digital products
+
             if (str_starts_with($routeName ?? '', 'digital-products') && !$user->hasGrowthSellerFeature('digital_products')) {
+                if ($isAjax) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unlock digital products to access this feature.',
+                        'redirect' => route('dashboard'),
+                    ], 403);
+                }
                 return redirect()->route('dashboard')
                     ->with('warning', 'Unlock digital products to access this feature.');
             }

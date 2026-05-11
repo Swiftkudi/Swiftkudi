@@ -4,12 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\PushSubscription;
 use App\Services\NotificationDispatchService;
+use App\Services\NotificationManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PushSubscriptionController extends Controller
 {
+    protected NotificationManager $notificationManager;
+    protected NotificationDispatchService $dispatchService;
+
+    public function __construct(NotificationManager $notificationManager, NotificationDispatchService $dispatchService)
+    {
+        $this->notificationManager = $notificationManager;
+        $this->dispatchService = $dispatchService;
+    }
     /**
      * Store or update a push subscription for the authenticated user.
      */
@@ -76,9 +85,10 @@ class PushSubscriptionController extends Controller
         }
 
         try {
-            app(NotificationDispatchService::class)->sendPushToUser(
+            // For testing, force send push notification bypassing settings
+            $this->dispatchService->sendPushToUser(
                 $user,
-                '\u{1F514} SwiftKudi Push Test',
+                'SwiftKudi Push Test',
                 'Push notifications are working! Sent at ' . now()->format('H:i:s'),
                 ['url' => '/dashboard']
             );

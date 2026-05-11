@@ -4,6 +4,7 @@ namespace App\Models\Traits;
 
 use App\Services\SeoGeneratorService;
 use App\Services\IndexNowService;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Trait for automatic SEO optimization on marketplace listings
@@ -99,7 +100,7 @@ trait SeoOptimizable
                 $indexNow->onContentPublished($url, $this->getSeoType());
             } catch (\Exception $e) {
                 // Log but don't fail
-                \Log::warning("Failed to ping IndexNow: " . $e->getMessage());
+                Log::warning("Failed to ping IndexNow: " . $e->getMessage());
             }
         }
     }
@@ -112,7 +113,7 @@ trait SeoOptimizable
         $class = get_class($this);
         
         return match($class) {
-            'App\Models\Task', 'App\Models\TaskNew' => 'task',
+            'App\Models\Task' => 'task',
             'App\Models\ProfessionalService' => 'service',
             'App\Models\DigitalProduct' => 'product',
             default => 'listing'

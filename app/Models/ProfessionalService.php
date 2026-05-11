@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ProfessionalService extends Model
@@ -74,6 +75,21 @@ class ProfessionalService extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(ProfessionalServiceOrder::class, 'service_id');
+    }
+
+    /**
+     * Get reviews for this service through orders
+     */
+    public function reviews(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            ProfessionalServiceReview::class,
+            ProfessionalServiceOrder::class,
+            'service_id', // Foreign key on ProfessionalServiceOrder table
+            'order_id',   // Foreign key on ProfessionalServiceReview table
+            'id',         // Local key on ProfessionalService table
+            'id'          // Local key on ProfessionalServiceOrder table
+        );
     }
 
     /**

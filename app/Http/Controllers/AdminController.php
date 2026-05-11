@@ -17,6 +17,7 @@ use App\Models\Badge;
 use App\Models\Job;
 use App\Services\RevenueAnalyticsService;
 use App\Services\SwiftKudiService;
+use App\Services\NotificationManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,11 +26,13 @@ use Illuminate\Support\Facades\Log;
 class AdminController extends Controller
 {
     protected $earnDeskService;
+    protected $notificationManager;
 
-    public function __construct(SwiftKudiService $earnDeskService)
+    public function __construct(SwiftKudiService $earnDeskService, NotificationManager $notificationManager)
     {
         $this->earnDeskService = $earnDeskService;
-        
+        $this->notificationManager = $notificationManager;
+
         $this->middleware(function ($request, $next) {
             // Only allow admin users
             if (!Auth::check() || !Auth::user()->is_admin) {
@@ -347,20 +350,17 @@ class AdminController extends Controller
             $withdrawal->markAsCompleted($request->get('notes'));
 
             if ($recipient) {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_WITHDRAWAL_STATUS,
                     $recipient,
-                    'Withdrawal Approved',
-                    'Your withdrawal request of ₦' . number_format((float) $withdrawal->amount, 2) . ' has been approved and processed.',
-                    \App\Models\Notification::TYPE_WITHDRAWAL,
                     [
                         'withdrawal_id' => $withdrawal->id,
                         'amount' => '₦' . number_format((float) $withdrawal->amount, 2),
                         'net_amount' => '₦' . number_format((float) $withdrawal->net_amount, 2),
                         'method' => strtoupper((string) $withdrawal->method),
+                        'status' => 'approved',
                         'action_url' => route('wallet.index'),
-                    ],
-                    'notify_withdrawal',
-                    true
+                    ]
                 );
             }
 
@@ -371,21 +371,18 @@ class AdminController extends Controller
             $withdrawal->markAsRejected($request->notes);
 
             if ($recipient) {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_WITHDRAWAL_STATUS,
                     $recipient,
-                    'Withdrawal Rejected',
-                    'Your withdrawal request of ₦' . number_format((float) $withdrawal->amount, 2) . ' was rejected and refunded. Reason: ' . (string) $request->notes,
-                    \App\Models\Notification::TYPE_WITHDRAWAL,
                     [
                         'withdrawal_id' => $withdrawal->id,
                         'amount' => '₦' . number_format((float) $withdrawal->amount, 2),
                         'net_amount' => '₦' . number_format((float) $withdrawal->net_amount, 2),
                         'method' => strtoupper((string) $withdrawal->method),
+                        'status' => 'rejected',
                         'reason' => (string) $request->notes,
                         'action_url' => route('wallet.index'),
-                    ],
-                    'notify_withdrawal',
-                    true
+                    ]
                 );
             }
 
@@ -615,12 +612,13 @@ class AdminController extends Controller
 
         // Notify user to try again
         if ($activation->user) {
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_ACTIVATION_RETRY,
                 $activation->user,
-                'Activation Retry Required',
-                'Your activation attempt failed earlier and has been re-queued. Please retry your activation to continue.',
-                \App\Models\Notification::TYPE_SYSTEM,
-                ['activation_id' => $activation->id, 'action_url' => route('wallet.activate')]
+                [
+                    'activation_id' => $activation->id,
+                    'action_url' => route('wallet.activate'),
+                ]
             );
         }
 
@@ -777,28 +775,13 @@ class AdminController extends Controller
                 $sendEmail = in_array('email', $sendVia, true) && !empty($user->email);
                 $sendDatabase = in_array('database', $sendVia, true);
 
-                if ($sendEmail || $sendDatabase) {
-                    app(\App\Services\NotificationDispatchService::class)->sendToUser(
-                        $user,
-                        $title,
-                        $message,
-                        \App\Models\Notification::TYPE_SYSTEM,
-                        ['source' => 'admin_push'],
-                        null,
-                        false,
-                        $sendDatabase,
-                        $sendEmail
-                    );
-                }
-
-                // Web Push
-                if (in_array('push', $sendVia, true)) {
-                    app(\App\Services\NotificationDispatchService::class)->sendPushToUser(
-                        $user,
-                        $title,
-                        $message
-                    );
-                }
+                // Send via selected channels
+                $this->notificationManager->notifyAdminBulk(
+                    collect([$user]),
+                    $title,
+                    $message,
+                    $sendVia
+                );
                 $sent++;
             } catch (\Exception $e) {
                 Log::error('Failed to send notification to user ' . $user->id, ['error' => $e->getMessage()]);
@@ -868,13 +851,14 @@ class AdminController extends Controller
         // Notify the seller
         if ($service->seller) {
             try {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_SERVICE_APPROVED,
                     $service->seller,
-                    'Service Approved',
-                    "Your service '{$service->title}' has been approved and is now live!",
-                    \App\Models\Notification::TYPE_SYSTEM,
-                    ['service_id' => $service->id, 'action_url' => route('professional-services.my-services')],
-                    'notify_service_orders'
+                    [
+                        'service_id' => $service->id,
+                        'service_title' => $service->title,
+                        'action_url' => route('professional-services.my-services'),
+                    ]
                 );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
@@ -908,13 +892,15 @@ class AdminController extends Controller
         // Notify the seller
         if ($service->seller) {
             try {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_SERVICE_REJECTED,
                     $service->seller,
-                    'Service Rejected',
-                    "Your service '{$service->title}' was not approved. Reason: {$request->rejection_reason}",
-                    \App\Models\Notification::TYPE_SYSTEM,
-                    ['service_id' => $service->id, 'action_url' => route('professional-services.my-services')],
-                    'notify_service_orders'
+                    [
+                        'service_id' => $service->id,
+                        'service_title' => $service->title,
+                        'reason' => $request->rejection_reason,
+                        'action_url' => route('professional-services.my-services'),
+                    ]
                 );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
@@ -984,13 +970,14 @@ class AdminController extends Controller
         // Notify the seller
         if ($listing->seller) {
             try {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_GROWTH_LISTING_APPROVED,
                     $listing->seller,
-                    'Listing Approved',
-                    "Your growth listing '{$listing->title}' has been approved and is now live!",
-                    \App\Models\Notification::TYPE_SYSTEM,
-                    ['listing_id' => $listing->id, 'action_url' => route('growth.my-listings')],
-                    'notify_growth_orders'
+                    [
+                        'listing_id' => $listing->id,
+                        'listing_title' => $listing->title,
+                        'action_url' => route('growth.my-listings'),
+                    ]
                 );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
@@ -1024,13 +1011,15 @@ class AdminController extends Controller
         // Notify the seller
         if ($listing->seller) {
             try {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_GROWTH_LISTING_REJECTED,
                     $listing->seller,
-                    'Listing Rejected',
-                    "Your growth listing '{$listing->title}' was not approved. Reason: {$request->rejection_reason}",
-                    \App\Models\Notification::TYPE_SYSTEM,
-                    ['listing_id' => $listing->id, 'action_url' => route('growth.my-listings')],
-                    'notify_growth_orders'
+                    [
+                        'listing_id' => $listing->id,
+                        'listing_title' => $listing->title,
+                        'reason' => $request->rejection_reason,
+                        'action_url' => route('growth.my-listings'),
+                    ]
                 );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
@@ -1107,13 +1096,14 @@ class AdminController extends Controller
         // Notify the seller
         if ($product->user) {
             try {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_PRODUCT_APPROVED,
                     $product->user,
-                    'Product Approved',
-                    "Your digital product '{$product->title}' has been approved and is now live!",
-                    \App\Models\Notification::TYPE_SYSTEM,
-                    ['product_id' => $product->id, 'action_url' => route('digital-products.my-products')],
-                    'notify_product_orders'
+                    [
+                        'product_id' => $product->id,
+                        'product_title' => $product->title,
+                        'action_url' => route('digital-products.my-products'),
+                    ]
                 );
             } catch (\Exception $e) {
                 // Log notification error but don't fail
@@ -1146,13 +1136,15 @@ class AdminController extends Controller
         // Notify the seller
         if ($product->user) {
             try {
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_PRODUCT_REJECTED,
                     $product->user,
-                    'Product Rejected',
-                    "Your digital product '{$product->title}' was not approved. Reason: {$request->rejection_reason}",
-                    \App\Models\Notification::TYPE_SYSTEM,
-                    ['product_id' => $product->id, 'action_url' => route('digital-products.my-products')],
-                    'notify_product_orders'
+                    [
+                        'product_id' => $product->id,
+                        'product_title' => $product->title,
+                        'reason' => $request->rejection_reason,
+                        'action_url' => route('digital-products.my-products'),
+                    ]
                 );
             } catch (\Exception $e) {
                 // Log notification error but don't fail

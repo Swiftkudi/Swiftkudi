@@ -11,6 +11,7 @@ use App\Models\Referral;
 use App\Models\SystemSetting;
 use App\Services\SwiftKudiService;
 use App\Services\RevenueAggregator;
+use App\Services\NotificationManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,10 +20,12 @@ use Illuminate\Support\Facades\Log;
 class WalletController extends Controller
 {
     protected $earnDeskService;
+    protected NotificationManager $notificationManager;
 
-    public function __construct(SwiftKudiService $earnDeskService)
+    public function __construct(SwiftKudiService $earnDeskService, NotificationManager $notificationManager)
     {
         $this->earnDeskService = $earnDeskService;
+        $this->notificationManager = $notificationManager;
     }
 
     /**
@@ -132,7 +135,12 @@ class WalletController extends Controller
         }
 
         $isActivated = $wallet->is_activated ?? false;
-        $activationFeeEnabled = SystemSetting::isCompulsoryActivationFee();
+        
+        // Use centralized onboarding settings based on account type
+        $accountType = $user->account_type ?? 'earner';
+        $onboardingSettings = app(\App\Services\OnboardingSettingsService::class);
+        $activationFeeEnabled = $onboardingSettings::isActivationRequired($accountType);
+        $activationFee = $onboardingSettings::getActivationFee($accountType);
 
         // Check if user was referred. Prefer explicit referred_by relation but fall back to Referral records
         $referredBy = $user->referredBy;
@@ -155,29 +163,53 @@ class WalletController extends Controller
             }
         }
 
-        $activationFee = SystemSetting::getActivationFeeForUser(false);
-        $referredActivationFee = SystemSetting::getActivationFeeForUser(true);
-        // Activation fee only applies to earners; non-earners get free activation
-        $isEarner = $user->account_type === 'earner';
-        $actualFee = ($activationFeeEnabled && $isEarner) ? ($referredBy ? $referredActivationFee : $activationFee) : 0;
+        // Calculate fee with referral discount
+        $actualFee = $activationFee;
+        if ($referredBy && $activationFee > 0) {
+            $discount = SystemSetting::getNumber('referred_activation_discount', 0);
+            $multiplier = SystemSetting::getNumber('referred_activation_multiplier', 1.0);
+            $actualFee = max(0, ($activationFee * $multiplier) - $discount);
+        }
+        
+        // Legacy support variable
+        $isEarner = $accountType === 'earner';
 
         return view('wallet.activate', compact(
             'wallet',
             'isActivated',
             'activationFee',
-            'referredActivationFee',
             'actualFee',
             'referredBy',
-            'activationFeeEnabled'
+            'activationFeeEnabled',
+            'isEarner'
         ));
     }
 
     /**
-     * Process activation
+     * Process activation with idempotency
      */
     public function processActivation(Request $request)
     {
         $user = $request->user() ?? Auth::user();
+        
+        // Generate idempotency key for this activation request
+        $idempotencyKey = 'wallet_activation_' . $user->id . '_' . date('Ymd');
+        
+        // Check if this request was already processed
+        $existingRecord = \App\Models\IdempotencyKey::where('key', $idempotencyKey)
+            ->where('user_id', $user->id)
+            ->first();
+        
+        if ($existingRecord && $existingRecord->response_status) {
+            // Return cached response
+            if ($existingRecord->response_status === 'success') {
+                return redirect()->route('dashboard')
+                    ->with('success', $existingRecord->response_body['message'] ?? 'Account already activated.');
+            }
+            return redirect()->route('wallet.activate')
+                ->with('error', $existingRecord->response_body['message'] ?? 'Activation already processed.');
+        }
+
         // Determine referrer: use relation first, then fallback to Referral record if present
         $referrer = $user->referredBy;
         if (!$referrer) {
@@ -200,6 +232,25 @@ class WalletController extends Controller
 
         try {
             $result = $this->earnDeskService->activateUser($user, $referrer);
+            
+            // Store result for idempotency
+            if ($existingRecord) {
+                $existingRecord->markAsProcessed(
+                    $result['success'] ? 'success' : 'failed',
+                    $result
+                );
+            } else {
+                \App\Models\IdempotencyKey::create([
+                    'key' => $idempotencyKey,
+                    'user_id' => $user->id,
+                    'entity_type' => 'wallet_activation',
+                    'method' => 'POST',
+                    'request_hash' => ['user_id' => $user->id, 'referrer_id' => $referrer?->id],
+                    'response_status' => $result['success'] ? 'success' : 'failed',
+                    'response_body' => $result,
+                    'expires_at' => now()->addDays(30),
+                ]);
+            }
         } catch (\Exception $e) {
             Log::error('Activation failed', [
                 'error' => $e->getMessage(),
@@ -207,6 +258,12 @@ class WalletController extends Controller
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
+            
+            // Mark as failed in idempotency store
+            if ($existingRecord) {
+                $existingRecord->markAsProcessed('failed', ['error' => $e->getMessage()]);
+            }
+            
             return redirect()->route('wallet.activate')
                 ->with('error', 'Activation failed: ' . $e->getMessage())
                 ->withInput();
@@ -364,36 +421,30 @@ class WalletController extends Controller
             $withdrawalId = (int) ($result['withdrawal_id'] ?? 0);
             $withdrawal = $withdrawalId > 0 ? \App\Models\Withdrawal::find($withdrawalId) : null;
 
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_WITHDRAWAL_REQUESTED,
                 $user,
-                'Withdrawal Request Received',
-                'Your withdrawal request has been received and is being processed.',
-                \App\Models\Notification::TYPE_WITHDRAWAL,
                 [
                     'withdrawal_id' => $withdrawalId,
                     'amount' => $result['formatted']['amount'] ?? ('₦' . number_format($result['amount'] ?? 0, 2)),
                     'net_amount' => $result['formatted']['net'] ?? ('₦' . number_format($result['net_amount'] ?? 0, 2)),
                     'method' => strtoupper($method),
                     'action_url' => route('wallet.index'),
-                ],
-                'notify_withdrawal',
-                true
+                ]
             );
 
             $threshold = (float) \App\Models\SystemSetting::getNumber('large_withdrawal_threshold', 50000);
             $largeWithdrawalAlertEnabled = \App\Models\SystemSetting::getBool('notify_large_withdrawal', true);
             if ($largeWithdrawalAlertEnabled && $withdrawal && (float) $withdrawal->amount >= $threshold) {
-                app(\App\Services\NotificationDispatchService::class)->notifyAdmins(
-                    'Large Withdrawal Alert',
-                    'A large withdrawal request of ₦' . number_format((float) $withdrawal->amount, 2) . ' was submitted.',
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_LARGE_WITHDRAWAL_ALERT,
+                    null, // null user means notify admins
                     [
                         'withdrawal_id' => $withdrawal->id,
                         'user_id' => $user->id,
                         'amount' => '₦' . number_format((float) $withdrawal->amount, 2),
                         'action_url' => route('admin.withdrawals'),
-                    ],
-                    null,
-                    false
+                    ]
                 );
             }
 

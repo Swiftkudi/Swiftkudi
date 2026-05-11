@@ -8,6 +8,7 @@ use App\Models\MarketplaceConversation;
 use App\Models\MarketplaceMessage;
 use App\Models\MarketplaceCategory;
 use App\Services\GrowthService;
+use App\Services\NotificationManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -16,10 +17,12 @@ use Illuminate\View\View;
 class GrowthController extends Controller
 {
     protected $service;
+    protected NotificationManager $notificationManager;
 
-    public function __construct(GrowthService $service)
+    public function __construct(GrowthService $service, NotificationManager $notificationManager)
     {
         $this->service = $service;
+        $this->notificationManager = $notificationManager;
     }
 
     /**
@@ -33,16 +36,22 @@ class GrowthController extends Controller
         $availableTypes = null;
         $categorySlugs = [];
         $user = auth()->user();
-        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
-            $buyerCategories = $user->getBuyerCategories();
-            if (!empty($buyerCategories)) {
-                // Get selected categories from marketplace - use slug as type
-                $availableTypes = MarketplaceCategory::whereIn('id', $buyerCategories)
-                    ->where('type', 'growth')
-                    ->get();
-                
-                // Collect slugs for filtering listings
-                $categorySlugs = $availableTypes->pluck('slug')->toArray();
+        if ($user && $user->account_type === 'buyer') {
+            // Check if buyer onboarding is enabled and category selection is required
+            if (\App\Services\OnboardingSettingsService::isBuyerOnboardingEnabled() &&
+                \App\Services\OnboardingSettingsService::isBuyerCategorySelectionRequired() &&
+                $user->buyer_onboarding_completed) {
+
+                $buyerCategories = $user->getBuyerCategories();
+                if (!empty($buyerCategories)) {
+                    // Get selected categories from marketplace - use slug as type
+                    $availableTypes = MarketplaceCategory::whereIn('id', $buyerCategories)
+                        ->where('type', 'growth')
+                        ->get();
+
+                    // Collect slugs for filtering listings
+                    $categorySlugs = $availableTypes->pluck('slug')->toArray();
+                }
             }
         }
 
@@ -66,7 +75,18 @@ class GrowthController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        $types = $availableTypes;
+        // Get available types for filtering - use default types if buyer has no specific categories
+        $user = auth()->user();
+        if (!$availableTypes || $availableTypes->isEmpty()) {
+            $types = [
+                'backlinks' => (object)['slug' => 'backlinks', 'name' => 'Backlinks'],
+                'influencer' => (object)['slug' => 'influencer', 'name' => 'Influencer'],
+                'newsletter' => (object)['slug' => 'newsletter', 'name' => 'Newsletter'],
+                'leads' => (object)['slug' => 'leads', 'name' => 'Leads'],
+            ];
+        } else {
+            $types = $availableTypes->keyBy('slug');
+        }
         
 
         return view('growth.index', compact('listings', 'types', 'type'));
@@ -75,13 +95,13 @@ class GrowthController extends Controller
     /**
      * Show listing details
      */
-    public function show(int $id): View
+    public function show(string $listing): View
     {
-        $listing = GrowthListing::with('seller')->findOrFail($id);
+        $growthListing = GrowthListing::with('seller')->findOrFail($listing);
         
-        $specsFields = GrowthService::getSpecsFields($listing->type);
-
-        return view('growth.show', compact('listing', 'specsFields'));
+        $specsFields = GrowthService::getSpecsFields($growthListing->type);
+        
+        return view('growth.show', compact('growthListing', 'specsFields'));
     }
 
     /**
@@ -123,14 +143,14 @@ class GrowthController extends Controller
             return response()->json($result, 400);
         }
 
-        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_GROWTH_LISTING_CREATED,
             $user,
-            'Growth Listing Created',
-            'Your listing "' . ($result['listing']->title ?? $validated['title']) . '" has been submitted successfully.',
-            \App\Models\Notification::TYPE_SYSTEM,
-            ['listing_id' => $result['listing']->id ?? null, 'action_url' => route('growth.my-listings')],
-            'notify_growth_orders',
-            true
+            [
+                'listing_id' => $result['listing']->id ?? null,
+                'listing_title' => $result['listing']->title ?? $validated['title'],
+                'action_url' => route('growth.my-listings'),
+            ]
         );
 
         if ($user->account_type === 'growth_seller' && !$user->growth_listing_created) {
@@ -141,11 +161,25 @@ class GrowthController extends Controller
             );
         }
 
-        return response()->json([
+        // Check for next onboarding step after listing creation
+        $nextStep = null;
+        if ($user->account_type === 'growth_seller' && $user->growth_listing_created) {
+            $user->refresh(); // Refresh to get updated fields
+            $nextStep = app(\App\Services\AccessGateService::class)->getNextOnboardingStep($user);
+        }
+
+        $response = [
             'success' => true,
             'message' => $result['message'],
             'redirect' => route('growth.my-listings'),
-        ]);
+        ];
+
+        if ($nextStep) {
+            $response['next_step_redirect'] = route($nextStep['route']);
+            $response['next_step_message'] = $nextStep['message'];
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -155,11 +189,17 @@ class GrowthController extends Controller
     {
         $user = Auth::user();
         
-        $listings = GrowthListing::where('user_id', $user->id)
+        $activeListings = GrowthListing::where('user_id', $user->id)
+            ->where('status', 'active')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        return view('growth.my-listings', compact('listings'));
+        $pendingListings = GrowthListing::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return view('growth.my-listings', compact('activeListings', 'pendingListings'));
     }
 
     /**
@@ -255,13 +295,15 @@ class GrowthController extends Controller
         ]);
 
         // Notify seller
-        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_GROWTH_MESSAGE_RECEIVED,
             $seller,
-            'New Message on ' . $listing->title,
-            'You have a new message from ' . $buyer->name . ' about your growth listing.',
-            \App\Models\Notification::TYPE_SYSTEM,
-            ['conversation_id' => $conversation->id, 'action_url' => route('messages.show', $conversation->id)],
-            'notify_growth_orders'
+            [
+                'conversation_id' => $conversation->id,
+                'listing_title' => $listing->title,
+                'sender_name' => $buyer->name,
+                'action_url' => route('messages.show', $conversation->id),
+            ]
         );
 
         return response()->json([
@@ -270,18 +312,274 @@ class GrowthController extends Controller
         ]);
     }
 
-    /**
+/**
      * Get specs fields for a type
      */
-    public function getSpecsFields(Request $request)
+    public static function getSpecsFields(string $type): array
     {
-        $type = $request->get('type', 'backlinks');
+        $fields = [];
         
-        $specsFields = GrowthService::getSpecsFields($type);
+        switch($type) {
+            case GrowthListing::TYPE_BACKLINKS:
+                $fields = [
+                    ['name' => 'website_url', 'label' => 'Website URL', 'type' => 'url', 'required' => true],
+                    ['name' => 'niche', 'label' => 'Niche', 'type' => 'text', 'required' => true],
+                    ['name' => 'traffic', 'label' => 'Monthly Traffic', 'type' => 'text', 'required' => false],
+                    ['name' => 'domain_authority', 'label' => 'Domain Authority (DA)', 'type' => 'number', 'required' => false],
+                    ['name' => 'link_type', 'label' => 'Link Type', 'type' => 'select', 'options' => ['Dofollow', 'Nofollow', 'Both'], 'required' => true],
+                ];
+                break;
+                
+            case GrowthListing::TYPE_INFLUENCER:
+                $fields = [
+                    ['name' => 'platform', 'label' => 'Platform', 'type' => 'select', 'options' => ['Instagram', 'TikTok', 'YouTube', 'Twitter', 'Facebook', 'Other'], 'required' => true],
+                    ['name' => 'followers', 'label' => 'Followers Count', 'type' => 'number', 'required' => true],
+                    ['name' => 'engagement_rate', 'label' => 'Engagement Rate (%)', 'type' => 'number', 'required' => false],
+                    ['name' => 'audience_country', 'label' => 'Primary Audience Country', 'type' => 'text', 'required' => false],
+                    ['name' => 'promotion_type', 'label' => 'Promotion Type', 'type' => 'select', 'options' => ['Story', 'Post', 'Reel', 'Video', 'Other'], 'required' => true],
+                ];
+                break;
+                
+            case GrowthListing::TYPE_NEWSLETTER:
+                $fields = [
+                    ['name' => 'subscriber_count', 'label' => 'Subscriber Count', 'type' => 'number', 'required' => true],
+                    ['name' => 'open_rate', 'label' => 'Open Rate (%)', 'type' => 'number', 'required' => false],
+                    ['name' => 'niche', 'label' => 'Niche/Category', 'type' => 'text', 'required' => true],
+                ];
+                break;
+                
+            case GrowthListing::TYPE_LEADS:
+                $fields = [
+                    ['name' => 'lead_type', 'label' => 'Lead Type', 'type' => 'select', 'options' => ['Email', 'Phone', 'Company', 'B2B', 'B2C', 'Other'], 'required' => true],
+                    ['name' => 'target_country', 'label' => 'Target Country', 'type' => 'text', 'required' => true],
+                    ['name' => 'min_quantity', 'label' => 'Minimum Quantity', 'type' => 'number', 'required' => true],
+                ];
+                break;
+        }
+        
+        return $fields;
+    }
 
-        return response()->json([
-            'success' => true,
-            'specs_fields' => $specsFields,
+    /**
+     * Create order (buyer)
+     */
+    public function createOrder(Request $request, int $id)
+    {
+        $user = Auth::user();
+        $result = $this->service->createOrder($user, $id);
+
+        if (!$result['success']) {
+            if (isset($result['required'], $result['available'])) {
+                $requiredTopup = max(0, (float) $result['required'] - (float) $result['available']);
+                session([
+                    'pending_growth_checkout' => [
+                        'listing_id' => $id,
+                    ],
+                    'deposit_success_redirect' => route('growth.checkout.resume'),
+                    'insufficient_balance_required' => $requiredTopup,
+                ]);
+
+                $result['redirect'] = route('wallet.deposit', ['required' => $requiredTopup]);
+                $result['message'] = 'Insufficient wallet balance. Deposit and you will be returned to complete this order.';
+            }
+
+            return response()->json($result, 400);
+        }
+
+        // Notify seller about new order
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_GROWTH_ORDER_CREATED,
+            $result['order']->seller,
+            [
+                'order_id' => $result['order']->id,
+                'listing_title' => $result['order']->listing->title,
+                'buyer_name' => $user->name,
+            ]
+        );
+        $result['redirect']=route('growth.orders.show', $result['order']->id);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Resume growth checkout after successful deposit
+     */
+    public function resumeCheckout(Request $request)
+    {
+        $pending = session('pending_growth_checkout');
+
+        if (!$pending || empty($pending['listing_id'])) {
+            return redirect()->route('growth.index')->with('error', 'No pending growth checkout found to resume.');
+        }
+
+        $result = $this->service->createOrder(
+            Auth::user(),
+            (int) $pending['listing_id']
+        );
+
+        if (!$result['success']) {
+            if (isset($result['required'], $result['available'])) {
+                $requiredTopup = max(0, (float) $result['required'] - (float) $result['available']);
+                session([
+                    'deposit_success_redirect' => route('growth.checkout.resume'),
+                    'insufficient_balance_required' => $requiredTopup,
+                ]);
+
+                return redirect()
+                    ->route('wallet.deposit', ['required' => $requiredTopup])
+                    ->with('error', 'Your balance is still insufficient. Please complete your deposit to continue.');
+            }
+
+            return redirect()->route('growth.show', (int) $pending['listing_id'])
+                ->with('error', $result['message'] ?? 'Failed to resume growth checkout.');
+        }
+
+        // Notify seller about new order
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_GROWTH_ORDER_CREATED,
+            $result['order']->seller,
+            [
+                'order_id' => $result['order']->id,
+                'listing_title' => $result['order']->listing->title,
+                'buyer_name' => Auth::user()->name,
+            ]
+        );
+
+        session()->forget(['pending_growth_checkout', 'deposit_success_redirect', 'insufficient_balance_required']);
+
+        return redirect()->route('growth.orders.show', $result['order']->id)
+            ->with('success', 'Growth order completed successfully after deposit.');
+    }
+
+    /**
+     * My orders (buyer)
+     */
+
+
+
+    /**
+     * My orders (buyer)
+     */
+    public function myOrders(): View
+    {
+        $user = Auth::user();
+        
+        $activeOrders = GrowthOrder::forBuyer($user->id)
+            ->whereIn('status', ['paid', 'in_progress', 'delivered', 'revision'])
+            ->with('listing')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $completedOrders = GrowthOrder::forBuyer($user->id)
+            ->where('status', 'completed')
+            ->with('listing')
+            ->orderBy('completed_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('growth.orders.index', compact('activeOrders', 'completedOrders'));
+    }
+
+    /**
+     * Sales (seller)
+     */
+    public function mySales(): View
+    {
+        $user = Auth::user();
+        
+        $activeSales = GrowthOrder::forSeller($user->id)
+            ->whereIn('status', ['paid', 'in_progress', 'delivered', 'revision'])
+            ->with('listing', 'buyer')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $completedSales = GrowthOrder::forSeller($user->id)
+            ->where('status', 'completed')
+            ->with('listing', 'buyer')
+            ->orderBy('completed_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('growth.sales.index', compact('activeSales', 'completedSales'));
+    }
+
+    /**
+     * Show order details
+     */
+    public function showOrder(int $id): View
+    {
+        $order = GrowthOrder::with(['listing', 'buyer', 'seller'])->findOrFail($id);
+
+        if ($order->buyer_id !== Auth::id() && $order->seller_id !== Auth::id()) {
+            abort(403);
+        }
+
+        return view('growth.orders.show', compact('order'));
+    }
+
+    /**
+     * Submit proof (seller)
+     */
+    public function submitProof(Request $request, int $orderId)
+    {
+        $validated = $request->validate([
+            'proof_data' => 'nullable|array',
+            'notes' => 'required|string|min:10',
         ]);
+
+        $order = GrowthOrder::findOrFail($orderId);
+        $user = Auth::user();
+
+        $result = $this->service->submitProof(
+            $order,
+            $user,
+            $validated['proof_data'] ?? [],
+            $validated['notes']
+        );
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Approve proof (buyer)
+     */
+    public function approveOrder(int $orderId)
+    {
+        $order = GrowthOrder::findOrFail($orderId);
+        $user = Auth::user();
+
+        $result = $this->service->approveProof($order, $user);
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Request revision (buyer)
+     */
+    public function requestRevision(Request $request, int $orderId)
+    {
+        $validated = $request->validate([
+            'notes' => 'required|string|min:10',
+        ]);
+
+        $order = GrowthOrder::findOrFail($orderId);
+        $user = Auth::user();
+
+        $result = $this->service->requestRevision($order, $user, $validated['notes']);
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Cancel order
+     */
+    public function cancelOrder(int $orderId)
+    {
+        $order = GrowthOrder::findOrFail($orderId);
+        $user = Auth::user();
+
+        $result = $this->service->cancelOrder($order, $user);
+
+        return response()->json($result, $result['success'] ? 200 : 400);
     }
 }

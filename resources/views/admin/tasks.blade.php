@@ -87,29 +87,28 @@
                                 <span class="font-semibold text-green-600 dark:text-green-400">₦{{ number_format($task->worker_reward_per_task, 0) }}</span>
                             </td>
                             <td class="px-6 py-4">
-                                <div class="flex items-center">
-                                    <div class="w-16 bg-gray-200 dark:bg-dark-700 rounded-full h-2 mr-2">
-                                        @if($task->quantity > 0 && $task->task_completions_count > 0)
-                                        <div class="bg-indigo-500 h-2 rounded-full w-full"></div>
-                                        @else
-                                        <div class="bg-indigo-500 h-2 rounded-full w-0"></div>
-                                        @endif
-                                    </div>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $task->task_completions_count }}/{{ $task->quantity }}</span>
+                                @php $complete = $task->task_completions_count ?? 0; @endphp
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $complete }}/{{ $task->quantity }}</span>
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                @if($task->status === 'active')
+                                @php 
+                                $isActive = $task->is_active ?? false;
+                                $isApproved = $task->is_approved ?? false;
+                                $status = !$isActive ? 'inactive' : (!$isApproved ? 'pending' : 'active');
+                                @endphp
+                                @if($status == 'active')
                                 <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400">
                                     <i class="fas fa-check-circle mr-1"></i>Active
                                 </span>
-                                @elseif($task->status === 'completed')
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
-                                    <i class="fas fa-check mr-1"></i>Completed
+                                @elseif($status == 'pending')
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400">
+                                    <i class="fas fa-clock mr-1"></i>Pending
                                 </span>
                                 @else
                                 <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300">
-                                    {{ ucfirst($task->status) }}
+                                    <i class="fas fa-times-circle mr-1"></i>Inactive
                                 </span>
                                 @endif
                             </td>

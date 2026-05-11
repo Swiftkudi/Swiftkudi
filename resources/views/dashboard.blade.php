@@ -151,15 +151,14 @@ $accountType = $user->account_type ?? '';
             </div>
         </div>
 
-        <!-- Quick Actions -->
+        <!-- Quick Actions - Show all actions to all users -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             @php
             $user = auth()->user();
             $accountType = $user->account_type ?? '';
             @endphp
 
-            @if($accountType === 'task_creator')
-            <!-- Create Task -->
+            <!-- Create Task - Always visible -->
             <a href="{{ route('tasks.create') }}" class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white hover:shadow-xl hover:shadow-indigo-500/30 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
@@ -171,10 +170,8 @@ $accountType = $user->account_type ?? '';
                     </div>
                 </div>
             </a>
-            @endif
 
-            @if(!in_array($accountType, ['buyer', 'freelancer', 'task_creator', 'digital_seller', 'growth_seller']))
-            <!-- Available Tasks -->
+            <!-- Available Tasks - Always visible -->
             <a href="{{ route('tasks.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-500/20 flex items-center justify-center">
@@ -186,7 +183,6 @@ $accountType = $user->account_type ?? '';
                     </div>
                 </div>
             </a>
-            @endif
 
             <!-- Wallet (Always visible) -->
             <a href="{{ route('wallet.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
@@ -201,51 +197,33 @@ $accountType = $user->account_type ?? '';
                 </div>
             </a>
 
-            @if(!in_array($accountType, ['task_creator', 'digital_seller', 'growth_seller', 'earner', 'buyer']))
-            <!-- Hire (Professional Services) -->
-           <a href="{{ route($accountType == 'freelancer' ? 'professional-services.my-services' : 'professional-services.index') }}" 
-           class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
+            <!-- Hire (Professional Services) - Always visible -->
+           <a href="{{ route('professional-services.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center">
                         <i class="fas fa-briefcase text-purple-600 dark:text-purple-400 text-xl"></i>
                     </div>
                     <div>
-                       @if($accountType === 'task_creator') 
-                        <h3 class="font-bold text-lg text-gray-900 dark:text-gray-100">Hire freelancers</h3>
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">Find professionals</p>
-                       @endif
-                       @if($accountType === 'freelancer') 
-                        <h3 class="font-bold text-lg text-gray-900 dark:text-gray-100">Create Freelancing services</h3>
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">Manage your freelancing offerings</p>
-                       @endif
+                        <h3 class="font-bold text-lg text-gray-900 dark:text-gray-100">Professional Services</h3>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">Hire freelancers or offer services</p>
                     </div>
                 </div>
             </a>
-            @endif
 
-             @if(!in_array($accountType, ['digital_seller', 'growth_seller', 'earner', 'buyer']))
-            <!-- Hire (jobs) -->
-            <a href="{{ route($accountType == 'freelancer' ? 'jobs.index' : 'jobs.my-jobs') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
+            <!-- Jobs - Always visible -->
+            <a href="{{ route('jobs.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center">
                         <i class="fas fa-briefcase text-purple-600 dark:text-purple-400 text-xl"></i>
                     </div>
                     <div>
-                       @if($accountType === 'task_creator') 
                         <h3 class="font-bold text-lg text-gray-900 dark:text-gray-100">Jobs</h3>
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">Manage and create Jobs</p>
-                       @endif
-                       @if($accountType === 'freelancer') 
-                        <h3 class="font-bold text-lg text-gray-900 dark:text-gray-100">Jobs</h3>
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">Find Jobs</p>
-                       @endif
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">Find or post job opportunities</p>
                     </div>
                 </div>
             </a>
-            @endif
 
-            @if(!in_array($accountType, ['task_creator', 'freelancer', 'digital_seller', 'earner']))
-            <!-- Growth Marketplace -->
+            <!-- Growth Marketplace - Always visible -->
             <a href="{{ route('growth.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-500/20 flex items-center justify-center">
@@ -257,10 +235,8 @@ $accountType = $user->account_type ?? '';
                     </div>
                 </div>
             </a>
-            @endif
 
-            @if(!in_array($accountType, ['task_creator', 'freelancer', 'growth_seller', 'earner']))
-            <!-- Digital Products -->
+            <!-- Digital Products - Always visible -->
             <a href="{{ route('digital-products.index') }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500 transition-all transform hover:-translate-y-1">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center">
@@ -272,7 +248,6 @@ $accountType = $user->account_type ?? '';
                     </div>
                 </div>
             </a>
-            @endif
         </div>
 
         <!-- Feature Unlock CTA -->

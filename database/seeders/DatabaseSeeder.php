@@ -49,8 +49,10 @@ class DatabaseSeeder extends Seeder
             SystemSetting::set('default_gateway_usdt', 'stripe', SystemSetting::GROUP_PAYMENT, 'text');
         }
 
-        // Always set conversion rate
-        SystemSetting::set('ngn_to_usd_rate', 1550, SystemSetting::GROUP_CURRENCY, 'number');
+        // Always set conversion rate (only if not already set)
+        if (!SystemSetting::get('ngn_to_usd_rate')) {
+            SystemSetting::set('ngn_to_usd_rate', 1550, SystemSetting::GROUP_CURRENCY, 'number');
+        }
 
         // Always seed currencies
         $this->seedCurrencies();
@@ -139,7 +141,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($currencies as $currency) {
-            Currency::updateOrCreate(
+            Currency::firstOrCreate(
                 ['code' => $currency['code']],
                 $currency
             );
@@ -344,7 +346,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($categories as $category) {
-            TaskCategory::updateOrCreate(
+            TaskCategory::firstOrCreate(
                 ['slug' => $category['slug']],
                 $category
             );
@@ -473,18 +475,19 @@ class DatabaseSeeder extends Seeder
      */
     protected function createSampleUsers(): void
     {
-        // Create admin user
-        $admin = User::firstOrCreate(
-            ['email' => 'admin@swiftkudi.com'],
-            [
-                'name' => 'Admin User',
-                'password' => Hash::make('password123'),
-                'referral_code' => User::generateReferralCode(),
-                'is_admin' => true,
-                'level' => 10,
-                'experience_points' => 10000,
-            ]
-        );
+         // Create admin user
+         $admin = User::firstOrCreate(
+             ['email' => 'admin@swiftkudi.com'],
+             [
+                 'name' => 'Admin User',
+                 'password' => Hash::make('password123'),
+                 'referral_code' => User::generateReferralCode(),
+                 'is_admin' => true,
+                 'account_type' => 'admin',
+                 'level' => 10,
+                 'experience_points' => 10000,
+             ]
+         );
 
         // Assign super admin role if available
         $superRole = AdminRole::where('name', AdminRole::ROLE_SUPER_ADMIN)->first();

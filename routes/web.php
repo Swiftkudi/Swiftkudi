@@ -3,8 +3,7 @@
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TaskController;
-use App\Http\Controllers\Task\CreateTaskController;
-use App\Http\Controllers\Task\TaskController as NewTaskController;
+use App\Http\Controllers\SocialMediaSearchController;
 use App\Http\Controllers\ProfessionalServiceController;
 use App\Http\Controllers\GrowthController;
 use App\Http\Controllers\DigitalProductController;
@@ -23,8 +22,6 @@ use App\Http\Controllers\BoostController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\PushSubscriptionController;
-use App\Http\Controllers\SitemapController;
-use App\Http\Controllers\IndexNowController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -48,14 +45,6 @@ Route::get('/', function () {
 Route::view('/privacy-policy', 'legal.privacy')->name('legal.privacy');
 Route::view('/terms-of-service', 'legal.terms')->name('legal.terms');
 
-// SEO Sitemap Routes
-Route::get('/sitemap.xml', [SitemapController::class, 'main'])->name('sitemap');
-Route::get('/sitemap_index.xml', [SitemapController::class, 'index'])->name('sitemap.index');
-Route::get('/sitemap-tasks.xml', [SitemapController::class, 'tasks'])->name('sitemap.tasks');
-Route::get('/sitemap-services.xml', [SitemapController::class, 'services'])->name('sitemap.services');
-
-// IndexNow Route
-Route::get('/indexnow-key.txt', [IndexNowController::class, 'getKey'])->name('indexnow.key');
 // Short referral link - stores code in session then redirects to register
 Route::get('/ref/{code}', [ReferralController::class, 'redirectWithCode'])->name('ref.redirect');
 
@@ -64,7 +53,7 @@ Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('aut
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 Route::post('/auth/google/one-tap', [GoogleAuthController::class, 'oneTap'])->name('auth.google.one-tap');
 
-Route::middleware(['auth', 'verified', 'logout.inactive', 'onboarding'])->group(function () {
+Route::middleware(['auth', 'check.email.required', 'logout.inactive', 'onboarding'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -91,18 +80,40 @@ Route::middleware(['auth', 'verified', 'logout.inactive', 'onboarding'])->group(
 
     // Onboarding path for worker roles and buyers
     Route::get('/onboarding/select', [\App\Http\Controllers\OnboardingController::class, 'selectAccountType'])->name('onboarding.select');
+    Route::get('/onboarding/earner-type', [\App\Http\Controllers\OnboardingController::class, 'selectEarnerType'])->name('onboarding.earner-type');
     Route::post('/onboarding/select', [\App\Http\Controllers\OnboardingController::class, 'storeAccountType'])->name('onboarding.select.post');
     
     // API: Check account type status
     Route::get('/api/onboarding/account-type-status', [\App\Http\Controllers\OnboardingController::class, 'checkAccountTypeStatus'])->name('api.onboarding.account-type-status');
-    Route::post('/onboarding/earn/activate', [\App\Http\Controllers\OnboardingController::class, 'activateEarner'])->name('onboarding.earn.activate');
+    
+    // Earner activation - simple dedicated flow
+    Route::get('/onboarding/earner', [\App\Http\Controllers\OnboardingController::class, 'earnerOnboarding'])->name('onboarding.earner');
+    // DEPRECATED: These onboarding activation routes are deprecated
+    // Activation is now handled by wallet.activate.process
+    // Keeping routes for backward compatibility but they redirect to wallet activation
+    // Route::post('/onboarding/earn/activate', [\App\Http\Controllers\OnboardingController::class, 'activateEarner'])->name('onboarding.earn.activate');
+    // Route::post('/onboarding/freelancer/activate', [\App\Http\Controllers\OnboardingController::class, 'activateFreelancer'])->name('onboarding.freelancer.activate');
+    // Route::post('/onboarding/digital-product/activate', [\App\Http\Controllers\OnboardingController::class, 'activateDigitalProduct'])->name('onboarding.digital-product.activate');
+    // Route::post('/onboarding/growth/activate', [\App\Http\Controllers\OnboardingController::class, 'activateGrowth'])->name('onboarding.growth.activate');
+    
+    // New centralized activation - use wallet.activate instead
+    Route::post('/onboarding/earn/activate', function() {
+        return redirect()->route('wallet.activate')->with('info', 'Please use the wallet activation page.');
+    })->name('onboarding.earn.activate');
+    Route::post('/onboarding/freelancer/activate', function() {
+        return redirect()->route('wallet.activate')->with('info', 'Please use the wallet activation page.');
+    })->name('onboarding.freelancer.activate');
+    Route::post('/onboarding/digital-product/activate', function() {
+        return redirect()->route('wallet.activate')->with('info', 'Please use the wallet activation page.');
+    })->name('onboarding.digital-product.activate');
+    Route::post('/onboarding/growth/activate', function() {
+        return redirect()->route('wallet.activate')->with('info', 'Please use the wallet activation page.');
+    })->name('onboarding.growth.activate');
+    
+    Route::post('/onboarding/earner/complete', [\App\Http\Controllers\OnboardingController::class, 'completeEarnerOnboarding'])->name('onboarding.earner.complete');
     Route::post('/onboarding/earn/referral/complete', [\App\Http\Controllers\OnboardingController::class, 'completeReferralTask'])->name('onboarding.earn.referral.complete');
     Route::post('/onboarding/earn/referral/skip', [\App\Http\Controllers\OnboardingController::class, 'skipReferralTask'])->name('onboarding.earn.referral.skip');
     Route::post('/onboarding/earn/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockEarnerFeature'])->name('onboarding.earn.feature.unlock');
-    Route::get('/onboarding/feature/unlock/complete', [\App\Http\Controllers\OnboardingController::class, 'completePendingFeatureUnlock'])->name('onboarding.feature.unlock.complete');
-    Route::post('/onboarding/freelancer/activate', [\App\Http\Controllers\OnboardingController::class, 'activateFreelancer'])->name('onboarding.freelancer.activate');
-    Route::post('/onboarding/digital-product/activate', [\App\Http\Controllers\OnboardingController::class, 'activateDigitalProduct'])->name('onboarding.digital-product.activate');
-    Route::post('/onboarding/growth/activate', [\App\Http\Controllers\OnboardingController::class, 'activateGrowth'])->name('onboarding.growth.activate');
     
     // Feature unlock routes for each role
     Route::post('/onboarding/buyer/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockBuyerFeature'])->name('onboarding.buyer.feature.unlock');
@@ -111,8 +122,14 @@ Route::middleware(['auth', 'verified', 'logout.inactive', 'onboarding'])->group(
     Route::post('/onboarding/digital-seller/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockDigitalSellerFeature'])->name('onboarding.digital-seller.feature.unlock');
     Route::post('/onboarding/growth-seller/feature/unlock', [\App\Http\Controllers\OnboardingController::class, 'unlockGrowthSellerFeature'])->name('onboarding.growth-seller.feature.unlock');
     
-    // Feature unlock page route
-    Route::get('/onboarding/features', [\App\Http\Controllers\OnboardingController::class, 'showFeatureUnlock'])->name('onboarding.features');
+     // Feature unlock page route (shows all features)
+     Route::get('/onboarding/features', [\App\Http\Controllers\OnboardingController::class, 'showFeatureUnlock'])->name('onboarding.features');
+     
+     // Single feature unlock page (dynamic) - feature can be passed as route parameter or query string
+     Route::get('/onboarding/feature/unlock/{feature?}', [\App\Http\Controllers\OnboardingController::class, 'showSingleFeatureUnlock'])->name('onboarding.feature.unlock.page')->middleware(['auth', 'verified']);
+     Route::get('/onboarding/feature/unlock/complete', [\App\Http\Controllers\OnboardingController::class, 'completePendingFeatureUnlock'])->name('onboarding.feature.unlock.complete')->middleware(['auth', 'verified']);
+     
+     Route::get('/unlock-access', function () { return view('unlock-access'); })->name('unlock-access');
 
     Route::get('/onboarding/task-creator', [\App\Http\Controllers\OnboardingController::class, 'taskCreatorOnboarding'])->name('onboarding.task-creator');
     Route::get('/onboarding/freelancer', [\App\Http\Controllers\OnboardingController::class, 'freelancerOnboarding'])->name('onboarding.freelancer');
@@ -162,80 +179,101 @@ Route::middleware(['auth', 'verified', 'logout.inactive', 'onboarding'])->group(
         Route::post('/add-promo', [WalletController::class, 'addPromoCredit'])->name('add-promo');
     });
 
-    // Task routes - Protected by task creation gate middleware
-    Route::prefix('tasks')->name('tasks.')->middleware(['task.creation.gate', 'earner.access'])->group(function () {
-        // New Create Task Module Routes
-        Route::get('/create/new', [CreateTaskController::class, 'showCreateForm'])->name('create.new');
-        Route::get('/create', function() { return redirect()->route('tasks.create.new'); })->name('create');
-        Route::post('/create/store', [CreateTaskController::class, 'store'])->name('create.store');
-        Route::post('/create/save-draft', [CreateTaskController::class, 'saveDraft'])->name('create.save-draft');
-        Route::get('/create/get-draft', [CreateTaskController::class, 'getDraft'])->name('create.get-draft');
-        Route::post('/create/clear-draft', [CreateTaskController::class, 'clearDraft'])->name('create.clear-draft');
-        Route::post('/create/refresh-token', [CreateTaskController::class, 'refreshToken'])->name('create.refresh-token');
-        Route::post('/create/validate', [CreateTaskController::class, 'validateTaskData'])->name('create.validate');
-        Route::get('/create/calculate-cost', [CreateTaskController::class, 'calculateCost'])->name('create.calculate-cost');
+    // ============================================================================
+    // TASK SYSTEM
+    // ============================================================================
+    // UNIFIED TASK ROUTES - Single TaskController for all operations
+    // ============================================================================
+    // This controller handles all task-related operations:
+    // - Task creation (with idempotency, drafts, validation)
+    // - Task management (create, edit, pause, resume, delete)
+    // - Worker submission (submit work, view tasks)
+    // - Submission review (approve/reject)
+    // - Bundles (suggestions, browsing)
+    // - Analytics (clicks, earnings)
+    // ============================================================================
+
+    // -------------------------------------------------------------------------
+    // Task Routes (/tasks/*)
+    // -------------------------------------------------------------------------
+    // All task operations using the unified TaskController
+    // -------------------------------------------------------------------------
+    Route::prefix('tasks')->name('tasks.')->group(function () {
         
-        // Original task routes - redirect to new create flow
+        // ---------------------------------------------------------------------
+        // Browse Tasks (Worker View)
+     Route::middleware(['auth', 'check.email.required', 'feature.access:available_tasks'])->group(function () {
+
+        // ---------------------------------------------------------------------
         Route::get('/', [TaskController::class, 'index'])->name('index');
-        // /create route is defined above in new create module
-        Route::get('/create/resume', [CreateTaskController::class, 'resume'])->name('create.resume');
+         // Worker submits work for a task
+        Route::post('/{task}/submit', [TaskController::class, 'submit'])->name('submit');
+        
+        
+     });
+
+
+     Route::middleware(['auth', 'check.email.required', 'feature.access:task_creation'])->group(function () {
+
+        // ---------------------------------------------------------------------
+        // Task Creation (Modern with Idempotency)
+        // ---------------------------------------------------------------------
+        Route::get('/create/new', [TaskController::class, 'showCreateForm'])->name('create.new');
+        Route::get('/create', function() { return redirect()->route('tasks.create.new'); })->name('create');
+        Route::post('/create/store', [TaskController::class, 'storeTask'])->name('create.store');
+        Route::post('/create/save-draft', [TaskController::class, 'saveTaskDraft'])->name('create.save-draft');
+        Route::get('/create/get-draft', [TaskController::class, 'getDraft'])->name('create.get-draft');
+        Route::post('/create/clear-draft', [TaskController::class, 'clearDraft'])->name('create.clear-draft');
+        Route::post('/create/refresh-token', [TaskController::class, 'refreshToken'])->name('create.refresh-token');
+        Route::post('/create/validate', [TaskController::class, 'validateTaskData'])->name('create.validate');
+        Route::get('/create/calculate-cost', [TaskController::class, 'calculateCost'])->name('create.calculate-cost');
+        Route::get('/create/resume', [TaskController::class, 'resumeCreation'])->name('create.resume');
         Route::get('/create/saved', [TaskController::class, 'savedCreate'])->name('create.saved');
         Route::post('/create/pay', [TaskController::class, 'payCreate'])->name('create.pay');
-        Route::post('/tasks', [TaskController::class, 'store'])->name('store');
-        Route::post('/tasks/suggest-bundles', [TaskController::class, 'suggestBundles'])->name('suggest-bundles');
+
+        // ---------------------------------------------------------------------
+        // Social Media Search & Import
+        // ---------------------------------------------------------------------
+        Route::get('/create/import', [SocialMediaSearchController::class, 'index'])->name('create.import');
+        Route::post('/create/import/search', [SocialMediaSearchController::class, 'search'])->name('create.import.search');
+        Route::post('/create/import/import', [SocialMediaSearchController::class, 'import'])->name('create.import.do');
+        Route::get('/create/import/task-types', [SocialMediaSearchController::class, 'getTaskTypes'])->name('create.import.task-types');
+
+        // ---------------------------------------------------------------------
+        // Bundle Routes
+        // ---------------------------------------------------------------------
+        Route::post('/suggest-bundles', [TaskController::class, 'suggestBundles'])->name('suggest-bundles');
         Route::get('/bundles', [TaskController::class, 'bundles'])->name('bundles');
-        Route::get('/my-tasks', [TaskController::class, 'myTasks'])->name('my-tasks');
-        Route::get('/{task}', [TaskController::class, 'show'])->name('show');
-        Route::post('/{task}/submit', [TaskController::class, 'submit'])->name('submit');
+
+        // ---------------------------------------------------------------------
+        // Task Management
+           
+       
+        // Task owner actions
         Route::post('/{task}/pause', [TaskController::class, 'pause'])->name('pause');
         Route::post('/{task}/resume', [TaskController::class, 'resume'])->name('resume');
         Route::get('/{task}/edit', [TaskController::class, 'edit'])->name('edit');
         Route::get('/{task}/analytics', [TaskController::class, 'analytics'])->name('analytics');
         Route::put('/{task}', [TaskController::class, 'update'])->name('update');
         Route::delete('/{task}', [TaskController::class, 'destroy'])->name('destroy');
-        
-        // Submission review routes
+
+        // ---------------------------------------------------------------------
+        // Submission Review (Task Owner)
+        // ---------------------------------------------------------------------
         Route::get('/submission/{completion}', [TaskController::class, 'submissionReview'])->name('submission.review');
         Route::post('/submission/{completion}/approve', [TaskController::class, 'approve'])->name('submission.approve');
         Route::post('/submission/{completion}/reject', [TaskController::class, 'reject'])->name('submission.reject');
-        
-        // Track platform click analytics
-        Route::post('/track-platform-click', [TaskController::class, 'trackPlatformClick'])->name('track-platform-click');
-    });
+     });
 
-    // NEW TASK SYSTEM - Escrow-based Task Management
-    Route::prefix('new-tasks')->name('new-tasks.')->middleware(['task.creation.gate', 'earner.access'])->group(function () {
-        // Browse available tasks (worker view)
-        Route::get('/', [NewTaskController::class, 'index'])->name('index');
-        
-        // Task creation (client view)
-        Route::get('/create', [NewTaskController::class, 'create'])->name('create');
-        Route::post('/store', [NewTaskController::class, 'store'])->name('store');
-        
-        // Task funding - moves funds from wallet to escrow
-        Route::post('/{task}/fund', [NewTaskController::class, 'fundTask'])->name('fund');
-        
-        // My tasks (client view - tasks I created)
-        Route::get('/my-tasks', [NewTaskController::class, 'myTasks'])->name('my-tasks');
-        
-        // Work tasks (worker view - available tasks to work on)
-        Route::get('/work', [NewTaskController::class, 'workTasks'])->name('work');
-        
-        // Task details
-        Route::get('/{task}', [NewTaskController::class, 'show'])->name('show');
-        
-        // Worker submission
-        Route::post('/{task}/submit', [NewTaskController::class, 'submitWork'])->name('submit');
-        
-        // Submission management (client)
-        Route::get('/{task}/submissions', [NewTaskController::class, 'submissions'])->name('submissions');
-        Route::post('/{task}/submissions/{submission}/approve', [NewTaskController::class, 'approveSubmission'])->name('submissions.approve');
-        Route::post('/{task}/submissions/{submission}/reject', [NewTaskController::class, 'rejectSubmission'])->name('submissions.reject');
-        
-        // Task actions
-        Route::post('/{task}/pause', [NewTaskController::class, 'pauseTask'])->name('pause');
-        Route::post('/{task}/resume', [NewTaskController::class, 'resumeTask'])->name('resume');
-        Route::post('/{task}/cancel', [NewTaskController::class, 'cancelTask'])->name('cancel');
+        // ---------------------------------------------------------------------
+        Route::get('/my-tasks', [TaskController::class, 'myTasks'])->name('my-tasks');
+        Route::get('/{task}', [TaskController::class, 'show'])->name('show');
+
+
+        // ---------------------------------------------------------------------
+        // Analytics
+        // ---------------------------------------------------------------------
+        Route::post('/track-platform-click', [TaskController::class, 'trackPlatformClick'])->name('track-platform-click');
     });
 
     // Admin routes
@@ -262,6 +300,12 @@ Route::middleware(['auth', 'verified', 'logout.inactive', 'onboarding'])->group(
         
         // Task Creation Gate settings
         Route::get('/settings/task-gate', [\App\Http\Controllers\SettingsController::class, 'group'])->name('settings.task-gate')->defaults('group', 'task-gate');
+
+        // Onboarding settings
+        Route::get('/settings/onboarding', [\App\Http\Controllers\Admin\OnboardingSettingsController::class, 'index'])->name('settings.onboarding');
+        Route::put('/settings/onboarding', [\App\Http\Controllers\Admin\OnboardingSettingsController::class, 'update'])->name('settings.onboarding.update');
+        Route::post('/settings/onboarding/reset', [\App\Http\Controllers\Admin\OnboardingSettingsController::class, 'reset'])->name('settings.onboarding.reset');
+        Route::get('/settings/onboarding/data', [\App\Http\Controllers\Admin\OnboardingSettingsController::class, 'getSettings'])->name('settings.onboarding.data');
 
         // Generic/grouped admin settings routes
         Route::get('/settings/{group}', [\App\Http\Controllers\SettingsController::class, 'group'])->name('settings.group');
@@ -428,8 +472,8 @@ Route::middleware(['auth', 'verified', 'logout.inactive', 'onboarding'])->group(
     });
 });
 
-// Professional Services (Hire) - Available to all authenticated users, but restricted for earners until unlocked
-Route::prefix('services')->name('professional-services.')->middleware(['earner.access'])->group(function () {
+// Professional Services (Hire) - Available to all authenticated users to view but restricted for them to create/order until unlocked
+Route::prefix('services')->name('professional-services.')->group(function () {
     // Public - Browse services
     Route::get('/', [ProfessionalServiceController::class, 'index'])->name('index');
     Route::get('/search', [ProfessionalServiceController::class, 'index'])->name('search');
@@ -438,8 +482,8 @@ Route::prefix('services')->name('professional-services.')->middleware(['earner.a
     Route::get('/directory', [ProfessionalServiceController::class, 'directory'])->name('directory');
     Route::get('/provider/{userId}', [ProfessionalServiceController::class, 'providerProfile'])->name('provider-profile');
     
-    // Protected routes - require authentication
-    Route::middleware(['auth', 'verified'])->group(function () {
+    // Protected routes - require authentication/unlocked feature access
+    Route::middleware(['auth', 'check.email.required', 'feature.access:professional_services'])->group(function () {
         // Create service
         Route::get('/create', [ProfessionalServiceController::class, 'create'])->name('create');
         Route::post('/store', [ProfessionalServiceController::class, 'store'])->name('store');
@@ -476,13 +520,13 @@ Route::prefix('services')->name('professional-services.')->middleware(['earner.a
     Route::get('/{service}', [ProfessionalServiceController::class, 'show'])->name('show');
 });
 
-// Growth Marketplace - Available to all authenticated users, but restricted for earners until unlocked
-Route::prefix('growth')->name('growth.')->middleware(['earner.access'])->group(function () {
+// Growth Marketplace - Available to all authenticated users to view, but restricted for them  until unlocked
+Route::prefix('growth')->name('growth.')->group(function () {
     // Public - Browse
     Route::get('/', [GrowthController::class, 'index'])->name('index');
     
-    // Protected routes - require authentication
-    Route::middleware(['auth', 'verified'])->group(function () {
+    // Protected routes - require authentication/unlocked feature access
+    Route::middleware(['auth', 'check.email.required', 'feature.access:growth_listings'])->group(function () {
         // Create listing - MUST be before /{type} route
         Route::get('/create', [GrowthController::class, 'create'])->name('create');
         Route::post('/store', [GrowthController::class, 'store'])->name('store');
@@ -516,14 +560,14 @@ Route::prefix('growth')->name('growth.')->middleware(['earner.access'])->group(f
     Route::get('/listing/{listing}', [GrowthController::class, 'show'])->name('show');
 });
 
-// Digital Products Marketplace - Restricted for earners until unlocked
-Route::prefix('products')->name('digital-products.')->middleware(['earner.access'])->group(function () {
+// Digital Products Marketplace - Available for all users to view , but Restricted for them until unlocked
+Route::prefix('products')->name('digital-products.')->group(function () {
     // Public - Browse
     Route::get('/', [DigitalProductController::class, 'index'])->name('index');
     Route::get('/featured', [DigitalProductController::class, 'featured'])->name('featured');
     
-    // Protected routes - require authentication
-    Route::middleware(['auth', 'verified'])->group(function () {
+    // Protected routes - require authentication/unlocked feature access
+    Route::middleware(['auth', 'check.email.required', 'feature.access:digital_products'])->group(function () {
         // Create product
         Route::get('/create', [DigitalProductController::class, 'create'])->name('create');
         Route::post('/store', [DigitalProductController::class, 'store'])->name('store');
@@ -551,13 +595,13 @@ Route::prefix('products')->name('digital-products.')->middleware(['earner.access
     Route::get('/{product}', [DigitalProductController::class, 'show'])->name('show');
 });
 
-// Job Board
+// Job Board- Available for all users to view, but Restricted for them until unlocked
 Route::prefix('jobs')->name('jobs.')->group(function () {
     // Public - Browse
     Route::get('/', [JobController::class, 'index'])->name('index');
     
-    // Protected routes - require authentication
-    Route::middleware(['auth', 'verified'])->group(function () {
+    // Protected routes - require authentication/unlocked feature access
+    Route::middleware(['auth', 'check.email.required', 'feature.access:task_creation'])->group(function () {
         // Create job
         Route::get('/create', [JobController::class, 'create'])->name('create');
         Route::post('/store', [JobController::class, 'store'])->name('store');
@@ -583,7 +627,7 @@ Route::prefix('jobs')->name('jobs.')->group(function () {
 
 // Escrow Management
 Route::prefix('escrow')->name('escrow.')->group(function () {
-    Route::middleware(['auth', 'verified'])->group(function () {
+    Route::middleware(['auth', 'check.email.required'])->group(function () {
         Route::get('/', [EscrowController::class, 'index'])->name('index');
         Route::get('/active', [EscrowController::class, 'active'])->name('active');
         Route::get('/released', [EscrowController::class, 'released'])->name('released');
@@ -596,7 +640,7 @@ Route::prefix('escrow')->name('escrow.')->group(function () {
 
 // Disputes
 Route::prefix('disputes')->name('disputes.')->group(function () {
-    Route::middleware(['auth', 'verified'])->group(function () {
+    Route::middleware(['auth', 'check.email.required'])->group(function () {
         Route::get('/', [DisputeController::class, 'index'])->name('index');
         Route::get('/create', [DisputeController::class, 'create'])->name('create');
         Route::post('/store', [DisputeController::class, 'store'])->name('store');
@@ -608,7 +652,7 @@ Route::prefix('disputes')->name('disputes.')->group(function () {
 
 // Verification Center
 Route::prefix('verification')->name('verification.')->group(function () {
-    Route::middleware(['auth', 'verified'])->group(function () {
+    Route::middleware(['auth', 'check.email.required'])->group(function () {
         Route::get('/', [VerificationController::class, 'index'])->name('index');
         Route::post('/email', [VerificationController::class, 'verifyEmail'])->name('email');
         Route::post('/phone', [VerificationController::class, 'verifyPhone'])->name('phone');
@@ -620,7 +664,7 @@ Route::prefix('verification')->name('verification.')->group(function () {
 
 // Boost & Promotion
 Route::prefix('boost')->name('boost.')->group(function () {
-    Route::middleware(['auth', 'verified'])->group(function () {
+    Route::middleware(['auth', 'check.email.required'])->group(function () {
         Route::get('/', [BoostController::class, 'index'])->name('index');
         Route::get('/items', [BoostController::class, 'getItems'])->name('items');
         Route::post('/activate', [BoostController::class, 'activate'])->name('activate');
@@ -638,14 +682,3 @@ Route::get('/_csrf-token', function(){
 });
 
 require __DIR__.'/auth.php';
-
-
-// SEO Pages
-Route::view('/about', 'pages.about')->name('pages.about');
-Route::view('/learn', 'learn.index')->name('learn.index');
-Route::view('/about-author', 'pages.about-author')->name('pages.about-author');
-Route::view('/editorial-policy', 'pages.editorial-policy')->name('pages.editorial-policy');
-Route::view('/how-payments-work', 'pages.how-payments-work')->name('pages.how-payments-work');
-Route::view('/platform-safety', 'pages.platform-safety')->name('pages.platform-safety');
-Route::view('/press', 'pages.press')->name('pages.press');
-

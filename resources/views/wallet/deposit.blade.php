@@ -26,7 +26,18 @@
             </div>
 
             <!-- Context Alert -->
-            @if(session('insufficient_balance_required'))
+            @if(session('pending_feature_unlock'))
+                @php $pending = session('pending_feature_unlock'); @endphp
+                <div class="bg-amber-50 dark:bg-amber-500/10 border-l-4 border-amber-500 p-6 text-amber-800 dark:text-amber-300">
+                    <div class="flex items-start">
+                        <i class="fas fa-lock mt-1 mr-3 flex-shrink-0"></i>
+                        <div>
+                            <p class="font-semibold">Feature Unlock on Hold</p>
+                            <p class="text-sm mt-1">You need to deposit at least <strong>₦{{ number_format($pending['amount'], 0) }}</strong> to unlock <strong>{{ ucfirst(str_replace('_', ' ', $pending['feature'])) }}</strong>. After depositing, your feature will be unlocked automatically!</p>
+                        </div>
+                    </div>
+                </div>
+            @elseif(session('insufficient_balance_required'))
                 <div class="bg-blue-50 dark:bg-blue-500/10 border-l-4 border-blue-500 p-6 text-blue-800 dark:text-blue-300">
                     <div class="flex items-start">
                         <i class="fas fa-info-circle mt-1 mr-3 flex-shrink-0"></i>

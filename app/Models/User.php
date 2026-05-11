@@ -72,6 +72,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'has_completed_mandatory_creation',
         'task_creation_unlocked_at',
         'total_created_task_budget',
+        'first_task_created',
         'buyer_categories_selected',
         'buyer_onboarding_completed',
         'freelancer_profile_completed',
@@ -125,6 +126,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'has_completed_mandatory_creation' => 'boolean',
         'task_creation_unlocked_at' => 'datetime',
         'total_created_task_budget' => 'decimal:2',
+        'first_task_created' => 'boolean',
         'referral_task_completed' => 'boolean',
         'referral_task_skipped' => 'boolean',
         'earner_features' => 'array',
@@ -207,27 +209,87 @@ class User extends Authenticatable implements MustVerifyEmail
             && $this->growth_listing_created;
     }
 
-    public function hasEarnerFeature(string $feature): bool
+    public function getFeatureFieldName(): ?string
     {
-        if (!in_array($this->account_type, ['earner', 'digital_seller', 'growth_seller'])) {
-            return true; // other roles not bound by earner unlock map
-        }
+        return match ($this->account_type) {
+            'earner' => 'earner_features',
+            'buyer' => 'buyer_features',
+            'task_creator' => 'task_creator_features',
+            'freelancer' => 'freelancer_features',
+            'digital_seller' => 'digital_seller_features',
+            'growth_seller' => 'growth_seller_features',
+            default => null,
+        };
+    }
 
-        $features = $this->earner_features ?? [];
+    public function normalizeFeatureKey(string $feature): string
+    {
+        $aliases = config('features.feature_aliases', []);
+        return $aliases[$feature] ?? $feature;
+    }
 
-        if (!isset($features[$feature])) {
-            return false;
-        }
+    public function getFeatureMap(): array
+    {
+        $field = $this->getFeatureFieldName();
+        return $field ? ($this->{$field} ?? []) : [];
+    }
 
+    public function getFeatureExpiry(string $feature): ?\Illuminate\Support\Carbon
+    {
+        $feature = $this->normalizeFeatureKey($feature);
+        $features = $this->getFeatureMap();
         $expires = $features[$feature]['expires_at'] ?? null;
 
-        if (!$expires) {
-            return false;
-        }
+        return $expires ? \Illuminate\Support\Carbon::parse($expires) : null;
+    }
 
-        return now()->lte(
-            \Illuminate\Support\Carbon::parse($expires)
-        );
+     public function hasFeatureAccess(string $feature): bool
+     {
+         // Admins have unlimited access to all features
+         if ($this->isAdmin()) {
+             return true;
+         }
+
+         $feature = $this->normalizeFeatureKey($feature);
+         $expiry = $this->getFeatureExpiry($feature);
+
+         return $expiry ? $expiry->isFuture() : false;
+     }
+
+    public function unlockFeature(string $feature, int $months = 3): void
+    {
+        $feature = $this->normalizeFeatureKey($feature);
+        $features = $this->getFeatureMap();
+        $currentExpiry = $this->getFeatureExpiry($feature);
+
+        $from = $currentExpiry && $currentExpiry->isFuture() ? $currentExpiry : now();
+        $newExpiry = $from->copy()->addMonths($months);
+
+        $features[$feature] = [
+            'unlocked_at' => now()->toDateTimeString(),
+            'expires_at' => $newExpiry->toDateTimeString(),
+        ];
+
+        $field = $this->getFeatureFieldName();
+        if ($field) {
+            $this->{$field} = $features;
+            $this->save();
+        }
+    }
+
+    public function hasEarnerFeature(string $feature): bool
+    {
+        return $this->hasFeatureAccess($feature);
+    }
+
+    public function getEarnerFeatureExpiry(string $feature): ?\Illuminate\Support\Carbon
+    {
+        return $this->getFeatureExpiry($feature);
+    }
+
+    public function unlockEarnerFeature(string $feature, int $months = 3): void
+    {
+        $this->unlockFeature($feature, $months);
     }
 
     public function isSuspended(): bool
@@ -293,34 +355,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(Wallet::class);
     }
 
-    /**
-     * Earners feature unlocks (JSON map)
-     */
-    public function getEarnerFeatureExpiry(string $feature): ?\Illuminate\Support\Carbon
-    {
-        $features = $this->earner_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        return $expires ? \Illuminate\Support\Carbon::parse($expires) : null;
-    }
-
-    public function unlockEarnerFeature(string $feature, int $months = 3): void
-    {
-        $features = $this->earner_features ?? [];
-        $currentExpiry = $this->getEarnerFeatureExpiry($feature);
-
-        $from = $currentExpiry && $currentExpiry->isFuture() ? $currentExpiry : now();
-        $newExpiry = $from->copy()->addMonths($months);
-
-        $features[$feature] = [
-            'unlocked_at' => now()->toDateTimeString(),
-            'expires_at' => $newExpiry->toDateTimeString(),
-        ];
-
-        $this->earner_features = $features;
-        $this->save();
-    }
-
     // =============================================
     // BUYER FEATURE METHODS
     // =============================================
@@ -330,281 +364,115 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function hasBuyerFeature(string $feature): bool
     {
-        $features = $this->buyer_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        if (!$expires) {
-            return false;
-        }
-
-        return \Illuminate\Support\Carbon::parse($expires)->isFuture();
+        return $this->hasFeatureAccess($feature);
     }
 
-    /**
-     * Get buyer feature expiry date
-     */
     public function getBuyerFeatureExpiry(string $feature): ?\Illuminate\Support\Carbon
     {
-        $features = $this->buyer_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        return $expires ? \Illuminate\Support\Carbon::parse($expires) : null;
+        return $this->getFeatureExpiry($feature);
     }
 
-    /**
-     * Unlock a buyer feature
-     */
     public function unlockBuyerFeature(string $feature, int $months = 3): void
     {
-        $features = $this->buyer_features ?? [];
-        $currentExpiry = $this->getBuyerFeatureExpiry($feature);
-
-        $from = $currentExpiry && $currentExpiry->isFuture() ? $currentExpiry : now();
-        $newExpiry = $from->copy()->addMonths($months);
-
-        $features[$feature] = [
-            'unlocked_at' => now()->toDateTimeString(),
-            'expires_at' => $newExpiry->toDateTimeString(),
-        ];
-
-        $this->buyer_features = $features;
-        $this->save();
+        $this->unlockFeature($feature, $months);
     }
 
     // =============================================
     // TASK CREATOR FEATURE METHODS
     // =============================================
 
-    /**
-     * Check if task creator has access to a specific feature
-     */
     public function hasTaskCreatorFeature(string $feature): bool
     {
-        $features = $this->task_creator_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        if (!$expires) {
-            return false;
-        }
-
-        return \Illuminate\Support\Carbon::parse($expires)->isFuture();
+        return $this->hasFeatureAccess($feature);
     }
 
-    /**
-     * Get task creator feature expiry date
-     */
     public function getTaskCreatorFeatureExpiry(string $feature): ?\Illuminate\Support\Carbon
     {
-        $features = $this->task_creator_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        return $expires ? \Illuminate\Support\Carbon::parse($expires) : null;
+        return $this->getFeatureExpiry($feature);
     }
 
-    /**
-     * Unlock a task creator feature
-     */
     public function unlockTaskCreatorFeature(string $feature, int $months = 3): void
     {
-        $features = $this->task_creator_features ?? [];
-        $currentExpiry = $this->getTaskCreatorFeatureExpiry($feature);
-
-        $from = $currentExpiry && $currentExpiry->isFuture() ? $currentExpiry : now();
-        $newExpiry = $from->copy()->addMonths($months);
-
-        $features[$feature] = [
-            'unlocked_at' => now()->toDateTimeString(),
-            'expires_at' => $newExpiry->toDateTimeString(),
-        ];
-
-        $this->task_creator_features = $features;
-        $this->save();
+        $this->unlockFeature($feature, $months);
     }
 
     // =============================================
     // FREELANCER FEATURE METHODS
     // =============================================
 
-    /**
-     * Check if freelancer has access to a specific feature
-     */
     public function hasFreelancerFeature(string $feature): bool
     {
-        $features = $this->freelancer_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        if (!$expires) {
-            return false;
-        }
-
-        return \Illuminate\Support\Carbon::parse($expires)->isFuture();
+        return $this->hasFeatureAccess($feature);
     }
 
-    /**
-     * Get freelancer feature expiry date
-     */
     public function getFreelancerFeatureExpiry(string $feature): ?\Illuminate\Support\Carbon
     {
-        $features = $this->freelancer_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
+        return $this->getFeatureExpiry($feature);
+    }
 
-        return $expires ? \Illuminate\Support\Carbon::parse($expires) : null;
+    public function unlockFreelancerFeature(string $feature, int $months = 3): void
+    {
+        $this->unlockFeature($feature, $months);
+    }
+
+    // =============================================
+    // ACCESS GATE METHODS
+    // =============================================
+
+    /**
+     * Check if user can access a feature with unlock guidance.
+     * Returns array with access status and unlock information.
+     */
+    public function checkFeatureAccess(string $feature, ?string $context = null): array
+    {
+        return app(\App\Services\AccessGateService::class)->checkFeatureAccess($this, $feature, $context);
     }
 
     /**
-     * Unlock a freelancer feature
+     * Check if user can access a feature (boolean only).
      */
-    public function unlockFreelancerFeature(string $feature, int $months = 3): void
+    public function canAccessFeature(string $feature, ?string $context = null): bool
     {
-        $features = $this->freelancer_features ?? [];
-        $currentExpiry = $this->getFreelancerFeatureExpiry($feature);
-
-        $from = $currentExpiry && $currentExpiry->isFuture() ? $currentExpiry : now();
-        $newExpiry = $from->copy()->addMonths($months);
-
-        $features[$feature] = [
-            'unlocked_at' => now()->toDateTimeString(),
-            'expires_at' => $newExpiry->toDateTimeString(),
-        ];
-
-        $this->freelancer_features = $features;
-        $this->save();
+        $accessCheck = $this->checkFeatureAccess($feature, $context);
+        return $accessCheck['can_access'];
     }
 
     // =============================================
     // DIGITAL SELLER FEATURE METHODS
     // =============================================
 
-    /**
-     * Check if digital seller has access to a specific feature
-     */
     public function hasDigitalSellerFeature(string $feature): bool
     {
-        $features = $this->digital_seller_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        if (!$expires) {
-            return false;
-        }
-
-        return \Illuminate\Support\Carbon::parse($expires)->isFuture();
+        return $this->hasFeatureAccess($feature);
     }
 
-    /**
-     * Get digital seller feature expiry date
-     */
     public function getDigitalSellerFeatureExpiry(string $feature): ?\Illuminate\Support\Carbon
     {
-        $features = $this->digital_seller_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        return $expires ? \Illuminate\Support\Carbon::parse($expires) : null;
+        return $this->getFeatureExpiry($feature);
     }
 
-    /**
-     * Unlock a digital seller feature
-     */
     public function unlockDigitalSellerFeature(string $feature, int $months = 3): void
     {
-        $features = $this->digital_seller_features ?? [];
-        $currentExpiry = $this->getDigitalSellerFeatureExpiry($feature);
-
-        $from = $currentExpiry && $currentExpiry->isFuture() ? $currentExpiry : now();
-        $newExpiry = $from->copy()->addMonths($months);
-
-        $features[$feature] = [
-            'unlocked_at' => now()->toDateTimeString(),
-            'expires_at' => $newExpiry->toDateTimeString(),
-        ];
-
-        $this->digital_seller_features = $features;
-        $this->save();
+        $this->unlockFeature($feature, $months);
     }
 
     // =============================================
     // GROWTH SELLER FEATURE METHODS
     // =============================================
 
-    /**
-     * Check if growth seller has access to a specific feature
-     */
     public function hasGrowthSellerFeature(string $feature): bool
     {
-        $features = $this->growth_seller_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        if (!$expires) {
-            return false;
-        }
-
-        return \Illuminate\Support\Carbon::parse($expires)->isFuture();
+        return $this->hasFeatureAccess($feature);
     }
 
-    /**
-     * Get growth seller feature expiry date
-     */
     public function getGrowthSellerFeatureExpiry(string $feature): ?\Illuminate\Support\Carbon
     {
-        $features = $this->growth_seller_features ?? [];
-        $expires = $features[$feature]['expires_at'] ?? null;
-
-        return $expires ? \Illuminate\Support\Carbon::parse($expires) : null;
+        return $this->getFeatureExpiry($feature);
     }
 
-    /**
-     * Unlock a growth seller feature
-     */
     public function unlockGrowthSellerFeature(string $feature, int $months = 3): void
     {
-        $features = $this->growth_seller_features ?? [];
-        $currentExpiry = $this->getGrowthSellerFeatureExpiry($feature);
-
-        $from = $currentExpiry && $currentExpiry->isFuture() ? $currentExpiry : now();
-        $newExpiry = $from->copy()->addMonths($months);
-
-        $features[$feature] = [
-            'unlocked_at' => now()->toDateTimeString(),
-            'expires_at' => $newExpiry->toDateTimeString(),
-        ];
-
-        $this->growth_seller_features = $features;
-        $this->save();
-    }
-
-    // =============================================
-    // UNIFIED ACCESS CHECK
-    // =============================================
-
-    /**
-     * Check if user has access to a feature based on their account type
-     */
-    public function hasFeatureAccess(string $feature): bool
-    {
-        return match ($this->account_type) {
-            'buyer' => $this->hasBuyerFeature($feature),
-            'earner' => $this->hasEarnerFeature($feature),
-            'task_creator' => $this->hasTaskCreatorFeature($feature),
-            'freelancer' => $this->hasFreelancerFeature($feature),
-            'digital_seller' => $this->hasDigitalSellerFeature($feature),
-            'growth_seller' => $this->hasGrowthSellerFeature($feature),
-            default => false,
-        };
-    }
-
-    /**
-     * Get feature expiry based on account type
-     */
-    public function getFeatureExpiry(string $feature): ?\Illuminate\Support\Carbon
-    {
-        return match ($this->account_type) {
-            'buyer' => $this->getBuyerFeatureExpiry($feature),
-            'earner' => $this->getEarnerFeatureExpiry($feature),
-            'task_creator' => $this->getTaskCreatorFeatureExpiry($feature),
-            'freelancer' => $this->getFreelancerFeatureExpiry($feature),
-            'digital_seller' => $this->getDigitalSellerFeatureExpiry($feature),
-            'growth_seller' => $this->getGrowthSellerFeatureExpiry($feature),
-            default => null,
-        };
+        $this->unlockFeature($feature, $months);
     }
 
     /**

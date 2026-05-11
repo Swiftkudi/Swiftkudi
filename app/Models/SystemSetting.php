@@ -42,6 +42,7 @@ class SystemSetting extends Model
     const GROUP_ESCROW = 'escrow';
     const GROUP_VERIFICATION = 'verification';
     const GROUP_BOOST = 'boost';
+    const GROUP_REVIEW = 'review';
 
     const GROUPS = [
         self::GROUP_GENERAL => 'General',
@@ -62,6 +63,7 @@ class SystemSetting extends Model
         self::GROUP_ESCROW => 'Escrow Settings',
         self::GROUP_VERIFICATION => 'Verification & Trust',
         self::GROUP_BOOST => 'Boost & Monetization',
+        self::GROUP_REVIEW => 'Reviews & Ratings',
     ];
 
     // Encryption for sensitive values
@@ -537,6 +539,106 @@ class SystemSetting extends Model
         return (int) self::getNumber('escrow_auto_accept_days', 3);
     }
 
+    /**
+     * Check if escrow is enabled
+     */
+    public static function isEscrowEnabled(): bool
+    {
+        return self::getBool('escrow_enabled', true);
+    }
+
+    /**
+     * Check if escrow requires admin approval
+     */
+    public static function isEscrowApprovalRequired(): bool
+    {
+        return self::getBool('escrow_require_approval', false);
+    }
+
+    // ==========================================
+    // Review & Rating Settings Methods
+    // ==========================================
+
+    /**
+     * Check if review is enabled for services
+     */
+    public static function isReviewEnabledForServices(): bool
+    {
+        return self::getBool('review_services_enabled', true);
+    }
+
+    /**
+     * Check if review is enabled for growth
+     */
+    public static function isReviewEnabledForGrowth(): bool
+    {
+        return self::getBool('review_growth_enabled', true);
+    }
+
+    /**
+     * Check if review is enabled for digital products
+     */
+    public static function isReviewEnabledForDigital(): bool
+    {
+        return self::getBool('review_digital_enabled', true);
+    }
+
+    /**
+     * Get minimum rating value
+     */
+    public static function getReviewMinRating(): int
+    {
+        return (int) self::getNumber('review_min_rating', 1);
+    }
+
+    /**
+     * Get maximum rating value
+     */
+    public static function getReviewMaxRating(): int
+    {
+        return (int) self::getNumber('review_max_rating', 5);
+    }
+
+    /**
+     * Check if review requires purchase
+     */
+    public static function isReviewRequirePurchase(): bool
+    {
+        return self::getBool('review_require_purchase', true);
+    }
+
+    /**
+     * Check if anonymous reviews are allowed
+     */
+    public static function isReviewAnonymousAllowed(): bool
+    {
+        return self::getBool('review_allow_anonymous', false);
+    }
+
+    /**
+     * Check if review moderation is enabled
+     */
+    public static function isReviewModerationEnabled(): bool
+    {
+        return self::getBool('review_moderation_enabled', false);
+    }
+
+    /**
+     * Check if reviews auto-publish
+     */
+    public static function isReviewAutoPublish(): bool
+    {
+        return self::getBool('review_auto_publish', true);
+    }
+
+    /**
+     * Get review edit window in hours
+     */
+    public static function getReviewEditWindowHours(): int
+    {
+        return (int) self::getNumber('review_edit_window_hours', 24);
+    }
+
     // ==========================================
     // Verification Settings Methods
     // ==========================================
@@ -786,8 +888,221 @@ class SystemSetting extends Model
             'payment_sandbox_auto' => ['value' => true, 'group' => self::GROUP_PAYMENT, 'type' => 'boolean'],
 
             // Notifications
+            'notifications_enabled' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_in_app_enabled' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_email_enabled' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_push_enabled' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_admin_activity' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            // Event-specific notifications
+            'notify_task_approved' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_approved_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_approved_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_approved_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_task_rejected' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_rejected_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_rejected_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_rejected_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_task_created' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_created_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_created_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_created_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_task_bundle_available' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_bundle_available_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_bundle_available_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_task_bundle_available_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_withdrawal_status' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_withdrawal_status_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_withdrawal_status_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_withdrawal_status_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_referral_bonus' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_referral_bonus_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_referral_bonus_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_referral_bonus_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_earnings_unlocked' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_earnings_unlocked_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_earnings_unlocked_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_earnings_unlocked_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_account_type_reminder' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_account_type_reminder_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_account_type_reminder_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_account_type_reminder_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_activation_reminder' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_activation_reminder_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_activation_reminder_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_activation_reminder_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_onboarding_complete' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_onboarding_complete_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_onboarding_complete_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_onboarding_complete_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_product_purchased' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_purchased_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_purchased_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_purchased_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_product_downloaded' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_downloaded_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_downloaded_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_downloaded_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_purchased' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_purchased_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_purchased_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_purchased_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_growth_listing_approved' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_listing_approved_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_listing_approved_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_listing_approved_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            // Feature Expiry Notifications
+            'notify_feature_expiring_soon' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_feature_expiring_soon_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_feature_expiring_soon_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_feature_expiring_soon_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_feature_expired' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_feature_expired_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_feature_expired_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_feature_expired_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            // Onboarding Reminder (add base setting that was missing)
+            'notify_onboarding_reminder' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_onboarding_reminder_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_onboarding_reminder_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_onboarding_reminder_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            // Escrow Notifications (add push variants and missing escrow_cancelled)
+            'notify_escrow_held_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_released_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_refunded_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_disputed_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_cancelled' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_cancelled_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_cancelled_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_cancelled_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            // Review Notifications (add push variants and missing review_reply_received)
+            'notify_review_submitted_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_approved_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_rejected_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_reply_received' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_reply_received_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_reply_received_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_reply_received_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            // Additional Event Notifications (full per-event + per-channel)
+            'notify_product_created' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_created_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_created_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_created_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_product_approved' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_approved_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_approved_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_approved_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_product_rejected' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_rejected_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_rejected_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_rejected_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_product_confirmed_seller' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_confirmed_seller_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_confirmed_seller_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_confirmed_seller_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_product_confirmed_buyer' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_confirmed_buyer_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_confirmed_buyer_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_product_confirmed_buyer_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_created' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_created_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_created_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_created_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_approved' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_approved_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_approved_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_approved_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_rejected' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_rejected_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_rejected_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_rejected_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_order_seller' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_order_seller_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_order_seller_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_order_seller_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_order_buyer' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_order_buyer_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_order_buyer_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_order_buyer_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_message_received' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_message_received_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_message_received_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_message_received_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_revision_requested' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_revision_requested_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_revision_requested_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_revision_requested_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_delivered' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_delivered_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_delivered_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_delivered_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_confirmed_seller' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_confirmed_seller_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_confirmed_seller_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_confirmed_seller_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_service_confirmed_buyer' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_confirmed_buyer_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_confirmed_buyer_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_service_confirmed_buyer_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_growth_listing_created' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_listing_created_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_listing_created_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_listing_created_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_growth_listing_rejected' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_listing_rejected_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_listing_rejected_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_listing_rejected_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_growth_message_received' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_message_received_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_message_received_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_growth_message_received_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_chat_message_received' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_chat_message_received_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_chat_message_received_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_chat_message_received_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            'notify_admin_push' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_admin_push_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_admin_push_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_admin_push_push' => ['value' => false, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            // Legacy notification settings (keep for backward compatibility)
             'notify_task_approval' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_task_rejection' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
             'notify_task_bundle' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
@@ -847,11 +1162,51 @@ class SystemSetting extends Model
             'module_referral_enabled' => ['value' => true, 'group' => self::GROUP_MODULES, 'type' => 'boolean'],
 
             // Escrow Settings
+            'escrow_platform_fee_percent' => ['value' => 10, 'group' => self::GROUP_ESCROW, 'type' => 'number'],
             'escrow_auto_release_days' => ['value' => 7, 'group' => self::GROUP_ESCROW, 'type' => 'number'],
             'escrow_max_revision_cycles' => ['value' => 3, 'group' => self::GROUP_ESCROW, 'type' => 'number'],
             'escrow_dispute_window_days' => ['value' => 14, 'group' => self::GROUP_ESCROW, 'type' => 'number'],
             'escrow_partial_refund_allowed' => ['value' => true, 'group' => self::GROUP_ESCROW, 'type' => 'boolean'],
             'escrow_auto_accept_days' => ['value' => 3, 'group' => self::GROUP_ESCROW, 'type' => 'number'],
+            'escrow_enabled' => ['value' => true, 'group' => self::GROUP_ESCROW, 'type' => 'boolean'],
+            'escrow_require_approval' => ['value' => false, 'group' => self::GROUP_ESCROW, 'type' => 'boolean'],
+
+            // Escrow Notification Settings
+            'notify_escrow_held' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_held_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_held_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_released' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_released_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_released_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_refunded' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_refunded_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_refunded_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_disputed' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_disputed_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_escrow_disputed_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+
+            // Review & Rating Settings
+            'review_services_enabled' => ['value' => true, 'group' => 'review', 'type' => 'boolean'],
+            'review_growth_enabled' => ['value' => true, 'group' => 'review', 'type' => 'boolean'],
+            'review_digital_enabled' => ['value' => true, 'group' => 'review', 'type' => 'boolean'],
+            'review_min_rating' => ['value' => 1, 'group' => 'review', 'type' => 'number'],
+            'review_max_rating' => ['value' => 5, 'group' => 'review', 'type' => 'number'],
+            'review_require_purchase' => ['value' => true, 'group' => 'review', 'type' => 'boolean'],
+            'review_allow_anonymous' => ['value' => false, 'group' => 'review', 'type' => 'boolean'],
+            'review_moderation_enabled' => ['value' => false, 'group' => 'review', 'type' => 'boolean'],
+            'review_auto_publish' => ['value' => true, 'group' => 'review', 'type' => 'boolean'],
+            'review_edit_window_hours' => ['value' => 24, 'group' => 'review', 'type' => 'number'],
+
+            // Review Notification Settings
+            'notify_review_submitted' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_submitted_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_submitted_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_approved' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_approved_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_approved_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_rejected' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_rejected_in_app' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
+            'notify_review_rejected_email' => ['value' => true, 'group' => self::GROUP_NOTIFICATION, 'type' => 'boolean'],
 
             // Verification Settings
             'verification_enabled' => ['value' => true, 'group' => self::GROUP_VERIFICATION, 'type' => 'boolean'],

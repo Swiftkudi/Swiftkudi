@@ -91,11 +91,11 @@ $accountType = $user->account_type ?? '';
                         <button type="submit" class="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-xl transition-colors">
                             <i class="fas fa-filter mr-2"></i>Filter
                         </button>
-                        @if($accountType === 'task_crea') 
+                         
                         <a href="{{ route('jobs.create') }}" class="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-medium rounded-xl transition-colors">
                             <i class="fas fa-plus mr-2"></i>Post a Job
                         </a>
-                        @endif
+                        
                     </div>
                 </div>
             </form>
@@ -161,11 +161,11 @@ $accountType = $user->account_type ?? '';
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">No jobs found</h3>
                 <p class="text-gray-500 dark:text-gray-400 mb-6">Try adjusting your search filters or post a new job</p>
-                @if($accountType === 'task_creator') 
+         
                 <a href="{{ route('jobs.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-medium rounded-xl transition-colors">
                     <i class="fas fa-plus mr-2"></i>Post a Job
                 </a>
-                @endif
+                
             </div>
         @endif
     </div>

@@ -33,6 +33,9 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 
 require __DIR__.'/../vendor/autoload.php';
 
+// Set bcmath precision to prevent timeout on large/small decimal calculations
+bcscale(8);
+
 /*
 |--------------------------------------------------------------------------
 | Run The Application

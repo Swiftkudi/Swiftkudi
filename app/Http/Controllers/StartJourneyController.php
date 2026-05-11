@@ -76,6 +76,18 @@ class StartJourneyController extends Controller
     {
         $user = Auth::user();
 
+        // Earners should not access task creation pages - redirect to dashboard if onboarding complete, or to appropriate onboarding step
+        if ($user->account_type === 'earner') {
+            $nextStep = app(\App\Services\AccessGateService::class)->getOnboardingRedirect($user);
+            if ($nextStep && $nextStep['route'] !== 'start-your-journey') {
+                return redirect()->route($nextStep['route'])->with('info', $nextStep['message']);
+            }
+            // If next step is start-your-journey (activation needed), continue to show the page
+            if (!$nextStep) {
+                return redirect()->route('dashboard')->with('info', 'Your account is fully activated.');
+            }
+        }
+
         // If admin disabled mandatory task-creation gate, user is already unlocked.
         if (!SystemSetting::isMandatoryTaskCreationEnabled()) {
             return redirect()->route('dashboard')
@@ -103,8 +115,11 @@ class StartJourneyController extends Controller
 
         // Earner-specific flags and tasks
         $isEarner = $user->account_type === 'earner';
-        $activationFee = SystemSetting::get('activation_fee', 1500);
-        $activationPaid = $user->activation_paid;
+        $onboardingSettings = app(\App\Services\OnboardingSettingsService::class);
+        $activationFee = $onboardingSettings->getActivationFee('earner');
+        // Check wallet activation status (canonical source of truth)
+        $walletActivated = $user->wallet && $user->wallet->is_activated;
+        $activationPaid = $walletActivated; // Keep for backward compatibility with view
         $referralTaskCompleted = $user->referral_task_completed ?? false;
         $referralTaskSkipped = $user->referral_task_skipped ?? false;
 
@@ -274,10 +289,17 @@ class StartJourneyController extends Controller
         // Keep for backwards compatibility
         $earnerFeatures = $roleFeatures;
 
+        $bonusAmount = SystemSetting::getReferralBonusAmount();
+        $isEarnerOrFreelancer = in_array($accountType, ['earner', 'freelancer']);
+        $rewardLabel = $isEarnerOrFreelancer 
+            ? '₦' . number_format($bonusAmount, 0) . ' withdrawable'
+            : '₦' . number_format($bonusAmount, 0) . ' platform credits';
+        
         $referralOnboardingTask = [
             'title' => 'Referral Task',
-            'reward' => 500,
-            'description' => 'Invite a friend and earn₦500 as a first onboarding exercise.',
+            'reward' => $bonusAmount,
+            'reward_label' => $rewardLabel,
+            'description' => 'Invite a friend to join SwiftKudi and earn ' . $rewardLabel . ' as a first onboarding exercise.',
         ];
 
         // Micro and UGC tasks preview for activated earners
@@ -314,7 +336,7 @@ class StartJourneyController extends Controller
             'recentPayouts',
             'isEarner',
             'activationFee',
-            'activationPaid',
+            'walletActivated',
             'referralTaskCompleted',
             'referralTaskSkipped',
             'earnerFeatures',

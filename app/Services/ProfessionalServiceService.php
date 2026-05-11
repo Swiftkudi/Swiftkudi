@@ -12,11 +12,21 @@ use App\Models\ServiceProviderProfile;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\SystemSetting;
+use App\Services\MarketplaceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProfessionalServiceService
 {
+    protected NotificationManager $notificationManager;
+    protected MarketplaceService $marketplaceService;
+
+    public function __construct(NotificationManager $notificationManager, MarketplaceService $marketplaceService)
+    {
+        $this->notificationManager = $notificationManager;
+        $this->marketplaceService = $marketplaceService;
+    }
+
     /**
      * Get commission rate from settings
      */
@@ -93,11 +103,16 @@ class ProfessionalServiceService
     {
         try {
             return DB::transaction(function () use ($buyer, $serviceId, $addonIds, $requirements) {
-                $service = ProfessionalService::findOrFail($serviceId);
+                $service = ProfessionalService::with('seller')->findOrFail($serviceId);
 
                 // Verify service is active
                 if ($service->status !== ProfessionalService::STATUS_ACTIVE) {
                     return ['success' => false, 'message' => 'This service is not available'];
+                }
+
+                // Verify seller exists
+                if (!$service->seller) {
+                    return ['success' => false, 'message' => 'Service seller not found'];
                 }
 
                 // Verify buyer has sufficient balance
@@ -134,18 +149,16 @@ class ProfessionalServiceService
                 $commission = round($totalAmount * ($commissionRate / 100), 2);
                 $sellerPayout = $totalAmount - $commission;
 
-                // Check balance
-                if ($wallet->withdrawable_balance < $totalAmount) {
+                // Check balance across withdrawable and promo credit
+                $availableBalance = ($wallet->withdrawable_balance ?? 0) + ($wallet->promo_credit_balance ?? 0);
+                if ($availableBalance < $totalAmount) {
                     return [
                         'success' => false,
                         'message' => 'Insufficient balance',
                         'required' => $totalAmount,
-                        'available' => $wallet->withdrawable_balance,
+                        'available' => $availableBalance,
                     ];
                 }
-
-                // Deduct from buyer's wallet and hold in escrow
-                $wallet->deductWithdrawable($totalAmount, 'service_order_' . $serviceId);
 
                 // Create order
                 $order = ProfessionalServiceOrder::create([
@@ -167,11 +180,25 @@ class ProfessionalServiceService
                 $currentCommission = (float) SystemSetting::get('total_professional_commission', 0);
                 SystemSetting::set('total_professional_commission', $currentCommission + $commission);
 
+                $escrowResult = $this->marketplaceService->holdInEscrow(
+                    $buyer,
+                    $service->seller,
+                    $totalAmount,
+                    $commission,
+                    $order,
+                    'Professional service order #' . $order->id
+                );
+
+                if (!$escrowResult['success']) {
+                    throw new \Exception($escrowResult['message'] ?? 'Failed to hold funds in escrow');
+                }
+
                 return [
                     'success' => true,
                     'message' => 'Order placed! Funds held in escrow.',
                     'order' => $order,
                     'escrow_amount' => $totalAmount,
+                    'escrow_transaction' => $escrowResult['escrow_transaction'] ?? null,
                 ];
             });
         } catch (\Exception $e) {
@@ -204,6 +231,20 @@ class ProfessionalServiceService
                     'delivered_at' => now(),
                 ]);
 
+                // Notify buyer that service has been delivered
+                $buyer = User::find($order->buyer_id);
+                if ($buyer) {
+                    $this->notificationManager->notify(
+                        NotificationManager::EVENT_SERVICE_DELIVERED,
+                        $buyer,
+                        [
+                            'order_id' => $order->id,
+                            'service_title' => $order->service->title ?? 'your service',
+                            'action_url' => route('professional-services.orders.show', $order->id),
+                        ]
+                    );
+                }
+
                 return [
                     'success' => true,
                     'message' => 'Work delivered! Waiting for buyer approval.',
@@ -233,21 +274,18 @@ class ProfessionalServiceService
                     return ['success' => false, 'message' => 'Order cannot be completed in current status'];
                 }
 
-                // Release funds to seller
-                $seller = User::find($order->seller_id);
-                if ($seller) {
-                    $sellerWallet = $seller->wallet ?? Wallet::firstOrCreate(
-                        ['user_id' => $seller->id],
-                        [
-                            'withdrawable_balance' => 0,
-                            'promo_credit_balance' => 0,
-                            'total_earned' => 0,
-                            'total_spent' => 0,
-                            'pending_balance' => 0,
-                            'escrow_balance' => 0,
-                        ]
-                    );
-                    $sellerWallet->addWithdrawable($order->seller_payout, 'service_order_complete');
+                $escrow = $this->marketplaceService->getEscrowTransaction($order);
+                if (!$escrow) {
+                    return ['success' => false, 'message' => 'Escrow transaction not found.'];
+                }
+
+                $escrowResult = $this->marketplaceService->releaseEscrow(
+                    $escrow,
+                    'Service order completed #' . $order->id
+                );
+
+                if (!$escrowResult['success']) {
+                    return ['success' => false, 'message' => $escrowResult['message'] ?? 'Failed to release escrow funds'];
                 }
 
                 // Update order status
@@ -294,20 +332,18 @@ class ProfessionalServiceService
                     return ['success' => false, 'message' => 'You already reviewed this order'];
                 }
 
-                $seller = User::find($order->seller_id);
-                if ($seller) {
-                    $sellerWallet = $seller->wallet ?? Wallet::firstOrCreate(
-                        ['user_id' => $seller->id],
-                        [
-                            'withdrawable_balance' => 0,
-                            'promo_credit_balance' => 0,
-                            'total_earned' => 0,
-                            'total_spent' => 0,
-                            'pending_balance' => 0,
-                            'escrow_balance' => 0,
-                        ]
-                    );
-                    $sellerWallet->addWithdrawable($order->seller_payout, 'service_order_complete');
+                $escrow = $this->marketplaceService->getEscrowTransaction($order);
+                if (!$escrow) {
+                    return ['success' => false, 'message' => 'Escrow transaction not found.'];
+                }
+
+                $escrowResult = $this->marketplaceService->releaseEscrow(
+                    $escrow,
+                    'Service order completed #' . $order->id
+                );
+
+                if (!$escrowResult['success']) {
+                    return ['success' => false, 'message' => $escrowResult['message'] ?? 'Failed to release escrow funds'];
                 }
 
                 $order->update([
@@ -330,31 +366,26 @@ class ProfessionalServiceService
                     $profile->increment('total_orders_completed');
                 }
 
+                $seller = User::find($order->seller_id);
                 if ($seller) {
-                    app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                    $this->notificationManager->notify(
+                        NotificationManager::EVENT_SERVICE_CONFIRMED_SELLER,
                         $seller,
-                        'Service Payment Released',
-                        'Buyer confirmed satisfaction for "' . ($order->service->title ?? 'your service') . '". Payment has been released to your wallet.',
-                        \App\Models\Notification::TYPE_SYSTEM,
                         [
                             'order_id' => $order->id,
+                            'service_title' => $order->service->title ?? 'your service',
                             'action_url' => route('professional-services.orders.show', $order->id) . '#order-actions',
-                        ],
-                        'notify_service_orders',
-                        true
+                        ]
                     );
                 }
 
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_SERVICE_CONFIRMED_BUYER,
                     $buyer,
-                    'Service Confirmed Successfully',
-                    'You confirmed delivery and submitted a review. Payment has been released to the provider.',
-                    \App\Models\Notification::TYPE_SYSTEM,
                     [
                         'order_id' => $order->id,
                         'action_url' => route('professional-services.orders.show', $order->id) . '#order-actions',
-                    ],
-                    'notify_service_orders'
+                    ]
                 );
 
                 return [
@@ -391,6 +422,20 @@ class ProfessionalServiceService
                     'revision_notes' => $notes,
                 ]);
 
+                // Notify seller about the revision request
+                $seller = User::find($order->seller_id);
+                if ($seller) {
+                    $this->notificationManager->notify(
+                        NotificationManager::EVENT_SERVICE_REVISION_REQUESTED,
+                        $seller,
+                        [
+                            'order_id' => $order->id,
+                            'service_title' => $order->service->title ?? 'Professional Service',
+                            'action_url' => route('professional-services.orders.show', $order->id),
+                        ]
+                    );
+                }
+
                 return [
                     'success' => true,
                     'message' => 'Revision requested',
@@ -417,10 +462,21 @@ class ProfessionalServiceService
                     return ['success' => false, 'message' => 'Order cannot be cancelled'];
                 }
 
-                // Refund buyer
-                $buyer = User::find($order->buyer_id);
-                if ($buyer && $buyer->wallet && $order->escrow_amount > 0) {
-                    $buyer->wallet->addWithdrawable($order->escrow_amount, 'service_order_refund');
+                $escrow = $this->marketplaceService->getEscrowTransaction($order);
+                if ($escrow) {
+                    $escrowResult = $this->marketplaceService->refundFromEscrow(
+                        $escrow,
+                        'Service order cancelled #' . $order->id
+                    );
+
+                    if (!$escrowResult['success']) {
+                        return ['success' => false, 'message' => $escrowResult['message'] ?? 'Failed to refund escrow funds'];
+                    }
+                } else {
+                    $buyer = User::find($order->buyer_id);
+                    if ($buyer && $buyer->wallet && $order->escrow_amount > 0) {
+                        $buyer->wallet->addWithdrawable($order->escrow_amount, 'service_order_refund');
+                    }
                 }
 
                 $order->update([

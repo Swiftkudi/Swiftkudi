@@ -36,10 +36,18 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'table' => 'jobs',
+            'table' => 'queue_jobs',
             'queue' => 'default',
             'retry_after' => 90,
             'after_commit' => false,
+        ],
+
+        'notifications' => [
+            'driver' => 'database',
+            'table' => 'queue_jobs',
+            'queue' => 'notifications',
+            'retry_after' => 90,
+            'after_commit' => true, // Ensure notifications are only queued after successful transaction
         ],
 
         'beanstalkd' => [

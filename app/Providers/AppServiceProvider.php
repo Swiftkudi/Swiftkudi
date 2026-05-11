@@ -38,7 +38,8 @@ class AppServiceProvider extends ServiceProvider
             return new TaskCreationService(
                 $app->make(TaskRepository::class),
                 $app->make(\App\Services\SwiftKudiService::class),
-                $app->make(\App\Services\TaskGateProgressService::class)
+                $app->make(\App\Services\TaskGateProgressService::class),
+                $app->make(\App\Services\NotificationManager::class)
             );
         });
 
@@ -52,12 +53,25 @@ class AppServiceProvider extends ServiceProvider
 
         // Register ProfessionalServiceService
         $this->app->singleton(ProfessionalServiceService::class, function ($app) {
-            return new ProfessionalServiceService();
+            return new ProfessionalServiceService(
+                $app->make(\App\Services\NotificationManager::class),
+                $app->make(\App\Services\MarketplaceService::class)
+            );
         });
 
         // Register GrowthService
         $this->app->singleton(GrowthService::class, function ($app) {
-            return new GrowthService();
+            return new GrowthService(
+                $app->make(\App\Services\MarketplaceService::class),
+                $app->make(\App\Services\NotificationManager::class)
+            );
+        });
+
+        // Register NotificationManager
+        $this->app->singleton(\App\Services\NotificationManager::class, function ($app) {
+            return new \App\Services\NotificationManager(
+                $app->make(\App\Services\NotificationDispatchService::class)
+            );
         });
     }
 

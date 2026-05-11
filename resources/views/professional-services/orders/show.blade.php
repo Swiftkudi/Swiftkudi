@@ -59,6 +59,21 @@
                 </div>
                 @endif
 
+                @if($order->revision_notes)
+                <div class="bg-dark-900 rounded-2xl shadow-lg border border-amber-500/30 p-4 lg:p-6">
+                    <h3 class="font-semibold text-white mb-3 flex items-center">
+                        <i class="fas fa-undo mr-2 text-amber-400"></i>
+                        Revision Request Notes
+                    </h3>
+                    <p class="text-gray-400 text-sm whitespace-pre-line">{{ $order->revision_notes }}</p>
+                    @if($order->revisions_requested > 0)
+                        <p class="text-xs text-gray-500 mt-2">
+                            Revision #{{ $order->revisions_requested }} requested
+                        </p>
+                    @endif
+                </div>
+                @endif
+
                 @if($order->delivery_notes)
                 <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6">
                     <h3 class="font-semibold text-white mb-3">Delivery Notes</h3>
@@ -116,9 +131,22 @@
                     @endif
                 </div>
 
-                @if(in_array($order->status, ['paid', 'delivered', 'revision']))
+                @if(auth()->id() === $order->seller_id && in_array($order->status, ['paid', 'in_progress']))
+                <div id="seller-delivery" class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 space-y-3">
+                    <h3 class="font-semibold text-white mb-4">Deliver Service</h3>
+                    <form action="{{ route('professional-services.orders.deliver', $order) }}" method="POST" class="delivery-form">
+                        @csrf
+                        <textarea name="notes" required minlength="10" placeholder="Delivery notes - describe what you've delivered" class="w-full mb-2 px-3 py-2 rounded bg-dark-800 border border-dark-700 text-gray-200 text-sm"></textarea>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition-colors">
+                            <i class="fas fa-paper-plane mr-2"></i>Mark as Delivered
+                        </button>
+                    </form>
+                </div>
+                @endif
+
+                @if(auth()->id() === $order->buyer_id && in_array($order->status, ['paid', 'delivered', 'revision']))
                 <div id="order-actions" class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 space-y-3">
-                    <h3 class="font-semibold text-white mb-4">Actions</h3>
+                    <h3 class="font-semibold text-white mb-4">Buyer Actions</h3>
 
                     @if(in_array($order->status, ['delivered', 'revision']))
                     <form action="{{ route('professional-services.orders.approve', $order) }}" method="POST" class="action-form">
@@ -147,12 +175,14 @@
                     </form>
                     @endif
 
+                    @if(in_array($order->status, ['paid', 'delivered']))
                     <form action="{{ route('professional-services.orders.cancel', $order) }}" method="POST" class="action-form">
                         @csrf
                         <button type="submit" class="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 py-2 rounded-lg transition-colors" onclick="return confirm('Cancel this order?')">
                             <i class="fas fa-times mr-2"></i>Cancel Order
                         </button>
                     </form>
+                    @endif
                 </div>
                 @endif
             </div>
@@ -161,26 +191,107 @@
 </div>
 
 @push('scripts')
-<script>
-    document.querySelectorAll('.action-form').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const response = await fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json'
-                },
-                body: new FormData(form)
+    <script>
+        document.querySelectorAll('.action-form, .delivery-form').forEach((form) => {
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                
+                // Disable all submit buttons in this form to prevent double-click
+                const submitButtons = form.querySelectorAll('button[type="submit"]');
+                submitButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    const originalText = btn.innerHTML;
+                    btn.setAttribute('data-original-text', originalText);
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+                });
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: new FormData(form)
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        // Show success notification if possible
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: data.message || 'Action completed successfully',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            window.location.reload();
+                        }
+                        return;
+                    }
+                    
+                    // Handle validation errors
+                    if (response.status === 422 || data.errors || data.error_list) {
+                        // Collect error messages
+                        let errorMsg = data.message || 'Please correct the following errors:';
+                        if (data.errors) {
+                            errorMsg += '\n\n' + Object.values(data.errors).flat().join('\n');
+                        }
+                        if (data.error_list) {
+                            errorMsg += '\n\n' + Object.values(data.error_list).join('\n');
+                        }
+                        
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Validation Error',
+                                html: errorMsg.replace(/\n/g, '<br>'),
+                            });
+                        } else {
+                            alert(errorMsg);
+                        }
+                    } else {
+                        // General error
+                        const msg = data.message || 'Action failed. Please try again.';
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: msg,
+                            });
+                        } else {
+                            alert(msg);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Form submission error:', err);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Network Error',
+                            text: 'Unable to connect to the server. Please check your connection and try again.',
+                        });
+                    } else {
+                        alert('An error occurred while submitting. Please try again.');
+                    }
+                } finally {
+                    // Re-enable buttons
+                    submitButtons.forEach(btn => {
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        const originalText = btn.getAttribute('data-original-text');
+                        if (originalText) {
+                            btn.innerHTML = originalText;
+                        }
+                    });
+                }
             });
-            const data = await response.json();
-            if (data.success) {
-                window.location.reload();
-                return;
-            }
-            alert(data.message || 'Action failed.');
         });
-    });
-</script>
+    </script>
 @endpush
 @endsection

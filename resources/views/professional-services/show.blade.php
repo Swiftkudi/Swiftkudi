@@ -444,10 +444,20 @@
             body: formData,
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            }
+            // Handle non-JSON responses (like redirects/HTML error pages)
+            return response.text().then(text => {
+                throw new Error('Unexpected response from server: ' + text.substring(0, 200));
+            });
+        })
         .then(data => {
             if (!data.success && data.redirect) {
                 window.location.href = data.redirect;
@@ -495,10 +505,19 @@
             body: formData,
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            }
+            return response.text().then(text => {
+                throw new Error('Unexpected response: ' + text.substring(0, 200));
+            });
+        })
         .then(data => {
             if (!data.success && (data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
                 window.SwiftkudiFormFeedback.showValidationErrors(form, data, {

@@ -8,8 +8,15 @@
     <div class="bg-white dark:bg-dark-900 border-b border-gray-200 dark:border-dark-700">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="text-center">
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create a Task</h1>
-                <p class="mt-2 text-gray-600 dark:text-gray-400">Get engagement on your social media posts</p>
+                <div class="flex items-center justify-center gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create a Task</h1>
+                        <p class="mt-2 text-gray-600 dark:text-gray-400">Get engagement on your social media posts</p>
+                    </div>
+                    <a href="{{ route('tasks.create.import') }}" class="ml-4 px-4 py-2 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-500/30 transition-colors">
+                        <i class="fas fa-globe mr-2"></i>Search & Import
+                    </a>
+                </div>
             </div>
         </div>
     </div>

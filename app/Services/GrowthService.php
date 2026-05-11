@@ -7,11 +7,22 @@ use App\Models\GrowthOrder;
 use App\Models\User;
 use App\Models\SystemSetting;
 use App\Models\Wallet;
+use App\Services\MarketplaceService;
+use App\Services\NotificationManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class GrowthService
 {
+    protected MarketplaceService $marketplaceService;
+    protected NotificationManager $notificationManager;
+
+    public function __construct(MarketplaceService $marketplaceService, NotificationManager $notificationManager)
+    {
+        $this->marketplaceService = $marketplaceService;
+        $this->notificationManager = $notificationManager;
+    }
+
     /**
      * Get commission rate
      */
@@ -72,7 +83,7 @@ class GrowthService
     {
         try {
             return DB::transaction(function () use ($buyer, $listingId) {
-                $listing = GrowthListing::findOrFail($listingId);
+                $listing = GrowthListing::with('seller')->findOrFail($listingId);
 
                 if ($listing->status !== GrowthListing::STATUS_ACTIVE) {
                     return ['success' => false, 'message' => 'Listing is not available'];
@@ -95,17 +106,15 @@ class GrowthService
                 $commission = round($amount * ($commissionRate / 100), 2);
                 $sellerPayout = $amount - $commission;
 
-                if ($wallet->withdrawable_balance < $amount) {
+                $availableBalance = ($wallet->withdrawable_balance ?? 0) + ($wallet->promo_credit_balance ?? 0);
+                if ($availableBalance < $amount) {
                     return [
                         'success' => false,
                         'message' => 'Insufficient balance',
                         'required' => $amount,
-                        'available' => $wallet->withdrawable_balance,
+                        'available' => $availableBalance,
                     ];
                 }
-
-                // Deduct from buyer
-                $wallet->deductWithdrawable($amount, 'growth_order_' . $listingId);
 
                 // Create order
                 $order = GrowthOrder::create([
@@ -124,10 +133,24 @@ class GrowthService
                 $currentCommission = (float) SystemSetting::get('total_growth_commission', 0);
                 SystemSetting::set('total_growth_commission', $currentCommission + $commission);
 
+                $escrowResult = $this->marketplaceService->holdInEscrow(
+                    $buyer,
+                    $listing->seller,
+                    $amount,
+                    $commission,
+                    $order,
+                    'Growth order #' . $order->id
+                );
+
+                if (!$escrowResult['success']) {
+                    throw new \Exception($escrowResult['message'] ?? 'Failed to hold funds in escrow');
+                }
+
                 return [
                     'success' => true,
                     'message' => 'Order placed! Funds held in escrow.',
                     'order' => $order,
+                    'escrow_transaction' => $escrowResult['escrow_transaction'] ?? null,
                 ];
             });
         } catch (\Exception $e) {
@@ -158,6 +181,20 @@ class GrowthService
                     'delivered_at' => now(),
                 ]);
 
+                // Notify buyer that proof has been submitted
+                $buyer = User::find($order->buyer_id);
+                if ($buyer) {
+                    $this->notificationManager->notify(
+                        NotificationManager::EVENT_SERVICE_DELIVERED,
+                        $buyer,
+                        [
+                            'order_id' => $order->id,
+                            'service_title' => $order->listing->title ?? 'growth service',
+                            'action_url' => route('growth.orders.show', $order->id),
+                        ]
+                    );
+                }
+
                 return [
                     'success' => true,
                     'message' => 'Proof submitted! Waiting for buyer approval.',
@@ -184,21 +221,18 @@ class GrowthService
                     return ['success' => false, 'message' => 'Cannot approve in current status'];
                 }
 
-                // Release funds to seller
-                $seller = User::find($order->seller_id);
-                if ($seller) {
-                    $sellerWallet = $seller->wallet ?? Wallet::firstOrCreate(
-                        ['user_id' => $seller->id],
-                        [
-                            'withdrawable_balance' => 0,
-                            'promo_credit_balance' => 0,
-                            'total_earned' => 0,
-                            'total_spent' => 0,
-                            'pending_balance' => 0,
-                            'escrow_balance' => 0,
-                        ]
-                    );
-                    $sellerWallet->addWithdrawable($order->seller_payout, 'growth_order_complete');
+                $escrow = $this->marketplaceService->getEscrowTransaction($order);
+                if (!$escrow) {
+                    return ['success' => false, 'message' => 'Escrow transaction not found.'];
+                }
+
+                $escrowResult = $this->marketplaceService->releaseEscrow(
+                    $escrow,
+                    'Growth order completed #' . $order->id
+                );
+
+                if (!$escrowResult['success']) {
+                    return ['success' => false, 'message' => $escrowResult['message'] ?? 'Failed to release escrow funds'];
                 }
 
                 $order->update([
@@ -263,21 +297,32 @@ class GrowthService
                     return ['success' => false, 'message' => 'Order cannot be cancelled'];
                 }
 
-                // Refund buyer
-                $buyer = User::find($order->buyer_id);
-                if ($buyer && $order->escrow_amount > 0) {
-                    $buyerWallet = $buyer->wallet ?? Wallet::firstOrCreate(
-                        ['user_id' => $buyer->id],
-                        [
-                            'withdrawable_balance' => 0,
-                            'promo_credit_balance' => 0,
-                            'total_earned' => 0,
-                            'total_spent' => 0,
-                            'pending_balance' => 0,
-                            'escrow_balance' => 0,
-                        ]
+                $escrow = $this->marketplaceService->getEscrowTransaction($order);
+                if ($escrow) {
+                    $escrowResult = $this->marketplaceService->refundFromEscrow(
+                        $escrow,
+                        'Growth order cancelled #' . $order->id
                     );
-                    $buyerWallet->addWithdrawable($order->escrow_amount, 'growth_order_refund');
+
+                    if (!$escrowResult['success']) {
+                        return ['success' => false, 'message' => $escrowResult['message'] ?? 'Failed to refund escrow funds'];
+                    }
+                } else {
+                    $buyer = User::find($order->buyer_id);
+                    if ($buyer && $order->escrow_amount > 0) {
+                        $buyerWallet = $buyer->wallet ?? Wallet::firstOrCreate(
+                            ['user_id' => $buyer->id],
+                            [
+                                'withdrawable_balance' => 0,
+                                'promo_credit_balance' => 0,
+                                'total_earned' => 0,
+                                'total_spent' => 0,
+                                'pending_balance' => 0,
+                                'escrow_balance' => 0,
+                            ]
+                        );
+                        $buyerWallet->addWithdrawable($order->escrow_amount, 'growth_order_refund');
+                    }
                 }
 
                 $order->update([

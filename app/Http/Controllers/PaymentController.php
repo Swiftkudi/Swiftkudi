@@ -45,6 +45,25 @@ class PaymentController extends Controller
             'escrow_balance' => 0,
         ]);
 
+        // Generate idempotency key for deposit
+        $idempotencyKey = 'deposit_' . $user->id . '_' . $amount . '_' . md5($request->header('X-Request-Id', uniqid()));
+        
+        // Check for existing processed request
+        $existingRecord = \App\Models\IdempotencyKey::where('key', $idempotencyKey)
+            ->where('user_id', $user->id)
+            ->first();
+        
+        if ($existingRecord && $existingRecord->response_status === 'success') {
+            // Return existing successful response data
+            return redirect()->route('wallet.index')
+                ->with('info', 'This deposit has already been initiated.');
+        }
+        
+        if ($existingRecord && isset($existingRecord->response_body['authorization_url'])) {
+            // Return existing pending response
+            return redirect()->away($existingRecord->response_body['authorization_url']);
+        }
+
         // Generate unique reference
         $reference = 'DEP_' . strtoupper(uniqid());
 
@@ -86,6 +105,29 @@ class PaymentController extends Controller
                     ['gateway_reference' => $result['reference']]
                 )),
             ]);
+
+            // Store idempotency record
+            \App\Models\IdempotencyKey::updateOrCreate(
+                ['key' => $idempotencyKey],
+                [
+                    'user_id' => $user->id,
+                    'entity_type' => 'deposit',
+                    'entity_id' => $transaction->id,
+                    'method' => 'POST',
+                    'request_hash' => [
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'reference' => $result['reference'],
+                    ],
+                    'response_status' => 'success',
+                    'response_body' => [
+                        'success' => true,
+                        'authorization_url' => $result['authorization_url'],
+                        'reference' => $result['reference'],
+                    ],
+                    'expires_at' => now()->addHours(24),
+                ]
+            );
 
             // Redirect to payment authorization URL
             return redirect()->away($result['authorization_url']);

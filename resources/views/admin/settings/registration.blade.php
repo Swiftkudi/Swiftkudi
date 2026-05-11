@@ -79,7 +79,7 @@
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" name="email_verification_required" value="true"
-                                {{ (($settingsByKey['email_verification_required'] ?? true) === 'true' || $settingsByKey['email_verification_required'] ?? true) ? 'checked' : '' }}
+                                {{ ($settingsByKey['email_verification_required'] ?? true) === 'true' ? 'checked' : '' }}
                                 class="sr-only peer">
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                         </label>
@@ -138,69 +138,12 @@
                         </label>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Referral Bonus Amount (₦)</label>
-                            <input type="number" name="referral_bonus_amount" value="{{ $settingsByKey['referral_bonus_amount'] ?? 500 }}" 
+                            <input type="number" name="referral_bonus_amount" value="{{ $settingsByKey['referral_bonus_amount'] ?? 500 }}"
                                 class="w-full rounded-xl border-gray-200 dark:border-dark-700 dark:bg-dark-800 focus:border-indigo-500 focus:ring-indigo-500">
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Bonus earned when referred user activates</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Activation Fee (₦)</label>
-                            <input type="number" name="activation_fee" value="{{ $settingsByKey['activation_fee'] ?? 1000 }}" 
-                                class="w-full rounded-xl border-gray-200 dark:border-dark-700 dark:bg-dark-800 focus:border-indigo-500 focus:ring-indigo-500">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">One-time activation fee for new users</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Activation Fee Settings -->
-            <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 mb-6">
-                <div class="px-6 py-5 border-b border-gray-200 dark:border-dark-700">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center mr-3">
-                            <i class="fas fa-credit-card text-indigo-600 dark:text-indigo-400"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Activation Fee</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Configure activation fee requirements</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="px-6 py-5 space-y-5">
-                    <!-- Activation Fee Toggle -->
-                    <div class="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-dark-800">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center mr-4">
-                                <i class="fas fa-toggle-on text-indigo-600 dark:text-indigo-400"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">Enable Activation Fee</h4>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Turn on to require payment before activation; turn off to make activation free</p>
-                            </div>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="compulsory_activation_fee" value="true"
-                                {{ (($settingsByKey['compulsory_activation_fee'] ?? true) === 'true' || ($settingsByKey['compulsory_activation_fee'] ?? true)) ? 'checked' : '' }}
-                                class="sr-only peer">
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                        </label>
-                    </div>
-
-                    <!-- Referred User Discount -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Referred User Discount (₦)</label>
-                            <input type="number" name="referred_activation_discount" value="{{ $settingsByKey['referred_activation_discount'] ?? 0 }}" 
-                                class="w-full rounded-xl border-gray-200 dark:border-dark-700 dark:bg-dark-800 focus:border-indigo-500 focus:ring-indigo-500">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Discount on activation fee for referred users</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Referred Multiplier</label>
-                            <input type="number" name="referred_activation_multiplier" value="{{ $settingsByKey['referred_activation_multiplier'] ?? 1.0 }}" step="0.1" min="0" max="2"
-                                class="w-full rounded-xl border-gray-200 dark:border-dark-700 dark:bg-dark-800 focus:border-indigo-500 focus:ring-indigo-500">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Multiply activation fee (e.g., 0.5 = 50% of normal)</p>
                         </div>
                     </div>
                 </div>

@@ -5,14 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\MarketplaceConversation;
 use App\Models\MarketplaceMessage;
 use App\Models\User;
+use App\Services\NotificationManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ChatController extends Controller
 {
-    public function __construct()
+    protected $notificationManager;
+
+    public function __construct(NotificationManager $notificationManager)
     {
         $this->middleware('auth');
+        $this->notificationManager = $notificationManager;
     }
 
     public function index(Request $request)

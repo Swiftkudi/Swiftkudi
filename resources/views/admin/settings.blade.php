@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Admin Settings')
+@section('title', 'System Settings')
 
 @section('content')
 <div class="py-8">
@@ -297,6 +297,141 @@
                 </div>
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Mandatory task creation requirements</p>
             </a>
+
+            <!-- Onboarding -->
+            <a href="{{ route('admin.settings.onboarding') }}" class="group relative bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-l-4 border-l-emerald-500 p-6 hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
+                @php
+                    $onboardingEnabled = \App\Services\OnboardingSettingsService::isOnboardingEnabled();
+                @endphp
+                <div class="absolute top-3 right-3">
+                    <div class="relative">
+                        <button type="button" class="w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-700 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help" data-tooltip-target="tooltip-onboarding">
+                            <i class="fas fa-info-circle text-xs"></i>
+                        </button>
+                        <div id="tooltip-onboarding" class="absolute z-50 hidden group-hover:block bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 p-3 bg-dark-800 text-white text-xs rounded-lg shadow-xl">
+                            Configure role-based onboarding flows, requirements, and automatic progression for different user types.
+                            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-800"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-route text-white text-xl"></i>
+                    </div>
+                    <i class="fas fa-arrow-right text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Onboarding</h3>
+                <div class="mt-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $onboardingEnabled ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300' }}">
+                        <i class="fas {{ $onboardingEnabled ? 'fa-toggle-on' : 'fa-toggle-off' }} mr-1.5"></i>
+                        {{ $onboardingEnabled ? 'Enabled' : 'Disabled' }}
+                    </span>
+                </div>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Role-based onboarding flows and requirements</p>
+            </a>
+
+            <!-- Escrow Settings -->
+            <a href="{{ route('admin.settings.group', 'escrow') }}" class="group relative bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-l-4 border-l-emerald-500 p-6 hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
+                @php
+                    $escrowEnabled = \App\Models\SystemSetting::isEscrowEnabled();
+                @endphp
+                <div class="absolute top-3 right-3">
+                    <div class="relative">
+                        <button type="button" class="w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-700 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help" data-tooltip-target="tooltip-escrow">
+                            <i class="fas fa-info-circle text-xs"></i>
+                        </button>
+                        <div id="tooltip-escrow" class="absolute z-50 hidden group-hover:block bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 p-3 bg-dark-800 text-white text-xs rounded-lg shadow-xl">
+                            Configure escrow behavior, release rules, and dispute handling for marketplace transactions.
+                            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-800"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-shield-alt text-emerald-600 dark:text-emerald-400 text-xl"></i>
+                    </div>
+                    <i class="fas fa-arrow-right text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Escrow Settings</h3>
+                <div class="mt-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $escrowEnabled ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300' }}">
+                        <i class="fas {{ $escrowEnabled ? 'fa-toggle-on' : 'fa-toggle-off' }} mr-1.5"></i>
+                        {{ $escrowEnabled ? 'Enabled' : 'Disabled' }}
+                    </span>
+                </div>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Escrow behavior & release rules</p>
+            </a>
+
+            <!-- Review & Ratings -->
+            <a href="{{ route('admin.settings.group', 'review') }}" class="group relative bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-l-4 border-l-violet-500 p-6 hover:shadow-xl hover:shadow-violet-500/10 transition-all duration-300">
+                @php
+                    $reviewEnabled = \App\Models\SystemSetting::isReviewEnabledForServices();
+                @endphp
+                <div class="absolute top-3 right-3">
+                    <div class="relative">
+                        <button type="button" class="w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-700 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help" data-tooltip-target="tooltip-review">
+                            <i class="fas fa-info-circle text-xs"></i>
+                        </button>
+                        <div id="tooltip-review" class="absolute z-50 hidden group-hover:block bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 p-3 bg-dark-800 text-white text-xs rounded-lg shadow-xl">
+                            Configure review rules, moderation, and visibility for services, growth items, and digital products.
+                            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-800"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-star text-violet-600 dark:text-violet-400 text-xl"></i>
+                    </div>
+                    <i class="fas fa-arrow-right text-gray-300 dark:text-gray-600 group-hover:text-violet-500 group-hover:translate-x-1 transition-all"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Review & Ratings</h3>
+                <div class="mt-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $reviewEnabled ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300' }}">
+                        <i class="fas {{ $reviewEnabled ? 'fa-toggle-on' : 'fa-toggle-off' }} mr-1.5"></i>
+                        {{ $reviewEnabled ? 'Enabled' : 'Disabled' }}
+                    </span>
+                </div>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Review rules & moderation</p>
+            </a>
+
+            <!-- Audit Logs -->
+            <a href="{{ route('admin.settings.audit') }}" class="group relative bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 block">
+                <div class="absolute top-3 right-3">
+                    <div class="relative">
+                        <button type="button" class="w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-700 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-help" data-tooltip-target="tooltip-audit">
+                            <i class="fas fa-info-circle text-xs"></i>
+                        </button>
+                        <div id="tooltip-audit" class="absolute z-50 hidden group-hover:block bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 p-3 bg-dark-800 text-white text-xs rounded-lg shadow-xl">
+                            View history of settings changes made by administrators.
+                            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-800"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-teal-100 dark:bg-teal-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-history text-teal-600 dark:text-teal-400 text-xl"></i>
+                    </div>
+                    <i class="fas fa-arrow-right text-gray-300 dark:text-gray-600 group-hover:text-teal-500 group-hover:translate-x-1 transition-all"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Audit Logs</h3>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Settings change history</p>
+            </a>
+        </div>
+
+        <!-- Admin Actions -->
+        <div class="mt-8 flex justify-end space-x-3">
+            <form action="{{ route('admin.settings.initialize') }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-xl shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-800 hover:bg-gray-50 dark:hover:bg-dark-700">
+                    <i class="fas fa-sync-alt mr-2"></i> Initialize Defaults
+                </button>
+            </form>
+            <form action="{{ route('admin.settings.clear-cache') }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-xl shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-800 hover:bg-gray-50 dark:hover:bg-dark-700">
+                    <i class="fas fa-cache mr-2"></i> Clear Cache
+                </button>
+            </form>
         </div>
 
         <!-- Quick Stats -->

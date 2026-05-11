@@ -119,12 +119,23 @@
                 </div>
                 @endif
 
-                <!-- Actions -->
-                @if(in_array($order->status, ['paid', 'in_progress', 'delivered', 'revision']))
+                @if(auth()->id() === $order->seller_id && in_array($order->status, ['paid', 'in_progress']))
+                <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 space-y-3">
+                    <h3 class="font-semibold text-white mb-4">Submit Proof</h3>
+                    <form action="{{ route('growth.orders.proof', $order) }}" method="POST" class="delivery-form">
+                        @csrf
+                        <textarea name="notes" required minlength="10" placeholder="Proof / Delivery notes - describe what you've delivered" class="w-full mb-2 px-3 py-2 rounded bg-dark-800 border border-dark-700 text-gray-200 text-sm"></textarea>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition-colors">
+                            <i class="fas fa-paper-plane mr-2"></i>Submit Proof
+                        </button>
+                    </form>
+                </div>
+                @endif
+
+                @if(auth()->id() === $order->buyer_id && in_array($order->status, ['delivered', 'revision']))
                 <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6">
-                    <h3 class="font-semibold text-white mb-4">Actions</h3>
+                    <h3 class="font-semibold text-white mb-4">Buyer Actions</h3>
                     <div class="space-y-3">
-                        @if(in_array($order->status, ['delivered', 'revision']))
                         <form action="{{ route('growth.orders.approve', $order) }}" method="POST" class="action-form">
                             @csrf
                             <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors">
@@ -139,13 +150,6 @@
                                 <i class="fas fa-undo mr-2"></i>Request Revision
                             </button>
                         </form>
-                        @endif
-                        <form action="{{ route('growth.orders.cancel', $order) }}" method="POST" class="action-form">
-                            @csrf
-                            <button type="submit" class="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 py-2 rounded-lg transition-colors" onclick="return confirm('Are you sure you want to cancel this order?')">
-                                <i class="fas fa-times mr-2"></i>Cancel Order
-                            </button>
-                        </form>
                     </div>
                 </div>
                 @endif
@@ -156,7 +160,7 @@
 
 @push('scripts')
 <script>
-    document.querySelectorAll('.action-form').forEach((form) => {
+    document.querySelectorAll('.action-form, .delivery-form').forEach((form) => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             const response = await fetch(form.action, {

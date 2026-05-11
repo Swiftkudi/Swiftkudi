@@ -129,4 +129,24 @@ return [
         'private_key' => env('VAPID_PRIVATE_KEY'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Search APIs — Social Media Profile Search
+    |--------------------------------------------------------------------------
+    |
+    | API keys for searching social media profiles. You can use:
+    | - Exa AI (exa.ai) - Recommended for web search
+    | - Google Custom Search API (programmables.google.com)
+    |
+    | Get free API keys or configure in .env file.
+    |
+    */
+    'exa' => [
+        'api_key' => env('EXA_API_KEY'),
+    ],
+    'google' => [
+        'search_api_key' => env('GOOGLE_SEARCH_API_KEY'),
+        'search_engine_id' => env('GOOGLE_SEARCH_ENGINE_ID'),
+    ],
+
 ];

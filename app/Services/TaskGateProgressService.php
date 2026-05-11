@@ -46,12 +46,12 @@ class TaskGateProgressService
             // Check unlock progress for task creators first task + earners threshold
             if (!$lockedUser->has_completed_mandatory_creation) {
                 $shouldUnlock = false;
+                $minimumBudget = SystemSetting::get('minimum_required_budget', 2500);
 
                 if ($lockedUser->account_type === 'task_creator') {
                     // Task creators unlock after first task creation
                     $shouldUnlock = true;
                 } else {
-                    $minimumBudget = SystemSetting::get('minimum_required_budget', 2500);
                     if ($updatedBudget >= $minimumBudget) {
                         $shouldUnlock = true;
                     }

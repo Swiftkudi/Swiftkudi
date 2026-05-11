@@ -13,7 +13,7 @@
         <div class="bg-white dark:bg-dark-900 rounded-2xl border border-gray-100 dark:border-dark-700 p-6 mb-4">
             <p class="text-gray-500">Complete these steps to unlock freelancer marketplace browsing and orders.</p>
             <ul class="list-disc list-inside mt-3 space-y-1">
-                <li><strong>Step 1:</strong> Pay activation fee (₦{{ number_format(\App\Models\SystemSetting::get('freelancer_activation_fee', 1500), 2) }}).</li>
+                <li><strong>Step 1:</strong> Pay activation fee (₦{{ number_format(\App\Services\OnboardingSettingsService::getActivationFee('freelancer'), 2) }}).</li>
                 <li><strong>Step 2:</strong> Complete your provider profile.</li>
                 <li><strong>Step 3:</strong> Create your first service.</li>
             </ul>

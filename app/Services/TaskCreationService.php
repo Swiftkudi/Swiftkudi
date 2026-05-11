@@ -39,20 +39,28 @@ class TaskCreationService
     private $gateProgressService;
 
     /**
+     * @var NotificationManager
+     */
+    private $notificationManager;
+
+    /**
      * Create a new service instance.
      *
      * @param TaskRepository $taskRepository
      * @param SwiftKudiService $earnDeskService
      * @param TaskGateProgressService $gateProgressService
+     * @param NotificationManager $notificationManager
      */
     public function __construct(
         TaskRepository $taskRepository,
         SwiftKudiService $earnDeskService,
-        TaskGateProgressService $gateProgressService
+        TaskGateProgressService $gateProgressService,
+        NotificationManager $notificationManager
     ) {
         $this->taskRepository = $taskRepository;
         $this->earnDeskService = $earnDeskService;
         $this->gateProgressService = $gateProgressService;
+        $this->notificationManager = $notificationManager;
     }
 
     /**
@@ -204,27 +212,34 @@ class TaskCreationService
                 'user_id' => $user->id,
                 'platform' => $resolvedPlatform,
             ]);
-            $task = $this->taskRepository->create($taskPayload);
 
-            // Deduct from wallet if not a draft
-            if (!$isDraft) {
-                $this->deductFromWallet($user, $data['budget'], $task);
-            }
+            // Wrap all operations in a database transaction for safety
+            $task = DB::transaction(function () use ($taskPayload, $user, $data, $isDraft, $creationLog, $category) {
+                // Create the task
+                $task = $this->taskRepository->create($taskPayload);
 
-            // Mark creation log as completed
-            $creationLog->markCompleted($task, [
-                'task_id' => $task->id,
-                'budget' => $task->budget,
-                'quantity' => $task->quantity,
-            ]);
+                // Deduct from wallet if not a draft
+                if (!$isDraft) {
+                    $this->deductFromWallet($user, $data['budget'], $task);
+                }
 
-            // Update user's task creation progress and check unlock status
-            if (!$isDraft && isset($data['budget']) && $data['budget'] > 0) {
-                $this->gateProgressService->updateProgress($user, $data['budget']);
-            }
+                // Mark creation log as completed
+                $creationLog->markCompleted($task, [
+                    'task_id' => $task->id,
+                    'budget' => $task->budget,
+                    'quantity' => $task->quantity,
+                ]);
 
-            // Send notification
-            $this->sendTaskCreatedNotification($user, $task);
+                // Update user's task creation progress and check unlock status
+                if (!$isDraft && isset($data['budget']) && $data['budget'] > 0) {
+                    $this->gateProgressService->updateProgress($user, $data['budget']);
+                }
+
+                // Send notification
+                $this->sendTaskCreatedNotification($user, $task);
+
+                return $task;
+            });
 
             Log::info('Task created successfully', [
                 'task_id' => $task->id,
@@ -576,14 +591,14 @@ class TaskCreationService
     protected function sendTaskCreatedNotification(User $user, Task $task): void
     {
         try {
-            app(\App\Services\NotificationDispatchService::class)->sendToUser(
+            $this->notificationManager->notify(
+                NotificationManager::EVENT_TASK_CREATED,
                 $user,
-                'Task Created Successfully',
-                'Your task "' . $task->title . '" was created and is now being processed.',
-                \App\Models\Notification::TYPE_NEW_TASK,
-                ['task_id' => $task->id, 'action_url' => route('tasks.show', $task)],
-                'notify_task_created',
-                true
+                [
+                    'task_id' => $task->id,
+                    'task_title' => $task->title,
+                    'action_url' => route('tasks.show', $task),
+                ]
             );
 
             User::query()
@@ -594,17 +609,16 @@ class TaskCreationService
                 })
                 ->chunkById(200, function ($workers) use ($task) {
                     foreach ($workers as $worker) {
-                        app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                        $this->notificationManager->notify(
+                            NotificationManager::EVENT_TASK_BUNDLE_AVAILABLE,
                             $worker,
-                            'New Task Bundle Available',
-                            'A new task bundle opportunity is now available: "' . $task->title . '".',
-                            \App\Models\Notification::TYPE_NEW_TASK,
                             [
                                 'task_id' => $task->id,
                                 'task_title' => $task->title,
+                                'bundle_name' => $task->title,
+                                'price' => $task->total_budget ?? 0,
                                 'action_url' => route('tasks.show', $task),
-                            ],
-                            'notify_task_bundle'
+                            ]
                         );
                     }
                 });

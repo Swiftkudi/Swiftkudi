@@ -7,9 +7,17 @@ use App\Models\JobApplication;
 use App\Models\MarketplaceCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use App\Services\NotificationManager;
 
 class JobController extends Controller
 {
+    protected NotificationManager $notificationManager;
+
+    public function __construct(NotificationManager $notificationManager)
+    {
+        $this->notificationManager = $notificationManager;
+    }
     /**
      * Display a listing of jobs.
      */
@@ -21,10 +29,16 @@ class JobController extends Controller
 
         // Add buyer category filter
         $user = auth()->user();
-        if ($user && $user->account_type === 'buyer' && $user->buyer_onboarding_completed) {
-            $buyerCategories = $user->getBuyerCategories();
-            if (!empty($buyerCategories)) {
-                $query->whereIn('category_id', $buyerCategories);
+        if ($user && $user->account_type === 'buyer') {
+            // Check if buyer onboarding is enabled and category selection is required
+            if (\App\Services\OnboardingSettingsService::isBuyerOnboardingEnabled() &&
+                \App\Services\OnboardingSettingsService::isBuyerCategorySelectionRequired() &&
+                $user->buyer_onboarding_completed) {
+
+                $buyerCategories = $user->getBuyerCategories();
+                if (!empty($buyerCategories)) {
+                    $query->whereIn('category_id', $buyerCategories);
+                }
             }
         }
 
@@ -135,11 +149,22 @@ class JobController extends Controller
             'benefits' => 'nullable|string',
         ]);
 
-        $job = new Job($request->all());
-        $job->user_id = Auth::id();
-        $job->status = 'active';
-        $job->expires_at = now()->addDays(30);
-        $job->save();
+        // Wrap in transaction for safety
+        $job = DB::transaction(function () use ($request) {
+            $job = new Job($request->all());
+            $job->user_id = Auth::id();
+            $job->status = 'active';
+            $job->expires_at = now()->addDays(30);
+            $job->save();
+            return $job;
+        });
+
+        // Notify job owner
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_JOB_CREATED,
+            $job->user,
+            ['job_title' => $job->title]
+        );
 
         return redirect()->route('jobs.show', $job)
             ->with('success', 'Job posted successfully!');
@@ -201,6 +226,27 @@ class JobController extends Controller
         $application->job_id = $job->id;
         $application->user_id = Auth::id();
         $application->save();
+
+        // Notify job owner about new application
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_JOB_APPLICATION_SUBMITTED,
+            $job->user,
+            [
+                'application_id' => $application->id,
+                'job_title' => $job->title,
+                'applicant_name' => Auth::user()->name ?? 'A user'
+            ]
+        );
+
+        // Notify applicant about successful application submission
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_JOB_APPLICATION_SUBMITTED,
+            Auth::user(),
+            [
+                'application_id' => $application->id,
+                'job_title' => $job->title
+            ]
+        );
 
         return back()->with('success', 'Application submitted successfully!');
     }
@@ -279,6 +325,13 @@ class JobController extends Controller
         $job->status = 'closed';
         $job->save();
 
+        // Notify job owner that job is closed
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_JOB_CLOSED,
+            $job->user,
+            ['job_title' => $job->title]
+        );
+
         return back()->with('success', 'Job closed successfully.');
     }
 
@@ -320,6 +373,27 @@ class JobController extends Controller
                 ->update(['status' => 'rejected']);
         }
 
+        // Notify the hired applicant
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_JOB_APPLICANT_HIRED,
+            $application->user,
+            [
+                'application_id' => $application->id,
+                'job_title' => $job->title
+            ]
+        );
+
+        // Notify the job owner
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_JOB_APPLICANT_HIRED,
+            $job->user,
+            [
+                'application_id' => $application->id,
+                'job_title' => $job->title,
+                'applicant_name' => $application->user->name ?? 'An applicant'
+            ]
+        );
+
         return back()->with('success', 'Applicant hired successfully!');
     }
 
@@ -336,6 +410,28 @@ class JobController extends Controller
 
         $application->status = 'rejected';
         $application->save();
+
+        // Notify the rejected applicant
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_JOB_APPLICANT_REJECTED,
+            $application->user,
+            [
+                'application_id' => $application->id,
+                'job_title' => $job->title,
+                'reason' => 'The employer has chosen to move forward with other candidates.'
+            ]
+        );
+
+        // Notify the job owner
+        $this->notificationManager->notify(
+            NotificationManager::EVENT_JOB_APPLICANT_REJECTED,
+            $job->user,
+            [
+                'application_id' => $application->id,
+                'job_title' => $job->title,
+                'applicant_name' => $application->user->name ?? 'An applicant'
+            ]
+        );
 
         return back()->with('success', 'Application rejected.');
     }

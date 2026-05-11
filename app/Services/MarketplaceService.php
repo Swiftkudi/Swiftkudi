@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Dispute;
+use App\Models\EscrowTransaction;
 use App\Models\SystemSetting;
 use App\Models\Transaction;
 use App\Models\User;
@@ -10,6 +11,7 @@ use App\Models\Wallet;
 use App\Models\WalletLedger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class MarketplaceService
 {
@@ -49,12 +51,12 @@ class MarketplaceService
     /**
      * Move funds from buyer to escrow
      */
-    public function holdInEscrow(User $buyer, float $amount, string $orderType, int $orderId, string $description): array
+    public function holdInEscrow(User $buyer, User $seller, float $totalAmount, float $platformFee, $order, string $description): array
     {
         try {
-            return DB::transaction(function () use ($buyer, $amount, $orderType, $orderId, $description) {
+            return DB::transaction(function () use ($buyer, $seller, $totalAmount, $platformFee, $order, $description) {
                 $wallet = $buyer->wallet;
-                
+
                 if (!$wallet) {
                     return [
                         'success' => false,
@@ -63,57 +65,56 @@ class MarketplaceService
                 }
 
                 $totalBalance = $wallet->withdrawable_balance + $wallet->promo_credit_balance;
-                
-                if ($totalBalance < $amount) {
+
+                if ($totalBalance < $totalAmount) {
                     return [
                         'success' => false,
                         'message' => 'Insufficient balance',
                         'available' => $totalBalance,
-                        'required' => $amount,
+                        'required' => $totalAmount,
                     ];
                 }
 
-                // Use withdrawable balance first
-                $withdrawableUsed = min($amount, $wallet->withdrawable_balance);
-                $promoUsed = $amount - $withdrawableUsed;
-
-                if ($withdrawableUsed > 0) {
-                    $wallet->decrement('withdrawable_balance', $withdrawableUsed);
-                    
-                    // Record transaction
-                    $this->earnDeskService->recordTransaction(
-                        $buyer,
-                        'marketplace_payment',
-                        -$withdrawableUsed,
-                        $wallet->id,
-                        "Payment held: {$description}"
-                    );
+                if (!$wallet->addToEscrow($totalAmount)) {
+                    return [
+                        'success' => false,
+                        'message' => 'Failed to hold funds in escrow',
+                    ];
                 }
 
-                if ($promoUsed > 0) {
-                    $wallet->decrement('promo_credit_balance', $promoUsed);
-                }
+                $sellerPayout = round($totalAmount - $platformFee, 2);
 
-                // Add to escrow balance
-                $wallet->addToEscrow($amount);
+                $escrow = EscrowTransaction::create([
+                    'transaction_no' => 'ESC-' . Str::upper(Str::random(12)),
+                    'order_id' => $order->id,
+                    'order_type' => get_class($order),
+                    'payer_id' => $buyer->id,
+                    'payee_id' => $seller->id,
+                    'amount' => $sellerPayout,
+                    'platform_fee' => $platformFee,
+                    'total_amount' => $totalAmount,
+                    'status' => EscrowTransaction::STATUS_FUNDED,
+                ]);
 
                 Log::info('Funds held in escrow', [
                     'user_id' => $buyer->id,
-                    'amount' => $amount,
-                    'order_type' => $orderType,
-                    'order_id' => $orderId,
+                    'amount' => $totalAmount,
+                    'order_type' => get_class($order),
+                    'order_id' => $order->id,
+                    'escrow_id' => $escrow->id,
                 ]);
 
                 return [
                     'success' => true,
                     'message' => 'Payment held in escrow',
-                    'escrow_amount' => $amount,
+                    'escrow_amount' => $totalAmount,
+                    'escrow_transaction' => $escrow,
                 ];
             });
         } catch (\Exception $e) {
             Log::error('Escrow hold failed', [
                 'user_id' => $buyer->id,
-                'amount' => $amount,
+                'amount' => $totalAmount,
                 'error' => $e->getMessage(),
             ]);
 
@@ -127,56 +128,78 @@ class MarketplaceService
     /**
      * Release funds from escrow to seller
      */
-    public function releaseEscrow(User $seller, float $amount, string $orderType, int $orderId, string $description): array
+    public function releaseEscrow(EscrowTransaction $escrow, string $description): array
     {
         try {
-            return DB::transaction(function () use ($seller, $amount, $orderType, $orderId, $description) {
-                $wallet = $seller->wallet;
-                
-                if (!$wallet) {
-                    return [
-                        'success' => false,
-                        'message' => 'Wallet not found',
-                    ];
-                }
+            return DB::transaction(function () use ($escrow, $description) {
+                $payerWallet = Wallet::firstOrCreate(
+                    ['user_id' => $escrow->payer_id],
+                    [
+                        'withdrawable_balance' => 0,
+                        'promo_credit_balance' => 0,
+                        'total_earned' => 0,
+                        'total_spent' => 0,
+                        'pending_balance' => 0,
+                        'escrow_balance' => 0,
+                    ]
+                );
 
-                // Remove from escrow
-                if (!$wallet->releaseFromEscrow($amount)) {
+                if ($payerWallet->escrow_balance < $escrow->total_amount) {
                     return [
                         'success' => false,
                         'message' => 'Insufficient escrow balance',
                     ];
                 }
 
-                // Add to seller's withdrawable balance
-                $wallet->addWithdrawable($amount, 'escrow_release');
+                $payerWallet->escrow_balance = max(0, $payerWallet->escrow_balance - $escrow->total_amount);
+                $payerWallet->save();
 
-                // Record transaction
+                $payeeWallet = Wallet::firstOrCreate(
+                    ['user_id' => $escrow->payee_id],
+                    [
+                        'withdrawable_balance' => 0,
+                        'promo_credit_balance' => 0,
+                        'total_earned' => 0,
+                        'total_spent' => 0,
+                        'pending_balance' => 0,
+                        'escrow_balance' => 0,
+                    ]
+                );
+
+                $payeeWallet->addWithdrawable($escrow->amount, 'escrow_release', $description);
+
                 $this->earnDeskService->recordTransaction(
-                    $seller,
+                    $escrow->payee,
                     'marketplace_earning',
-                    $amount,
-                    $wallet->id,
+                    $escrow->amount,
+                    $payeeWallet->id,
                     "Earning: {$description}"
                 );
 
+                $escrow->status = EscrowTransaction::STATUS_RELEASED;
+                $escrow->released_at = now();
+                $escrow->save();
+
                 Log::info('Funds released from escrow', [
-                    'user_id' => $seller->id,
-                    'amount' => $amount,
-                    'order_type' => $orderType,
-                    'order_id' => $orderId,
+                    'payer_id' => $escrow->payer_id,
+                    'payee_id' => $escrow->payee_id,
+                    'amount' => $escrow->amount,
+                    'order_type' => $escrow->order_type,
+                    'order_id' => $escrow->order_id,
+                    'escrow_id' => $escrow->id,
                 ]);
 
                 return [
                     'success' => true,
                     'message' => 'Payment released to seller',
-                    'released_amount' => $amount,
+                    'released_amount' => $escrow->amount,
+                    'escrow_transaction' => $escrow,
                 ];
             });
         } catch (\Exception $e) {
             Log::error('Escrow release failed', [
-                'user_id' => $seller->id,
-                'amount' => $amount,
+                'escrow_id' => $escrow->id,
+                'amount' => $escrow->amount,
                 'error' => $e->getMessage(),
             ]);
 
@@ -190,56 +213,64 @@ class MarketplaceService
     /**
      * Refund buyer from escrow
      */
-    public function refundFromEscrow(User $buyer, float $amount, string $orderType, int $orderId, string $description): array
+    public function refundFromEscrow(EscrowTransaction $escrow, string $description): array
     {
         try {
-            return DB::transaction(function () use ($buyer, $amount, $orderType, $orderId, $description) {
-                $wallet = $buyer->wallet;
-                
-                if (!$wallet) {
-                    return [
-                        'success' => false,
-                        'message' => 'Wallet not found',
-                    ];
-                }
+            return DB::transaction(function () use ($escrow, $description) {
+                $payerWallet = Wallet::firstOrCreate(
+                    ['user_id' => $escrow->payer_id],
+                    [
+                        'withdrawable_balance' => 0,
+                        'promo_credit_balance' => 0,
+                        'total_earned' => 0,
+                        'total_spent' => 0,
+                        'pending_balance' => 0,
+                        'escrow_balance' => 0,
+                    ]
+                );
 
-                // Remove from escrow
-                if (!$wallet->releaseFromEscrow($amount)) {
+                if ($payerWallet->escrow_balance < $escrow->total_amount) {
                     return [
                         'success' => false,
                         'message' => 'Insufficient escrow balance',
                     ];
                 }
 
-                // Refund to buyer's withdrawable balance
-                $wallet->addWithdrawable($amount, 'refund');
+                $payerWallet->escrow_balance = max(0, $payerWallet->escrow_balance - $escrow->total_amount);
+                $payerWallet->save();
 
-                // Record transaction
+                $payerWallet->addWithdrawable($escrow->total_amount, 'refund', $description);
+
                 $this->earnDeskService->recordTransaction(
-                    $buyer,
+                    $escrow->payer,
                     'refund',
-                    $amount,
-                    $wallet->id,
+                    $escrow->total_amount,
+                    $payerWallet->id,
                     "Refund: {$description}"
                 );
 
+                $escrow->status = EscrowTransaction::STATUS_CANCELLED;
+                $escrow->save();
+
                 Log::info('Funds refunded from escrow', [
-                    'user_id' => $buyer->id,
-                    'amount' => $amount,
-                    'order_type' => $orderType,
-                    'order_id' => $orderId,
+                    'payer_id' => $escrow->payer_id,
+                    'amount' => $escrow->total_amount,
+                    'order_type' => $escrow->order_type,
+                    'order_id' => $escrow->order_id,
+                    'escrow_id' => $escrow->id,
                 ]);
 
                 return [
                     'success' => true,
                     'message' => 'Refund processed',
-                    'refunded_amount' => $amount,
+                    'refunded_amount' => $escrow->total_amount,
+                    'escrow_transaction' => $escrow,
                 ];
             });
         } catch (\Exception $e) {
             Log::error('Escrow refund failed', [
-                'user_id' => $buyer->id,
-                'amount' => $amount,
+                'escrow_id' => $escrow->id,
+                'amount' => $escrow->total_amount,
                 'error' => $e->getMessage(),
             ]);
 
@@ -296,6 +327,13 @@ class MarketplaceService
     /**
      * Resolve a dispute
      */
+    public function getEscrowTransaction($order): ?EscrowTransaction
+    {
+        return EscrowTransaction::where('order_id', $order->id)
+            ->where('order_type', get_class($order))
+            ->first();
+    }
+
     public function resolveDispute(Dispute $dispute, string $resolution, ?string $notes = null): array
     {
         try {
@@ -310,58 +348,41 @@ class MarketplaceService
                     'resolved_at' => now(),
                 ]);
 
+                    $escrow = $this->getEscrowTransaction($order);
+                if (!$escrow) {
+                    throw new \Exception('Escrow transaction not found for order');
+                }
+
                 switch ($resolution) {
                     case Dispute::RESOLUTION_BUYER_WINS:
-                        // Refund buyer
                         $this->refundFromEscrow(
-                            $order->buyer,
-                            $order->escrow_amount,
-                            get_class($order),
-                            $order->id,
+                            $escrow,
                             'Dispute resolution - Buyer wins'
                         );
                         $order->update(['status' => $order::STATUS_REFUNDED]);
                         break;
 
                     case Dispute::RESOLUTION_SELLER_WINS:
-                        // Release to seller
                         $this->releaseEscrow(
-                            $order->seller,
-                            $order->escrow_amount,
-                            get_class($order),
-                            $order->id,
+                            $escrow,
                             'Dispute resolution - Seller wins'
                         );
                         $order->update(['status' => $order::STATUS_COMPLETED]);
                         break;
 
                     case Dispute::RESOLUTION_REFUND:
-                        // Full refund to buyer
                         $this->refundFromEscrow(
-                            $order->buyer,
-                            $order->escrow_amount,
-                            get_class($order),
-                            $order->id,
+                            $escrow,
                             'Dispute resolution - Refund'
                         );
                         $order->update(['status' => $order::STATUS_REFUNDED]);
                         break;
 
                     case Dispute::RESOLUTION_SPLIT:
-                        // Split refund (50/50 for simplicity)
-                        $halfAmount = $order->escrow_amount / 2;
-                        $this->refundFromEscrow(
-                            $order->buyer,
-                            $halfAmount,
-                            get_class($order),
-                            $order->id,
-                            'Dispute resolution - Split refund'
-                        );
+                        // Full refund to buyer and full release to seller is not supported for partial splits in centralized escrow.
+                        // As a fallback, treat split as seller wins to avoid leaving funds locked.
                         $this->releaseEscrow(
-                            $order->seller,
-                            $halfAmount,
-                            get_class($order),
-                            $order->id,
+                            $escrow,
                             'Dispute resolution - Split payout'
                         );
                         $order->update(['status' => $order::STATUS_COMPLETED]);

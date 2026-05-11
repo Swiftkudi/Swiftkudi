@@ -8,6 +8,7 @@ use App\Models\DigitalProductReview;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use App\Models\WalletLedger;
+use App\Services\MarketplaceService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,64 +18,78 @@ class DigitalProductService
 {
     protected $platformFeePercent = 10; // 10% platform fee
     protected $commissionPercent = 0; // Referral commission
+    protected NotificationManager $notificationManager;
+    protected MarketplaceService $marketplaceService;
+
+    public function __construct(NotificationManager $notificationManager, MarketplaceService $marketplaceService)
+    {
+        $this->notificationManager = $notificationManager;
+        $this->marketplaceService = $marketplaceService;
+    }
 
     public function createProduct(array $data, int $userId): DigitalProduct
     {
-        $product = new DigitalProduct();
-        $product->user_id = $userId;
-        $product->title = $data['title'];
-        $product->description = $data['description'];
-        $product->price = $data['price'];
-        $product->sale_price = $data['sale_price'] ?? null;
-        $product->category_id = $data['category_id'] ?? null;
-        $product->tags = $this->normalizeTags($data['tags'] ?? null);
-        $product->license_type = $data['license_type'] ?? 1;
-        $product->version = $data['version'] ?? 1;
-        $product->changelog = $data['changelog'] ?? null;
-        $product->requirements = $data['requirements'] ?? null;
-        $product->is_free = $data['is_free'] ?? false;
-        $product->is_active = true;
+        return DB::transaction(function () use ($data, $userId) {
+            $product = new DigitalProduct();
+            $product->user_id = $userId;
+            $product->title = $data['title'];
+            $product->description = $data['description'];
+            $product->price = $data['price'];
+            $product->sale_price = $data['sale_price'] ?? null;
+            $product->category_id = $data['category_id'] ?? null;
+            $product->tags = $this->normalizeTags($data['tags'] ?? null);
+            $product->license_type = $data['license_type'] ?? 1;
+            $product->version = $data['version'] ?? 1;
+            $product->changelog = $data['changelog'] ?? null;
+            $product->requirements = $data['requirements'] ?? null;
+            $product->is_free = $data['is_free'] ?? false;
+            $product->is_active = true;
 
-        if (isset($data['thumbnail']) && $data['thumbnail'] instanceof UploadedFile) {
-            $product->thumbnail = $this->uploadFile($data['thumbnail'], 'thumbnails');
-        }
+            if (isset($data['thumbnail']) && $data['thumbnail'] instanceof UploadedFile) {
+                $product->thumbnail = $this->uploadFile($data['thumbnail'], 'thumbnails');
+            }
 
-        if (isset($data['file']) && $data['file'] instanceof UploadedFile) {
-            $product->file_path = $this->uploadFile($data['file'], 'products');
-            $product->file_size = $data['file']->getSize();
-            $product->file_type = $data['file']->getMimeType();
-        }
+            if (isset($data['file']) && $data['file'] instanceof UploadedFile) {
+                $product->file_path = $this->uploadFile($data['file'], 'products');
+                $product->file_size = $data['file']->getSize();
+                $product->file_type = $data['file']->getMimeType();
+            }
 
-        $product->save();
+            $product->save();
 
-        return $product;
+            return $product;
+        });
     }
 
     public function updateProduct(DigitalProduct $product, array $data): DigitalProduct
     {
-        if (array_key_exists('tags', $data)) {
-            $data['tags'] = $this->normalizeTags($data['tags']);
-        }
-
-        $product->fill($data);
-
-        if (isset($data['thumbnail']) && $data['thumbnail'] instanceof UploadedFile) {
-            if ($product->thumbnail) {
-                Storage::disk('public')->delete($product->thumbnail);
+        return DB::transaction(function () use ($product, $data) {
+            if (array_key_exists('tags', $data)) {
+                $data['tags'] = $this->normalizeTags($data['tags']);
             }
-            $product->thumbnail = $this->uploadFile($data['thumbnail'], 'thumbnails');
-        }
 
-        if (isset($data['file']) && $data['file'] instanceof UploadedFile) {
-            if ($product->file_path) {
-                Storage::disk('public')->delete($product->file_path);
+            $product->fill($data);
+
+            if (isset($data['thumbnail']) && $data['thumbnail'] instanceof UploadedFile) {
+                if ($product->thumbnail) {
+                    Storage::disk('public')->delete($product->thumbnail);
+                }
+                $product->thumbnail = $this->uploadFile($data['thumbnail'], 'thumbnails');
             }
-            $product->file_path = $this->uploadFile($data['file'], 'products');
-            $product->file_size = $data['file']->getSize();
-            $product->file_type = $data['file']->getMimeType();
-        }
 
-        $product->save();
+            if (isset($data['file']) && $data['file'] instanceof UploadedFile) {
+                if ($product->file_path) {
+                    Storage::disk('public')->delete($product->file_path);
+                }
+                $product->file_path = $this->uploadFile($data['file'], 'products');
+                $product->file_size = $data['file']->getSize();
+                $product->file_type = $data['file']->getMimeType();
+            }
+
+            $product->save();
+            
+            return $product;
+        });
 
         return $product;
     }
@@ -130,68 +145,40 @@ class DigitalProductService
             $order->save();
 
             if (!$product->is_free) {
-                // Deduct from buyer wallet
-                // Check total balance (withdrawable + promo credit)
-                if ($wallet->total_balance < $amount) {
-                    throw new \Exception('Insufficient balance');
-                }
-
-                // Deduct from withdrawable balance first, then promo credit
-                $remaining = (float) $amount;
-                $deductFromWithdrawable = min((float) $wallet->withdrawable_balance, $remaining);
-
-                if ($deductFromWithdrawable > 0) {
-                    $wallet->deductWithdrawable(
-                        $deductFromWithdrawable,
-                        'digital_product_purchase',
-                        "Purchase: {$product->title}"
-                    );
-                    $remaining -= $deductFromWithdrawable;
-                }
-
-                if ($remaining > 0) {
-                    $deducted = $wallet->deductPromoCredit(
-                        $remaining,
-                        'digital_product_purchase',
-                        "Purchase: {$product->title}"
-                    );
-
-                    if (!$deducted) {
+                    if ($wallet->total_balance < $amount) {
                         throw new \Exception('Insufficient balance');
                     }
+
+                    $seller = $product->user;
+                    $escrowResult = $this->marketplaceService->holdInEscrow(
+                        $buyer,
+                        $seller,
+                        $amount,
+                        $platformFee,
+                        $order,
+                        "Digital product purchase: {$product->title}"
+                    );
+
+                    if (!$escrowResult['success']) {
+                        throw new \Exception($escrowResult['message'] ?? 'Failed to hold funds in escrow');
+                    }
+
+             Transaction::create([
+                 'wallet_id' => $wallet->id,
+                 'user_id' => $buyerId,
+                 'type' => 'debit',
+                 'amount' => $amount,
+                 'description' => "Purchase: {$product->title}",
+                 'reference' => $order->order_number,
+                 'status' => 'completed',
+             ]);
                 }
 
-                // Record transaction
-                Transaction::create([
-                    'user_id' => $buyerId,
-                    'type' => 'debit',
-                    'amount' => $amount,
-                    'description' => "Purchase: {$product->title}",
-                    'reference' => $order->order_number,
-                    'status' => 'completed',
-                ]);
+                // Update product sales count
+                $product->increment('total_sales');
 
-                // Add to seller wallet (escrow - will release when download completes)
-                $seller = $product->user;
-                $sellerWallet = $seller->wallet ?? Wallet::firstOrCreate(
-                    ['user_id' => $seller->id],
-                    [
-                        'withdrawable_balance' => 0,
-                        'promo_credit_balance' => 0,
-                        'total_earned' => 0,
-                        'total_spent' => 0,
-                        'pending_balance' => 0,
-                        'escrow_balance' => 0,
-                    ]
-                );
-                $sellerWallet->increment('pending_balance', $sellerEarnings);
-            }
-
-            // Update product sales count
-            $product->increment('total_sales');
-
-            return $order;
-        });
+                return $order;
+            });
     }
 
     public function completePurchase(DigitalProductOrder $order): void
@@ -201,51 +188,43 @@ class DigitalProductService
                 return;
             }
 
+            $escrow = $this->marketplaceService->getEscrowTransaction($order);
+            if ($escrow) {
+                $releaseResult = $this->marketplaceService->releaseEscrow(
+                    $escrow,
+                    "Digital product sale completed: {$order->order_number}"
+                );
+
+                if (!$releaseResult['success']) {
+                    throw new \Exception($releaseResult['message'] ?? 'Failed to release escrow funds');
+                }
+            }
+
             $order->status = 'completed';
             $order->save();
 
-            // Release funds to seller
             $product = $order->product;
             $seller = $product->user;
-            $sellerWallet = $seller->wallet ?? Wallet::firstOrCreate(
-                ['user_id' => $seller->id],
-                [
-                    'withdrawable_balance' => 0,
-                    'promo_credit_balance' => 0,
-                    'total_earned' => 0,
-                    'total_spent' => 0,
-                    'pending_balance' => 0,
-                    'escrow_balance' => 0,
-                ]
-            );
 
-            $sellerWallet->pending_balance = max(0, (float) $sellerWallet->pending_balance - (float) $order->seller_earnings);
-            $sellerWallet->save();
-            $sellerWallet->addWithdrawable(
-                (float) $order->seller_earnings,
-                'digital_product_sale',
-                "Sale: {$product->title} (Order: {$order->order_number})"
-            );
+             Transaction::create([
+                 'wallet_id' => $seller->wallet->id,
+                 'user_id' => $product->user_id,
+                 'type' => 'credit',
+                 'amount' => $order->seller_earnings,
+                 'description' => "Sale: {$product->title} (Order: {$order->order_number})",
+                 'reference' => $order->order_number,
+                 'status' => 'completed',
+             ]);
 
-            // Record seller earning transaction
-            Transaction::create([
-                'user_id' => $product->user_id,
-                'type' => 'credit',
-                'amount' => $order->seller_earnings,
-                'description' => "Sale: {$product->title} (Order: {$order->order_number})",
-                'reference' => $order->order_number,
-                'status' => 'completed',
-            ]);
-
-            // Record platform fee
-            Transaction::create([
-                'user_id' => $product->user_id,
-                'type' => 'debit',
-                'amount' => $order->platform_fee,
-                'description' => "Platform fee: {$product->title}",
-                'reference' => $order->order_number,
-                'status' => 'completed',
-            ]);
+             Transaction::create([
+                 'wallet_id' => $seller->wallet->id,
+                 'user_id' => $product->user_id,
+                 'type' => 'debit',
+                 'amount' => $order->platform_fee,
+                 'description' => "Platform fee: {$product->title}",
+                 'reference' => $order->order_number,
+                 'status' => 'completed',
+             ]);
         });
     }
 
@@ -292,31 +271,25 @@ class DigitalProductService
                 $product = $order->product;
                 $seller = $product->user;
 
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_PRODUCT_CONFIRMED_SELLER,
                     $seller,
-                    'Product Payment Released',
-                    'Buyer confirmed receipt and reviewed "' . ($product->title ?? 'your product') . '". Your payout has been released.',
-                    \App\Models\Notification::TYPE_SYSTEM,
                     [
                         'order_id' => $order->id,
                         'product_id' => $product->id,
+                        'product_title' => $product->title ?? 'your product',
                         'action_url' => route('digital-products.my-purchases') . '#order-' . $order->id,
-                    ],
-                    'notify_product_orders',
-                    true
+                    ]
                 );
 
-                app(\App\Services\NotificationDispatchService::class)->sendToUser(
+                $this->notificationManager->notify(
+                    NotificationManager::EVENT_PRODUCT_CONFIRMED_BUYER,
                     \App\Models\User::findOrFail($userId),
-                    'Product Confirmed Successfully',
-                    'You confirmed receipt and submitted your review. Payment has now been released to the creator.',
-                    \App\Models\Notification::TYPE_SYSTEM,
                     [
                         'order_id' => $order->id,
                         'product_id' => $product->id,
                         'action_url' => route('digital-products.my-purchases') . '#order-' . $order->id,
-                    ],
-                    'notify_product_orders'
+                    ]
                 );
 
                 return [

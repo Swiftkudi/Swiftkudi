@@ -10,6 +10,7 @@ class EnsureEmailIsVerifiedWhenRequired
 {
     public function handle(Request $request, Closure $next, ?string $redirectToRoute = null)
     {
+        // Check if email verification is globally disabled in admin settings
         if (!SystemSetting::isEmailVerificationRequired()) {
             return $next($request);
         }
@@ -19,7 +20,18 @@ class EnsureEmailIsVerifiedWhenRequired
         }
 
         $user = $request->user();
-        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+
+        // Skip verification for admins
+        if ($user->isAdmin()) {
+            if (method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
+                $user->forceFill(['email_verified_at' => now()])->saveQuietly();
+            }
+
+            return $next($request);
+        }
+
+        // Skip verification for Google OAuth users
+        if (!empty($user->google_id)) {
             if (method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
                 $user->forceFill(['email_verified_at' => now()])->saveQuietly();
             }

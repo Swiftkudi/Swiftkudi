@@ -108,15 +108,15 @@ class SwiftKudiService
         ?int $walletId = null,
         ?string $description = null
     ): Transaction {
-        return Transaction::create([
-            'user_id' => $user->id,
-            'wallet_id' => $walletId,
-            'type' => $type,
-            'amount' => $amount,
-            'status' => 'completed',
-            'description' => $description,
-            'reference' => 'TXN-' . strtoupper(uniqid()),
-        ]);
+         return Transaction::create([
+             'user_id' => $user->id,
+             'wallet_id' => $walletId,
+             'type' => $type,
+             'amount' => $amount,
+             'status' => 'completed',
+             'description' => $description,
+             'reference' => 'TXN-' . strtoupper(uniqid()),
+         ]);
     }
 
     /**
@@ -165,14 +165,22 @@ class SwiftKudiService
                 Log::warning('Self-referral detected and ignored', ['user_id' => $user->id]);
             }
 
-            // Determine activation fee using SystemSetting (supports referred users discount)
-            // Activation fee is only required for earners; non-earners get free activation
+            // Use centralized onboarding settings to determine activation fee and requirement
+            $accountType = $user->account_type ?? 'earner';
             $isReferred = $referrer !== null;
-            $isEarner = $user->account_type === 'earner';
-            $activationFeeRequired = SystemSetting::isCompulsoryActivationFee() && $isEarner;
-            $activationFee = $activationFeeRequired
-                ? SystemSetting::getActivationFeeForUser($isReferred)
-                : 0;
+            $activationFeeRequired = \App\Services\OnboardingSettingsService::isActivationRequired($accountType);
+            
+            // Get base fee from centralized config
+            $baseFee = \App\Services\OnboardingSettingsService::getActivationFee($accountType);
+            
+            // Apply referral discount if user was referred
+            if ($isReferred && $baseFee > 0) {
+                $discount = SystemSetting::getNumber('referred_activation_discount', 0);
+                $multiplier = SystemSetting::getNumber('referred_activation_multiplier', 1.0);
+                $baseFee = max(0, ($baseFee * $multiplier) - $discount);
+            }
+            
+            $activationFee = $activationFeeRequired ? $baseFee : 0;
             $platformRevenue = $activationFee;
 
             if ($activationFee > 0) {

@@ -17,6 +17,11 @@
         <!-- Feature Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             @foreach($features as $key => $feature)
+            @php
+                // Determine if this feature has ever been unlocked (has an expiry date)
+                // Show renew options if expiry record exists (active or expired), else show initial unlock
+                $hasExpiryRecord = $feature['expires'] !== null;
+            @endphp
             <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg border border-gray-100 dark:border-dark-700 p-6">
                 <div class="flex items-start justify-between mb-4">
                     <div>
@@ -41,7 +46,7 @@
                 </div>
 
                 <div class="border-t border-gray-200 dark:border-dark-700 pt-4">
-                    @if(!$feature['unlocked'])
+                    @if(!$hasExpiryRecord)
                     <form method="POST" action="{{ $unlockRoute }}">
                         @csrf
                         <input type="hidden" name="feature" value="{{ $key }}">
@@ -75,6 +80,8 @@
                             </button>
                         </form>
                     </div>
+                    
+                </div>
                     @endif
                 </div>
             </div>

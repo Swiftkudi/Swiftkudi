@@ -3,11 +3,11 @@
 namespace App\Services;
 
 use App\Models\SystemSetting;
+use App\Models\User;
+use App\Models\Wallet;
 use App\Models\TaskNew;
 use App\Models\TaskSubmissionNew;
 use App\Models\TaskWalletTransaction;
-use App\Models\User;
-use App\Models\Wallet;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 

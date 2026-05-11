@@ -12,11 +12,20 @@ class LogoutSuspendedUser
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
+        $isAjax = $request->expectsJson() || $request->ajax();
 
         if ($user && $user->isSuspended()) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your account has been suspended. Please contact support.',
+                    'redirect' => route('login'),
+                ], 403);
+            }
 
             return redirect()->route('login')
                 ->with('error', 'Your account has been suspended. Please contact support.');
