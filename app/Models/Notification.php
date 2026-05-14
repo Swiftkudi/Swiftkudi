@@ -57,6 +57,14 @@ class Notification extends Model
      public const TYPE_DIGITAL_PRODUCT_DOWNLOADED = 'digital_product_downloaded';
      public const TYPE_DIGITAL_PRODUCT_CONFIRMED_SELLER = 'digital_product_confirmed_seller';
      public const TYPE_DIGITAL_PRODUCT_CONFIRMED_BUYER = 'digital_product_confirmed_buyer';
+      public const TYPE_MARKETPLACE_ORDER = 'marketplace_order';
+      public const TYPE_MARKETPLACE_ORDER_UPDATE = 'marketplace_order_update';
+      public const TYPE_MARKETPLACE_REVIEW = 'marketplace_review';
+      public const TYPE_MARKETPLACE_MESSAGE = 'marketplace_message';
+      public const TYPE_MARKETPLACE_DISPUTE = 'marketplace_dispute';
+      public const TYPE_MARKETPLACE_LISTING_APPROVED = 'marketplace_listing_approved';
+      public const TYPE_MARKETPLACE_LISTING_REJECTED = 'marketplace_listing_rejected';
+      public const TYPE_MARKETPLACE_SUBSCRIPTION = 'marketplace_subscription';
 
     /**
      * Relationship: User
@@ -167,10 +175,18 @@ class Notification extends Model
               self::TYPE_DIGITAL_PRODUCT_CREATED => 'info',
               self::TYPE_DIGITAL_PRODUCT_APPROVED => 'success',
               self::TYPE_DIGITAL_PRODUCT_REJECTED => 'danger',
-              self::TYPE_DIGITAL_PRODUCT_PURCHASED => 'primary',
-              self::TYPE_DIGITAL_PRODUCT_DOWNLOADED => 'info',
-              self::TYPE_DIGITAL_PRODUCT_CONFIRMED_SELLER => 'success',
-              self::TYPE_DIGITAL_PRODUCT_CONFIRMED_BUYER => 'success',
+self::TYPE_DIGITAL_PRODUCT_PURCHASED => 'primary',
+               self::TYPE_DIGITAL_PRODUCT_DOWNLOADED => 'info',
+               self::TYPE_DIGITAL_PRODUCT_CONFIRMED_SELLER => 'success',
+               self::TYPE_DIGITAL_PRODUCT_CONFIRMED_BUYER => 'success',
+               self::TYPE_MARKETPLACE_ORDER => 'primary',
+               self::TYPE_MARKETPLACE_ORDER_UPDATE => 'info',
+               self::TYPE_MARKETPLACE_REVIEW => 'warning',
+               self::TYPE_MARKETPLACE_MESSAGE => 'primary',
+               self::TYPE_MARKETPLACE_DISPUTE => 'danger',
+               self::TYPE_MARKETPLACE_LISTING_APPROVED => 'success',
+               self::TYPE_MARKETPLACE_LISTING_REJECTED => 'danger',
+               self::TYPE_MARKETPLACE_SUBSCRIPTION => 'info',
          ];
 
          return $colors[$this->type] ?? 'secondary';

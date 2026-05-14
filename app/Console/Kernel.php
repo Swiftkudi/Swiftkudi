@@ -27,8 +27,11 @@ class Kernel extends ConsoleKernel
          // Send onboarding reminders to users without account type - daily at 9am
          $schedule->command('onboarding:send-reminders')->dailyAt('09:00')->withoutOverlapping();
 
-         // Send feature expiry reminders daily at 10:00
-         $schedule->command('features:send-expiry-reminders')->dailyAt('10:00')->withoutOverlapping();
+// Send feature expiry reminders daily at 10:00
+          $schedule->command('features:send-expiry-reminders')->dailyAt('10:00')->withoutOverlapping();
+
+          // Auto-release marketplace escrow funds nightly at 03:00
+          $schedule->command('marketplace:auto-release')->dailyAt('03:00')->withoutOverlapping();
      }
 
     /**

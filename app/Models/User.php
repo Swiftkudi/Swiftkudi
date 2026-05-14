@@ -86,12 +86,23 @@ class User extends Authenticatable implements MustVerifyEmail
         'freelancer_activation_paid',
         'digital_activation_paid',
         'growth_activation_paid',
-        'buyer_features',
-        'task_creator_features',
-        'freelancer_features',
-        'digital_seller_features',
-        'growth_seller_features',
-    ];
+'buyer_features',
+         'task_creator_features',
+'freelancer_features',
+         'digital_seller_features',
+         'growth_seller_features',
+         // Marketplace fields
+         'university_id',
+         'campus',
+         'faculty',
+         'year_of_study',
+         'marketplace_avatar',
+         'seller_rating',
+         'seller_rating_count',
+         'marketplace_seller_verified',
+         'marketplace_bio',
+         'marketplace_contact_preferences',
+     ];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -136,15 +147,21 @@ class User extends Authenticatable implements MustVerifyEmail
         'digital_activation_paid' => 'boolean',
         'digital_product_uploaded' => 'boolean',
         'growth_activation_paid' => 'boolean',
-        'growth_listing_created' => 'boolean',
-        'buyer_categories_selected' => 'array',
-        'buyer_onboarding_completed' => 'boolean',
-        'buyer_features' => 'array',
-        'task_creator_features' => 'array',
-        'freelancer_features' => 'array',
-        'digital_seller_features' => 'array',
-        'growth_seller_features' => 'array',
-    ];
+'growth_listing_created' => 'boolean',
+         'buyer_categories_selected' => 'array',
+         'buyer_onboarding_completed' => 'boolean',
+         'buyer_features' => 'array',
+         'task_creator_features' => 'array',
+         'freelancer_features' => 'array',
+         'digital_seller_features' => 'array',
+         'growth_seller_features' => 'array',
+         // Marketplace fields
+         'university_id' => 'integer',
+         'seller_rating' => 'decimal:2',
+         'seller_rating_count' => 'integer',
+         'marketplace_seller_verified' => 'boolean',
+         'marketplace_contact_preferences' => 'array',
+     ];
 
     /**
      * Get buyer's selected categories
@@ -437,9 +454,106 @@ class User extends Authenticatable implements MustVerifyEmail
         return $accessCheck['can_access'];
     }
 
-    // =============================================
-    // DIGITAL SELLER FEATURE METHODS
-    // =============================================
+// =============================================
+     // MARKETPLACE METHODS
+     // =============================================
+
+     /**
+      * Relationship: Marketplace Listings this user created
+      */
+     public function marketplaceListings()
+     {
+         return $this->hasMany(\App\Models\Marketplace\Listing::class, 'user_id');
+     }
+
+     /**
+      * Relationship: Marketplace Orders where this user is the buyer
+      */
+     public function marketplaceOrders()
+     {
+         return $this->hasMany(\App\Models\Marketplace\Order::class, 'buyer_id');
+     }
+
+     /**
+      * Relationship: Marketplace Orders where this user is the seller
+      */
+     public function marketplaceOrdersAsSeller()
+     {
+         return $this->hasMany(\App\Models\Marketplace\Order::class, 'seller_id');
+     }
+
+     /**
+      * Relationship: Marketplace Reviews this user received
+      */
+     public function marketplaceReviewsReceived()
+     {
+         return $this->hasMany(\App\Models\Marketplace\Review::class, 'reviewed_id');
+     }
+
+     /**
+      * Relationship: Marketplace Reviews this user wrote
+      */
+     public function marketplaceReviewsWritten()
+     {
+         return $this->hasMany(\App\Models\Marketplace\Review::class, 'reviewer_id');
+     }
+
+     /**
+      * Relationship: Marketplace Favourites
+      */
+     public function marketplaceFavourites()
+     {
+         return $this->hasMany(\App\Models\Marketplace\Favourite::class, 'user_id');
+     }
+
+     /**
+      * Relationship: Marketplace Conversations
+      */
+     public function marketplaceConversations()
+     {
+         return $this->hasMany(\App\Models\MarketplaceConversation::class, 'buyer_id')
+             ->orWhere('seller_id', $this->id);
+     }
+
+     /**
+      * Check if user has a premium marketplace seller subscription
+      */
+     public function marketplaceSellerVerified(): bool
+     {
+         return (bool) $this->marketplace_seller_verified;
+     }
+
+     /**
+      * Get seller rating for marketplace
+      */
+     public function getSellerRating(): float
+     {
+         return $this->seller_rating ?? 0.0;
+     }
+
+     /**
+      * Get seller rating count
+      */
+     public function getSellerRatingCount(): int
+     {
+         return $this->seller_rating_count ?? 0;
+     }
+
+     /**
+      * Check if user is a premium marketplace seller
+      */
+     public function isPremiumSeller(): bool
+     {
+         return \App\Models\UserSubscription::where('user_id', $this->id)
+             ->where('status', 'active')
+             ->where('expires_at', '>', now())
+             ->where('metadata->marketplace_plan', true)
+             ->exists();
+     }
+
+     // =============================================
+     // DIGITAL SELLER FEATURE METHODS
+     // =============================================
 
     public function hasDigitalSellerFeature(string $feature): bool
     {
