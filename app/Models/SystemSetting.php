@@ -41,10 +41,10 @@ class SystemSetting extends Model
     const GROUP_MODULES = 'modules';
     const GROUP_ESCROW = 'escrow';
     const GROUP_VERIFICATION = 'verification';
-    const GROUP_BOOST = 'boost';
-    const GROUP_REVIEW = 'review';
+const GROUP_BOOST = 'boost';
+     const GROUP_REVIEW = 'review';
 
-    const GROUPS = [
+     const GROUPS = [
         self::GROUP_GENERAL => 'General',
         self::GROUP_SMTP => 'Email/SMTP',
         self::GROUP_EMAIL_TEMPLATES => 'Email Templates',
@@ -64,6 +64,7 @@ class SystemSetting extends Model
         self::GROUP_VERIFICATION => 'Verification & Trust',
         self::GROUP_BOOST => 'Boost & Monetization',
         self::GROUP_REVIEW => 'Reviews & Ratings',
+         self::GROUP_MODULES => 'Modules',
     ];
 
     // Encryption for sensitive values
