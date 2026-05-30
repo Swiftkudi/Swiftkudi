@@ -2,7 +2,7 @@
 
 namespace App\Services\Marketplace;
 
-use App\Models\Marketplace\Listing;
+use App\Models\Marketplace\MarketplaceListing;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -10,10 +10,10 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ListingService
 {
-    public function createListing(User $seller, array $data): Listing
+    public function createListing(User $seller, array $data): MarketplaceListing
     {
         return DB::transaction(function () use ($seller, $data) {
-            $listing = Listing::create([
+            $listing = MarketplaceListing::create([
                 'user_id' => $seller->id,
                 'category_id' => $data['category_id'] ?? null,
                 'title' => $data['title'],
@@ -27,7 +27,7 @@ class ListingService
                 'location' => $data['location'] ?? null,
                 'available_for_shipping' => $data['available_for_shipping'] ?? false,
                 'shipping_cost' => $data['shipping_cost'] ?? 0,
-                'status' => $data['status'] ?? Listing::STATUS_DRAFT,
+                'status' => $data['status'] ?? MarketplaceListing::STATUS_DRAFT,
                 'is_active' => $data['is_active'] ?? false,
             ]);
 
@@ -41,11 +41,11 @@ class ListingService
         });
     }
 
-    public function updateListing(Listing $listing, array $data): bool
+    public function updateListing(MarketplaceListing $listing, array $data): bool
     {
         return DB::transaction(function () use ($listing, $data) {
             $updateData = [];
-            $fillable = ['title', 'description', 'price', 'condition', 'negotiable',
+            $fillable = ['title', 'description', 'price', 'condition', 'category_id', 'negotiable',
                 'thumbnail', 'tags', 'location', 'available_for_shipping',
                 'shipping_cost', 'status', 'is_active'];
 
@@ -56,7 +56,7 @@ class ListingService
             }
 
             if (isset($data['title']) && $data['title'] !== $listing->title) {
-                $updateData['slug'] = Listing::generateUniqueSlug($data['title']);
+                $updateData['slug'] = MarketplaceListing::generateUniqueSlug($data['title']);
             }
 
             $listing->update($updateData);
@@ -64,30 +64,30 @@ class ListingService
         });
     }
 
-    public function publish(Listing $listing): bool
+    public function publish(MarketplaceListing $listing): bool
     {
         $listing->update([
-            'status' => Listing::STATUS_ACTIVE,
+            'status' => MarketplaceListing::STATUS_ACTIVE,
             'is_active' => true,
         ]);
         return true;
     }
 
-    public function unpublish(Listing $listing): bool
+    public function unpublish(MarketplaceListing $listing): bool
     {
-        $listing->update(['status' => Listing::STATUS_DRAFT, 'is_active' => false]);
+        $listing->update(['status' => MarketplaceListing::STATUS_DRAFT, 'is_active' => false]);
         return true;
     }
 
-    public function markAsSold(Listing $listing): bool
+    public function markAsSold(MarketplaceListing $listing): bool
     {
         return DB::transaction(function () use ($listing) {
-            $listing->update(['status' => Listing::STATUS_SOLD, 'sold_at' => now()]);
+            $listing->update(['status' => MarketplaceListing::STATUS_SOLD, 'sold_at' => now()]);
             return true;
         });
     }
 
-    public function toggleFeatured(Listing $listing): bool
+    public function toggleFeatured(MarketplaceListing $listing): bool
     {
         $listing->update(['is_featured' => !$listing->is_featured]);
         return true;
@@ -95,8 +95,10 @@ class ListingService
 
     public function search(array $filters): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
-        $query = Listing::query()
-            ->where('status', Listing::STATUS_ACTIVE)
+        $query = MarketplaceListing::query()
+            ->with(['category', 'seller'])
+            ->withCount('favourites')
+            ->where('status', MarketplaceListing::STATUS_ACTIVE)
             ->where('is_active', true);
 
         if (!empty($filters['q'])) {
@@ -111,8 +113,12 @@ class ListingService
             $query->where('category_id', $filters['category']);
         }
 
-        if (!empty($filters['condition']) && is_array($filters['condition'])) {
-            $query->whereIn('condition', $filters['condition']);
+        if (!empty($filters['condition'])) {
+            if (is_array($filters['condition'])) {
+                $query->whereIn('condition', $filters['condition']);
+            } else {
+                $query->where('condition', $filters['condition']);
+            }
         }
 
         if (!empty($filters['min_price'])) {
@@ -135,11 +141,20 @@ class ListingService
 
         $sort = $filters['sort'] ?? 'newest';
         switch ($sort) {
-            case 'price_low': $query->orderBy('price', 'asc'); break;
-            case 'price_high': $query->orderBy('price', 'desc'); break;
-            case 'popular': $query->orderBy('favourites_count', 'desc'); break;
-            case 'featured': $query->orderBy('is_featured', 'desc')->orderBy('created_at', 'desc'); break;
-            default: $query->latest();
+            case 'price_low':
+                $query->orderBy('price', 'asc');
+                break;
+            case 'price_high':
+                $query->orderBy('price', 'desc');
+                break;
+            case 'popular':
+                $query->orderBy('favourites_count', 'desc');
+                break;
+            case 'featured':
+                $query->orderBy('is_featured', 'desc')->orderBy('created_at', 'desc');
+                break;
+            default:
+                $query->latest();
         }
 
         return $query->paginate($filters['per_page'] ?? 20);
@@ -147,14 +162,14 @@ class ListingService
 
     public function getSellerListings(User $seller, string $status = null): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
-        $query = Listing::where('user_id', $seller->id)->latest();
+        $query = MarketplaceListing::where('user_id', $seller->id)->latest();
         if ($status) {
             $query->where('status', $status);
         }
         return $query->paginate(20);
     }
 
-    public function trackView(Listing $listing): void
+    public function trackView(MarketplaceListing $listing): void
     {
         $listing->increment('views_count');
     }

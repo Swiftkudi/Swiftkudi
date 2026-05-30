@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Config;
@@ -152,6 +153,7 @@ class SettingsController extends Controller
      */
     public function update(Request $request, $group)
     {
+     
         if (!array_key_exists($group, SystemSetting::GROUPS)) {
             return redirect()->route('admin.settings')->with('error', 'Invalid settings group.');
         }
@@ -202,7 +204,12 @@ class SettingsController extends Controller
 
             // Handle boolean toggles
             if ($setting->type === 'boolean') {
-                $value = $request->has($key) ? 'true' : 'false';
+                $input = $request->input($key, false);
+                if (is_array($input)) {
+                    $input = end($input);
+                }
+
+                $value = filter_var($input, FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
                 SystemSetting::set($key, $value, $group, $setting->type);
                 continue;
             }
@@ -222,8 +229,11 @@ class SettingsController extends Controller
 
             // Numbers
             if ($setting->type === 'number') {
+                if (!$request->has($key)) {
+                    continue;
+                }
                 $value = $request->input($key);
-                $value = is_null($value) ? null : (float) $value;
+                $value = $value === '' ? null : (float) $value;
                 SystemSetting::set($key, $value, $group, 'number');
                 continue;
             }
@@ -253,7 +263,12 @@ class SettingsController extends Controller
             $this->applyMailConfigFromSettings();
         }
 
-        return redirect()->back()->with('success', ucfirst($group) . ' settings saved successfully.');
+        $message = ucfirst($group) . ' settings saved successfully.';
+        if ($group === 'registration') {
+            return redirect()->route('admin.settings.registration')->with('success', $message);
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 
     /**
@@ -430,7 +445,7 @@ class SettingsController extends Controller
             case 'boolean':
                 return ['nullable'];
             case 'number':
-                return ['required', 'numeric', 'min:0'];
+                return ['sometimes', 'numeric', 'min:0'];
             case 'email':
                 return ['nullable', 'email'];
             case 'url':
@@ -526,13 +541,13 @@ class SettingsController extends Controller
         if (!$user instanceof User) {
             return false;
         }
-        
+
         // Super admin can edit all settings
         if ($user->isSuperAdmin()) {
             return true;
         }
-        
-        // Check if group requires super admin
+
+        // Reject super-admin-only groups for non-super-admins
         if (in_array($group, $this->superAdminOnly)) {
             return false;
         }

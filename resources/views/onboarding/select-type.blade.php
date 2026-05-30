@@ -14,6 +14,7 @@
             @php $options = [
                 ['label'=>'Earn Money', 'value'=>'earner', 'description'=>'Activate and complete a starter task to start earning quickly.'],
                 ['label'=>'Create Tasks', 'value'=>'task_creator', 'description'=>'Post campaigns and hire workers to fulfill orders.'],
+                ['label'=>'Buy on Campus', 'value'=>'buyer', 'description'=>'Browse student marketplaces and discover services, products, and offers.'],
                 ['label'=>'Sell Digital Products', 'value'=>'digital_seller', 'description'=>'Upload your software/plugins/digital products and sell instantly.'],
                 ['label'=>'Growth Marketplace', 'value'=>'growth_seller', 'description'=>'Create growth listings and get clients for backlinks, leads, etc.'],
             ]; @endphp

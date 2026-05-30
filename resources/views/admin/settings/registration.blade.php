@@ -23,10 +23,25 @@
                 {{ session('success') }}
             </div>
         @endif
+        @if(session('error'))
+            <div class="mb-6 bg-red-100 dark:bg-red-500/20 border border-red-400 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl">
+                {{ session('error') }}
+            </div>
+        @endif
+        @if($errors->any())
+            <div class="mb-6 bg-yellow-100 dark:bg-yellow-500/20 border border-yellow-400 text-yellow-700 dark:text-yellow-400 px-4 py-3 rounded-xl">
+                <ul class="list-disc list-inside space-y-1">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
 
         <form action="{{ route('admin.settings.update', 'registration') }}" method="POST">
             @csrf
             @method('PUT')
+            <input type="hidden" name="compulsory_activation_fee" value="{{ ($settingsByKey['compulsory_activation_fee'] ?? true) ? 'true' : 'false' }}">
 
             <!-- Registration Toggle -->
             <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 mb-6">
@@ -42,8 +57,9 @@
                     </div>
                     <div class="flex items-center">
                         <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="hidden" name="registration_enabled" value="false">
                             <input type="checkbox" name="registration_enabled" value="true"
-                                {{ (($settingsByKey['registration_enabled'] ?? true) === 'true' || $settingsByKey['registration_enabled'] ?? true) ? 'checked' : '' }}
+                                {{ filter_var(old('registration_enabled', $settingsByKey['registration_enabled'] ?? true), FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}
                                 class="sr-only peer">
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                             <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">Enabled</span>
@@ -78,8 +94,9 @@
                             </div>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="hidden" name="email_verification_required" value="false">
                             <input type="checkbox" name="email_verification_required" value="true"
-                                {{ ($settingsByKey['email_verification_required'] ?? true) === 'true' ? 'checked' : '' }}
+                                {{ filter_var(old('email_verification_required', $settingsByKey['email_verification_required'] ?? true), FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}
                                 class="sr-only peer">
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                         </label>
@@ -97,8 +114,9 @@
                             </div>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="hidden" name="admin_approval_required" value="false">
                             <input type="checkbox" name="admin_approval_required" value="true"
-                                {{ (($settingsByKey['admin_approval_required'] ?? false) === 'true' || $settingsByKey['admin_approval_required'] ?? false) ? 'checked' : '' }}
+                                {{ filter_var(old('admin_approval_required', $settingsByKey['admin_approval_required'] ?? false), FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}
                                 class="sr-only peer">
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                         </label>
@@ -131,8 +149,9 @@
                             </div>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="hidden" name="referral_enabled" value="false">
                             <input type="checkbox" name="referral_enabled" value="true"
-                                {{ (($settingsByKey['referral_enabled'] ?? true) === 'true' || $settingsByKey['referral_enabled'] ?? true) ? 'checked' : '' }}
+                                {{ filter_var(old('referral_enabled', $settingsByKey['referral_enabled'] ?? true), FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}
                                 class="sr-only peer">
                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                         </label>
@@ -141,7 +160,7 @@
                     <div class="grid grid-cols-1 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Referral Bonus Amount (₦)</label>
-                            <input type="number" name="referral_bonus_amount" value="{{ $settingsByKey['referral_bonus_amount'] ?? 500 }}"
+                            <input type="number" name="referral_bonus_amount" value="{{ old('referral_bonus_amount', $settingsByKey['referral_bonus_amount'] ?? 500) }}"
                                 class="w-full rounded-xl border-gray-200 dark:border-dark-700 dark:bg-dark-800 focus:border-indigo-500 focus:ring-indigo-500">
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Bonus earned when referred user activates</p>
                         </div>

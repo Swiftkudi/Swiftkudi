@@ -66,7 +66,7 @@ class Handler extends ExceptionHandler
 
             $request->session()->regenerateToken();
 
-            return redirect()->route('login')
+            return redirect()->route('session.expired')
                 ->with('warning', 'Your session expired for security reasons. Please sign in again to continue.');
         });
 

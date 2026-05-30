@@ -42,6 +42,9 @@ Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->na
 Route::get('/', function () {
     return view('landing');
 })->name('home');
+Route::view('/support', 'support')->name('support');
+// Session expired landing page (friendly notice when CSRF/session expires)
+Route::view('/session-expired', 'errors.session_expired')->name('session.expired');
 Route::view('/privacy-policy', 'legal.privacy')->name('legal.privacy');
 Route::view('/terms-of-service', 'legal.terms')->name('legal.terms');
 

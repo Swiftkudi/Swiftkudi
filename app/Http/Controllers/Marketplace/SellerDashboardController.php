@@ -64,7 +64,7 @@ class SellerDashboardController extends Controller
 
     public function reviews()
     {
-        $reviews = \App\Models\Marketplace\Review::query()
+        $reviews = \App\Models\Marketplace\MarketplaceReview::query()
             ->with(['order', 'reviewer'])
             ->where('reviewed_id', Auth::id())
             ->latest()

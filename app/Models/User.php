@@ -463,7 +463,7 @@ class User extends Authenticatable implements MustVerifyEmail
       */
      public function marketplaceListings()
      {
-         return $this->hasMany(\App\Models\Marketplace\Listing::class, 'user_id');
+         return $this->hasMany(\App\Models\Marketplace\MarketplaceListing::class, 'user_id');
      }
 
      /**
@@ -471,7 +471,7 @@ class User extends Authenticatable implements MustVerifyEmail
       */
      public function marketplaceOrders()
      {
-         return $this->hasMany(\App\Models\Marketplace\Order::class, 'buyer_id');
+         return $this->hasMany(\App\Models\Marketplace\MarketplaceOrder::class, 'buyer_id');
      }
 
      /**
@@ -479,7 +479,7 @@ class User extends Authenticatable implements MustVerifyEmail
       */
      public function marketplaceOrdersAsSeller()
      {
-         return $this->hasMany(\App\Models\Marketplace\Order::class, 'seller_id');
+         return $this->hasMany(\App\Models\Marketplace\MarketplaceOrder::class, 'seller_id');
      }
 
      /**
@@ -487,7 +487,7 @@ class User extends Authenticatable implements MustVerifyEmail
       */
      public function marketplaceReviewsReceived()
      {
-         return $this->hasMany(\App\Models\Marketplace\Review::class, 'reviewed_id');
+         return $this->hasMany(\App\Models\Marketplace\MarketplaceReview::class, 'reviewed_id');
      }
 
      /**
@@ -495,7 +495,7 @@ class User extends Authenticatable implements MustVerifyEmail
       */
      public function marketplaceReviewsWritten()
      {
-         return $this->hasMany(\App\Models\Marketplace\Review::class, 'reviewer_id');
+         return $this->hasMany(\App\Models\Marketplace\MarketplaceReview::class, 'reviewer_id');
      }
 
      /**
@@ -503,7 +503,7 @@ class User extends Authenticatable implements MustVerifyEmail
       */
      public function marketplaceFavourites()
      {
-         return $this->hasMany(\App\Models\Marketplace\Favourite::class, 'user_id');
+         return $this->hasMany(\App\Models\Marketplace\MarketplaceFavourite::class, 'user_id');
      }
 
      /**

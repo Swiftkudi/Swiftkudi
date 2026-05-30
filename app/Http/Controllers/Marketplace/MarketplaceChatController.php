@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Marketplace;
 
 use App\Http\Controllers\Controller;
-use App\Models\Marketplace\Listing;
+use App\Models\Marketplace\MarketplaceListing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 

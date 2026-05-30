@@ -66,6 +66,9 @@
                         @endif
                     @endforeach
                 </select>
+                @error('category_id')
+                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Price -->
@@ -93,12 +96,16 @@
             </div>
         </div>
 
-        <div class="mb-6" id="shipping-cost-group" style="display: {{ $listing->available_for_shipping ? 'block' : 'none' }}">
-            <label class="form-label" for="shipping_cost">Shipping Cost (₦)</label>
-            <input type="number" name="shipping_cost" id="shipping_cost" step="0.01" min="0"
-                   class="w-full px-4 py-3 rounded-lg bg-dark-700 border border-dark-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                   value="{{ old('shipping_cost', $listing->shipping_cost) }}">
-        </div>
+        @if($listing->available_for_shipping)
+            <div class="mb-6" id="shipping-cost-group" style="display: block;">
+        @else
+            <div class="mb-6" id="shipping-cost-group" style="display: none;">
+        @endif
+                <label class="form-label" for="shipping_cost">Shipping Cost (₦)</label>
+                <input type="number" name="shipping_cost" id="shipping_cost" step="0.01" min="0"
+                       class="w-full px-4 py-3 rounded-lg bg-dark-700 border border-dark-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                       value="{{ old('shipping_cost', $listing->shipping_cost) }}">
+            </div>
 
         <div class="mb-6">
             <label class="form-label" for="location">Location</label>
@@ -108,11 +115,14 @@
         </div>
 
         <div class="mb-6">
-            <label class="form-label" for="tags">Tags</label>
-            <input type="text" name="tags_text"
+            <label class="form-label" for="tags_text">Tags</label>
+            <input type="text" name="tags_text" id="tags_text"
                    class="w-full px-4 py-3 rounded-lg bg-dark-700 border border-dark-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                    value="{{ old('tags_text', implode(', ', $listing->tags ?? [])) }}"
                    placeholder="e.g., textbooks, notes, electronics">
+            @error('tags_text')
+            <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+            @enderror
         </div>
 
         <div class="flex gap-4">
@@ -122,7 +132,7 @@
             <button type="submit" class="btn btn-secondary flex-1">
                 <i class="fas fa-save mr-2"></i>Save as Draft
             </button>
-            <a href="{{ route('marketplace.listings.show', $listing->slug) }}" class="btn btn-secondary flex-1 text-center">
+            <a href="{{ route('marketplace.listings.show', $listing->id) }}" class="btn btn-secondary flex-1 text-center">
                 <i class="fas fa-times mr-2"></i>Cancel
             </a>
         </div>

@@ -5,7 +5,7 @@ namespace App\Models\Marketplace;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Order extends Model
+class MarketplaceOrder extends Model
 {
     use HasFactory;
 
@@ -37,7 +37,7 @@ class Order extends Model
 
     public function listing()
     {
-        return $this->belongsTo(Listing::class);
+        return $this->belongsTo(MarketplaceListing::class);
     }
 
     public function buyer()
@@ -62,7 +62,7 @@ class Order extends Model
 
     public function reviews()
     {
-        return $this->hasMany(Review::class, 'order_id');
+        return $this->hasMany(MarketplaceReview::class, 'order_id');
     }
 
     // Scopes
@@ -99,7 +99,7 @@ class Order extends Model
             return 'Order must be delivered first';
         }
         $this->update(['status' => self::STATUS_COMPLETED, 'completed_at' => now()]);
-        $this->listing()->update(['status' => Listing::STATUS_SOLD, 'sold_at' => now()]);
+        $this->listing()->update(['status' => MarketplaceListing::STATUS_SOLD, 'sold_at' => now()]);
         return true;
     }
 

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Marketplace;
 
 use App\Http\Controllers\Controller;
 use App\Services\Marketplace\OrderService;
-use App\Models\Marketplace\Listing;
+use App\Models\Marketplace\MarketplaceListing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -19,7 +19,7 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
-        $orders = \App\Models\Marketplace\Order::query()
+        $orders = \App\Models\Marketplace\MarketplaceOrder::query()
             ->with(['listing', 'seller', 'escrow'])
             ->where('buyer_id', Auth::id())
             ->latest()
@@ -30,7 +30,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = \App\Models\Marketplace\Order::with(['listing', 'seller', 'buyer', 'escrow', 'reviews'])
+        $order = \App\Models\Marketplace\MarketplaceOrder::with(['listing', 'seller', 'buyer', 'escrow', 'reviews'])
             ->findOrFail($id);
 
         if ($order->buyer_id !== Auth::id() && $order->seller_id !== Auth::id()) {
@@ -40,9 +40,9 @@ class OrderController extends Controller
         return view('marketplace.orders.show', compact('order'));
     }
 
-    public function create(Listing $listing)
+    public function create(MarketplaceListing $listing)
     {
-        if ($listing->status !== Listing::STATUS_ACTIVE) {
+        if ($listing->status !== MarketplaceListing::STATUS_ACTIVE) {
             abort(404);
         }
 
@@ -54,14 +54,14 @@ class OrderController extends Controller
         $canPurchase = Auth::check() && Auth::user()->wallet !== null;
 
         if (!$canPurchase) {
-            return redirect()->route('marketplace.listings.show', $listing->slug)
+            return redirect()->route('marketplace.listings.show', $listing->id)
                 ->with('error', 'You need a wallet to make a purchase.');
         }
 
         return view('marketplace.orders.create', compact('listing', 'seller'));
     }
 
-    public function store(Listing $listing, Request $request)
+    public function store(MarketplaceListing $listing, Request $request)
     {
         $result = $this->orderService->createOrder(
             $listing,
@@ -70,16 +70,24 @@ class OrderController extends Controller
         );
 
         if (!$result['success']) {
+            if ($result['insufficient_balance'] ?? false) {
+                // Store redirect URL for after payment
+                session(['deposit_success_redirect' => route('marketplace.listings.show', $listing->id)]);
+                
+                return redirect()->route('wallet.deposit', [
+                    'required' => $result['required']
+                ])->with('insufficient_balance_required', $result['required']);
+            }
             return back()->with('error', $result['message']);
         }
 
-        return redirect()->route('marketplace.orders.show', $result['order']->id)
-            ->with('success', 'Order placed successfully! Payment is held in escrow.');
+        return redirect()->route('marketplace.listings.show', $listing->id)
+            ->with('success', 'Order placed successfully! You can track it in your orders.');
     }
 
     public function confirmReceipt($id)
     {
-        $order = \App\Models\Marketplace\Order::findOrFail($id);
+        $order = \App\Models\Marketplace\MarketplaceOrder::findOrFail($id);
         $result = $this->orderService->confirmReceipt($order, Auth::user());
 
         if (!$result['success']) {
@@ -92,7 +100,7 @@ class OrderController extends Controller
 
     public function cancel($id)
     {
-        $order = \App\Models\Marketplace\Order::findOrFail($id);
+        $order = \App\Models\Marketplace\MarketplaceOrder::findOrFail($id);
         $result = $this->orderService->cancelOrder($order, Auth::user());
 
         if (!$result['success']) {
@@ -105,7 +113,7 @@ class OrderController extends Controller
 
     public function mySales()
     {
-        $orders = \App\Models\Marketplace\Order::query()
+        $orders = \App\Models\Marketplace\MarketplaceOrder::query()
             ->with(['listing', 'buyer', 'escrow'])
             ->where('seller_id', Auth::id())
             ->latest()
@@ -116,7 +124,7 @@ class OrderController extends Controller
 
     public function markAsShipped($id)
     {
-        $order = \App\Models\Marketplace\Order::findOrFail($id);
+        $order = \App\Models\Marketplace\MarketplaceOrder::findOrFail($id);
         $result = $this->orderService->markAsShipped($order, Auth::user());
 
         if (!$result['success']) {
@@ -128,7 +136,7 @@ class OrderController extends Controller
 
     public function markAsDelivered($id)
     {
-        $order = \App\Models\Marketplace\Order::findOrFail($id);
+        $order = \App\Models\Marketplace\MarketplaceOrder::findOrFail($id);
         $result = $this->orderService->markAsDelivered($order, Auth::user());
 
         if (!$result['success']) {

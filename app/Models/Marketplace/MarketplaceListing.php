@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class Listing extends Model
+class MarketplaceListing extends Model
 {
     use HasFactory;
 
@@ -47,17 +47,17 @@ class Listing extends Model
 
     public function orders()
     {
-        return $this->hasMany(Order::class, 'listing_id');
+        return $this->hasMany(MarketplaceOrder::class, 'listing_id');
     }
 
     public function reviews()
     {
-        return $this->hasMany(Review::class);
+        return $this->hasMany(MarketplaceReview::class);
     }
 
     public function favourites()
     {
-        return $this->hasMany(Favourite::class, 'listing_id');
+        return $this->hasMany(MarketplaceFavourite::class, 'listing_id');
     }
 
     public function scopeActive($query)
@@ -124,4 +124,6 @@ class Listing extends Model
     {
         return $this->favourites()->where('user_id', $user->id)->exists();
     }
+
+   
 }

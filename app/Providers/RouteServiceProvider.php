@@ -47,11 +47,22 @@ $this->routes(function () {
                  ->namespace($this->namespace)
                  ->group(base_path('routes/web.php'));
 
-             // Marketplace subdomain routing — shares session/auth with main app
-             Route::domain('marketplace.' . config('app.domain', 'swiftkudi.app'))
-                 ->middleware('web')
-                 ->namespace($this->namespace)
-                 ->group(base_path('routes/marketplace.php'));
+             $marketplaceDomain = null;
+             if (config('marketplace.use_subdomain')) {
+                 $marketplaceDomain = config('marketplace.full_domain') ?: (config('marketplace.subdomain') . '.' . config('marketplace.domain'));
+             }
+
+             if ($marketplaceDomain) {
+                 Route::domain($marketplaceDomain)
+                     ->middleware('web')
+                     ->namespace($this->namespace)
+                     ->group(base_path('routes/marketplace.php'));
+             } else {
+                 Route::middleware('web')
+                     ->prefix('marketplace')
+                     ->namespace($this->namespace)
+                     ->group(base_path('routes/marketplace.php'));
+             }
          });
     }
 

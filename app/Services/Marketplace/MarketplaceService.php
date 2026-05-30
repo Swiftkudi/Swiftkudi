@@ -4,6 +4,7 @@ namespace App\Services\Marketplace;
 
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\Marketplace\MarketplaceOrder;
 use App\Models\EscrowTransaction;
 use App\Models\FinancialTransaction;
 use App\Models\SystemSetting;
@@ -215,19 +216,19 @@ class MarketplaceService
                 switch ($resolution) {
                     case \App\Models\Dispute::RESOLUTION_BUYER_WINS:
                         $this->refundFromEscrow($escrow, 'Dispute resolution — Buyer wins');
-                        $order->update(['status' => Order::STATUS_REFUNDED]);
+                        $order->update(['status' => MarketplaceOrder::STATUS_REFUNDED]);
                         break;
                     case \App\Models\Dispute::RESOLUTION_SELLER_WINS:
                         $this->releaseEscrow($escrow, 'Dispute resolution — Seller wins');
-                        $order->update(['status' => Order::STATUS_COMPLETED]);
+                        $order->update(['status' => MarketplaceOrder::STATUS_COMPLETED]);
                         break;
                     case \App\Models\Dispute::RESOLUTION_REFUND:
                         $this->refundFromEscrow($escrow, 'Dispute resolution — Refund');
-                        $order->update(['status' => Order::STATUS_REFUNDED]);
+                        $order->update(['status' => MarketplaceOrder::STATUS_REFUNDED]);
                         break;
                     case \App\Models\Dispute::RESOLUTION_SPLIT:
                         $this->releaseEscrow($escrow, 'Dispute resolution — Split payout');
-                        $order->update(['status' => Order::STATUS_COMPLETED]);
+                        $order->update(['status' => MarketplaceOrder::STATUS_COMPLETED]);
                         break;
                 }
             });

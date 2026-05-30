@@ -2,9 +2,10 @@
 
 namespace App\Services\Marketplace;
 
-use App\Models\Marketplace\Listing;
-use App\Models\Marketplace\Order;
+use App\Models\Marketplace\MarketplaceListing;
+use App\Models\Marketplace\MarketplaceOrder;
 use App\Models\User;
+use App\Models\SystemSetting;
 use App\Models\EscrowTransaction;
 use App\Services\Marketplace\TransactionService;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +23,9 @@ class OrderService
         $this->transactionSvc = app(TransactionService::class);
     }
 
-    public function createOrder(Listing $listing, User $buyer, array $data = []): array
+    public function createOrder(MarketplaceListing $listing, User $buyer, array $data = []): array
     {
-        if ($listing->status !== Listing::STATUS_ACTIVE || $listing->user_id === $buyer->id) {
+        if ($listing->status !== MarketplaceListing::STATUS_ACTIVE || $listing->user_id === $buyer->id) {
             return ['success' => false, 'message' => 'Listing not available'];
         }
 
@@ -43,10 +44,16 @@ class OrderService
 
             $totalBalance = $wallet->withdrawable_balance + $wallet->promo_credit_balance;
             if ($totalBalance < $total) {
-                return ['success' => false, 'message' => 'Insufficient balance', 'required' => $total, 'available' => $totalBalance];
+                return [
+                    'success' => false,
+                    'insufficient_balance' => true,
+                    'message' => 'Insufficient balance. Please top up your wallet to continue.',
+                    'required' => $total,
+                    'available' => $totalBalance
+                ];
             }
 
-            $order = Order::create([
+            $order = MarketplaceOrder::create([
                 'listing_id' => $listing->id,
                 'buyer_id' => $buyer->id,
                 'seller_id' => $seller->id,
@@ -70,7 +77,7 @@ class OrderService
                 throw new \Exception('Escrow hold failed: ' . $escrowResult['message']);
             }
 
-            $listing->update(['status' => Listing::STATUS_SOLD]);
+            $listing->update(['status' => MarketplaceListing::STATUS_SOLD]);
 
             app(\App\Services\NotificationDispatchService::class)->sendToUser(
                 $seller,
@@ -93,13 +100,13 @@ class OrderService
         });
     }
 
-    public function confirmReceipt(Order $order, User $buyer): array
+    public function confirmReceipt(MarketplaceOrder $order, User $buyer): array
     {
         if ($order->buyer_id !== $buyer->id) {
             return ['success' => false, 'message' => 'Unauthorized'];
         }
 
-        if ($order->status !== Order::STATUS_DELIVERED) {
+        if ($order->status !== MarketplaceOrder::STATUS_DELIVERED) {
             return ['success' => false, 'message' => 'Order must be in delivered state'];
         }
 
@@ -134,18 +141,18 @@ class OrderService
         });
     }
 
-    public function cancelOrder(Order $order, User $buyer): array
+    public function cancelOrder(MarketplaceOrder $order, User $buyer): array
     {
         if ($order->buyer_id !== $buyer->id) {
             return ['success' => false, 'message' => 'Unauthorized'];
         }
 
-        if (!in_array($order->status, [Order::STATUS_PENDING, Order::STATUS_PAID])) {
+        if (!in_array($order->status, [MarketplaceOrder::STATUS_PENDING, MarketplaceOrder::STATUS_PAID])) {
             return ['success' => false, 'message' => 'Order can only be cancelled when pending or paid'];
         }
 
         return DB::transaction(function () use ($order) {
-            if ($order->status === Order::STATUS_PAID) {
+            if ($order->status === MarketplaceOrder::STATUS_PAID) {
                 $escrow = $this->marketplaceSvc->getEscrowTransaction($order);
                 if ($escrow && $escrow->isFunded()) {
                     $this->marketplaceSvc->refundFromEscrow(
@@ -156,30 +163,30 @@ class OrderService
             }
 
             $order->update([
-                'status' => Order::STATUS_CANCELLED,
+                'status' => MarketplaceOrder::STATUS_CANCELLED,
                 'cancelled_at' => now(),
             ]);
 
             if ($order->listing) {
-                $order->listing()->update(['status' => Listing::STATUS_ACTIVE]);
+                $order->listing()->update(['status' => MarketplaceListing::STATUS_ACTIVE]);
             }
 
             return ['success' => true, 'message' => 'Order cancelled and funds refunded'];
         });
     }
 
-    public function markAsShipped(Order $order, User $seller): array
+    public function markAsShipped(MarketplaceOrder $order, User $seller): array
     {
         if ($order->seller_id !== $seller->id) {
             return ['success' => false, 'message' => 'Unauthorized'];
         }
 
-        if ($order->status !== Order::STATUS_PAID) {
+        if ($order->status !== MarketplaceOrder::STATUS_PAID) {
             return ['success' => false, 'message' => 'Order must be in paid state'];
         }
 
         $order->update([
-            'status' => Order::STATUS_IN_PROGRESS,
+            'status' => MarketplaceOrder::STATUS_IN_PROGRESS,
             'seller_notes' => request('seller_notes', $order->seller_notes),
         ]);
 
@@ -194,13 +201,13 @@ class OrderService
         return ['success' => true, 'message' => 'Order marked as shipped'];
     }
 
-    public function markAsDelivered(Order $order, User $buyer): array
+    public function markAsDelivered(MarketplaceOrder $order, User $buyer): array
     {
         if ($order->buyer_id !== $buyer->id) {
             return ['success' => false, 'message' => 'Unauthorized'];
         }
 
-        if ($order->status !== Order::STATUS_IN_PROGRESS) {
+        if ($order->status !== MarketplaceOrder::STATUS_IN_PROGRESS) {
             return ['success' => false, 'message' => 'Order must be in progress state'];
         }
 
@@ -221,7 +228,7 @@ class OrderService
     {
         $autoReleaseDays = (int) SystemSetting::get('marketplace_auto_release_days', 7);
 
-        $orders = Order::delivered()
+        $orders = MarketplaceOrder::delivered()
             ->where('delivered_at', '<', now()->subDays($autoReleaseDays))
             ->whereDoesntHave('disputes', function ($q) {
                 $q->whereIn('status', ['open', 'under_review']);

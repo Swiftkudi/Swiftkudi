@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
 use App\Models\Task;
+use App\Models\University;
 use App\Models\Wallet;
 use App\Services\AccountTypeService;
 use App\Services\OnboardingSettingsService;
@@ -43,29 +44,23 @@ class OnboardingController extends Controller
             return redirect()->route('dashboard');
         }
 
-        // If user has an account type but onboarding is not completed, 
-        // mark onboarding as completed and redirect to dashboard
-        if ($user->account_type && !$user->onboarding_completed) {
-            $user->onboarding_completed = true;
-            $user->save();
-            
-            return redirect()
-                ->route('dashboard')
-                ->with('success', 'Welcome back! Your account is now active.');
+        if ($user->account_type && $user->onboarding_completed) {
+            return redirect()->route('dashboard');
         }
 
-        // Check if user already has an account type (without sending notification)
+        if ($user->account_type && !$user->onboarding_completed) {
+            $redirectInfo = app(\App\Services\AccessGateService::class)->getOnboardingRedirect($user);
+            if (!empty($redirectInfo['route'])) {
+                return redirect()->route($redirectInfo['route'])
+                    ->with('info', $redirectInfo['message'] ?? 'Please complete your onboarding.');
+            }
+        }
+
         $accountCheck = $this->accountTypeService->checkAndRedirect($user, false);
-        
-        if ($accountCheck['has_account_type']) {
-            // User already has an account type - redirect to dashboard with info
+        if ($accountCheck['has_account_type'] && $user->onboarding_completed) {
             return redirect()
                 ->route('dashboard')
                 ->with('info', $accountCheck['message']);
-        }
-
-        if ($user->onboarding_completed) {
-            return redirect()->route('dashboard');
         }
 
         return view('onboarding.select-type');
@@ -265,37 +260,11 @@ class OnboardingController extends Controller
                 return redirect()->route('wallet.activate')->with('success', 'Account type set successfully. Please activate your wallet to start using your account.');
 
             case 'freelancer':
-                $message = 'Freelancer onboarding started.';
-                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('freelancer');
-                if ($activationRequired) {
-                    $message .= ' Please activate your wallet to continue.';
-                }
-                if ($requirements['profile_required'] || $requirements['service_required']) {
-                    $message .= ' Please complete your profile and create your first service.';
-                }
-                return redirect()->route('onboarding.freelancer')->with('success', $message);
-
             case 'digital_seller':
-                $message = 'Digital seller onboarding started.';
-                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('digital_seller');
-                if ($activationRequired) {
-                    $message .= ' Please activate your wallet to continue.';
-                }
-                if ($requirements['product_required']) {
-                    $message .= ' Upload your first product to unlock marketplace browsing.';
-                }
-                return redirect()->route('onboarding.digital-product')->with('success', $message);
-
             case 'growth_seller':
-                $message = 'Growth seller onboarding started.';
-                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('growth_seller');
-                if ($activationRequired) {
-                    $message .= ' Please activate your wallet to continue.';
-                }
-                if ($requirements['listing_required']) {
-                    $message .= ' Create your first listing to unlock marketplace browsing.';
-                }
-                return redirect()->route('onboarding.growth')->with('success', $message);
+                $message = 'Seller onboarding started.';
+                $message .= ' Complete your student seller profile to start listing on the campus marketplace.';
+                return redirect()->route('marketplace.onboarding.seller')->with('success', $message);
 
             case 'buyer':
                 $message = 'Buyer onboarding started.';
@@ -304,10 +273,10 @@ class OnboardingController extends Controller
                     $message .= ' Please activate your wallet to continue.';
                 }
                 if ($requirements['category_selection_required'] && !$requirements['default_to_all']) {
-                    return redirect()->route('onboarding.buyer.categories')
-                        ->with('success', 'Please select your preferred categories to personalize your marketplace experience.');
+                    return redirect()->route('marketplace.onboarding.buyer')
+                        ->with('success', 'Please select your preferred categories and complete your student marketplace profile.');
                 }
-                return redirect()->route('dashboard')->with('success', 'Buyer account setup complete.');
+                return redirect()->route('marketplace.onboarding.buyer')->with('success', 'Please complete your student marketplace profile.');
 
             default:
                 return redirect()->route('dashboard')->with('success', 'Onboarding complete.');
@@ -1140,8 +1109,8 @@ public function completeReferralTask(Request $request)
     public function buyerOnboarding()
     {
         $user = Auth::user();
-        // For buyers, show category selection page instead of marking complete
-        return redirect()->route('onboarding.buyer.categories');
+        // For buyers, route student marketplace onboarding to the marketplace subdomain
+        return redirect()->route('marketplace.onboarding.buyer');
     }
 
     public function digitalProductOnboarding()
@@ -1489,6 +1458,12 @@ public function completeReferralTask(Request $request)
 
         $selectedCategories = $user->getBuyerCategories();
         $categoryLimits = OnboardingSettingsService::getBuyerCategoryLimits();
+        $universities = University::active()->orderBy('name')->get();
+        $contactPreferences = array_merge([
+            'email' => true,
+            'chat' => true,
+            'sms' => false,
+        ], $user->marketplace_contact_preferences ?? []);
 
         return view('onboarding.buyer', compact(
             'professionalCategories',
@@ -1496,12 +1471,14 @@ public function completeReferralTask(Request $request)
             'growthCategories',
             'jobCategories',
             'selectedCategories',
-            'categoryLimits'
+            'categoryLimits',
+            'universities',
+            'contactPreferences'
         ));
     }
 
     /**
-     * Store buyer's selected categories
+     * Store buyer's selected categories and profile data
      */
     public function storeBuyerCategories(Request $request)
     {
@@ -1525,33 +1502,69 @@ public function completeReferralTask(Request $request)
 
         $validIds = array_merge($professionalIds, $digitalIds, $growthIds, $jobIds);
 
-        $request->validate([
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'university_id' => 'nullable|integer|exists:universities,id',
+            'campus' => 'nullable|string|max:255',
+            'faculty' => 'nullable|string|max:255',
+            'year_of_study' => 'nullable|string|max:100',
+            'marketplace_bio' => 'nullable|string|max:2000',
+            'marketplace_contact_preferences' => 'nullable|array',
+            'marketplace_contact_preferences.email' => 'nullable|boolean',
+            'marketplace_contact_preferences.chat' => 'nullable|boolean',
+            'marketplace_contact_preferences.sms' => 'nullable|boolean',
+            'marketplace_avatar' => 'nullable|image|max:4096',
             'categories' => "required|array|min:{$minCategories}|max:{$maxCategories}",
             'categories.*' => 'integer',
         ], [
+            'name.required' => 'Please enter your full name.',
             'categories.required' => 'Please select at least one category.',
             'categories.min' => "Please select at least {$minCategories} category(ies).",
             'categories.max' => "You can select a maximum of {$maxCategories} categories.",
         ]);
 
         // Validate that all selected IDs exist in any category table
-        foreach ($request->categories as $categoryId) {
+        foreach ($validated['categories'] as $categoryId) {
             if (!in_array($categoryId, $validIds)) {
                 return back()->withErrors(['categories' => 'Invalid category selected.']);
             }
         }
 
-        // Save selected categories
-        $user->setBuyerCategories($request->categories);
+        $user = Auth::user();
 
-        // Mark onboarding as completed
+        if ($request->hasFile('marketplace_avatar')) {
+            $validated['marketplace_avatar'] = $request->file('marketplace_avatar')->store('marketplace/avatars', 'public');
+        }
+
+        $profileData = [
+            'name' => $validated['name'],
+            'phone' => $validated['phone'] ?? $user->phone,
+            'university_id' => $validated['university_id'] ?? $user->university_id,
+            'campus' => $validated['campus'] ?? $user->campus,
+            'faculty' => $validated['faculty'] ?? $user->faculty,
+            'year_of_study' => $validated['year_of_study'] ?? $user->year_of_study,
+            'marketplace_bio' => $validated['marketplace_bio'] ?? $user->marketplace_bio,
+            'marketplace_contact_preferences' => array_filter($validated['marketplace_contact_preferences'] ?? [], fn($value) => $value !== null),
+        ];
+
+        if (isset($validated['marketplace_avatar'])) {
+            $profileData['marketplace_avatar'] = $validated['marketplace_avatar'];
+        }
+
+        $user->update($profileData);
+
+        // Save selected categories and buyer onboarding completion
+        $user->setBuyerCategories($validated['categories']);
+
+        // Mark onboarding as completed and track the completion timestamp
         $user->update([
             'onboarding_completed' => true,
             'onboarding_completed_at' => now(),
         ]);
 
         return redirect()->route('dashboard')
-            ->with('success', 'Category preferences saved! You can now browse your personalized marketplace.');
+            ->with('success', 'Buyer profile and preferences saved! Your marketplace experience is now personalized.');
     }
 
 

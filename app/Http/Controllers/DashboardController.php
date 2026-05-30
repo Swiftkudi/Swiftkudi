@@ -23,6 +23,15 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         /** @var \App\Models\User $user */
+
+        if ($user->account_type === 'buyer' && $user->onboarding_completed) {
+            return redirect()->route('marketplace.listings.index');
+        }
+
+        if (in_array($user->account_type, ['freelancer', 'digital_seller', 'growth_seller'], true) && $user->onboarding_completed) {
+            return redirect()->route('marketplace.seller.dashboard');
+        }
+
         $wallet = $user->wallet;
 
         // Check activation status

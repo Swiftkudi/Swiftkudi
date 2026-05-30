@@ -2,17 +2,18 @@
 
 namespace App\Services\Marketplace;
 
-use App\Models\Marketplace\Review;
-use App\Models\Marketplace\Order;
+use App\Models\Marketplace\MarketplaceReview;
+use App\Models\Marketplace\MarketplaceOrder;
 use App\Models\User;
+use App\Models\SystemSetting;
 use Illuminate\Support\Facades\DB;
 
 class ReviewService
 {
-    public function submitReview(Order $order, User $reviewer, array $data): Review
+    public function submitReview(MarketplaceOrder $order, User $reviewer, array $data): MarketplaceReview
     {
         return DB::transaction(function () use ($order, $reviewer, $data) {
-            $review = Review::create([
+            $review = MarketplaceReview::create([
                 'order_id' => $order->id,
                 'reviewer_id' => $reviewer->id,
                 'reviewed_id' => $order->seller_id,
@@ -38,7 +39,7 @@ class ReviewService
         });
     }
 
-    public function moderateReview(Review $review, bool $approve): void
+    public function moderateReview(MarketplaceReview $review, bool $approve): void
     {
         $review->update(['is_approved' => $approve]);
         if ($approve) {

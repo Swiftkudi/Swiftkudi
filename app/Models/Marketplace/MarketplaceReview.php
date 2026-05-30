@@ -5,7 +5,7 @@ namespace App\Models\Marketplace;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Review extends Model
+class MarketplaceReview extends Model
 {
     use HasFactory;
 
@@ -22,7 +22,7 @@ class Review extends Model
 
     public function order()
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(MarketplaceOrder::class);
     }
 
     public function reviewer()

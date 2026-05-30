@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Marketplace;
 use App\Http\Controllers\Controller;
 use App\Services\Marketplace\ListingService;
 use App\Services\Marketplace\FavouriteService;
-use App\Models\Marketplace\Listing;
+use App\Models\MarketplaceCategory;
+use App\Models\Marketplace\MarketplaceListing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -25,6 +26,31 @@ class ListingController extends Controller
         $filters = $request->only(['q', 'category', 'condition', 'min_price', 'max_price', 'university_id', 'shipping', 'sort', 'per_page']);
         $listings = $this->listingService->search($filters);
 
+        $categories = MarketplaceCategory::where('type', 'marketplace')
+            ->whereNull('parent_id')
+            ->with('children')
+            ->orderBy('order')
+            ->get();
+
+        $featuredListings = MarketplaceListing::active()
+            ->where('is_featured', true)
+            ->with(['seller', 'category'])
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        $campusMatches = null;
+        if (Auth::check() && Auth::user()->university_id) {
+            $campusMatches = MarketplaceListing::active()
+                ->with(['seller', 'category'])
+                ->whereHas('seller', function ($query) {
+                    $query->where('university_id', Auth::user()->university_id);
+                })
+                ->latest()
+                ->limit(8)
+                ->get();
+        }
+
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -38,7 +64,7 @@ class ListingController extends Controller
             ]);
         }
 
-        return view('marketplace.listings.index', compact('listings'));
+        return view('marketplace.listings.index', compact('listings', 'categories', 'featuredListings', 'campusMatches'));
     }
 
     public function search(Request $request)
@@ -52,22 +78,27 @@ class ListingController extends Controller
             ->where('type', 'marketplace')
             ->firstOrFail();
 
-        $listings = Listing::active()
+        $categories = MarketplaceCategory::where('type', 'marketplace')
+            ->whereNull('parent_id')
+            ->orderBy('order')
+            ->get();
+
+        $listings = MarketplaceListing::active()
             ->where('category_id', $category->id)
             ->latest()
             ->paginate(20);
 
-        return view('marketplace.listings.index', compact('listings', 'category'));
+        return view('marketplace.listings.index', compact('listings', 'category', 'categories'));
     }
 
-    public function show($slug)
+    public function show($id)
     {
-        $listing = Listing::with(['seller', 'category', 'orders'])
-            ->where('slug', $slug)
+        $listing = MarketplaceListing::with(['seller', 'category', 'orders'])
+            ->where('id', $id)
             ->withCount('favourites')
             ->firstOrFail();
 
-        if ($listing->status !== Listing::STATUS_ACTIVE) {
+        if ($listing->status !== MarketplaceListing::STATUS_ACTIVE) {
             abort(404);
         }
 
@@ -78,7 +109,7 @@ class ListingController extends Controller
             $isFavourited = $this->favouriteService->isFavourited($listing, Auth::user());
         }
 
-        $similar = Listing::active()
+        $similar = MarketplaceListing::active()
             ->where('category_id', $listing->category_id)
             ->where('id', '!=', $listing->id)
             ->limit(6)
@@ -117,8 +148,7 @@ class ListingController extends Controller
             'available_for_shipping' => 'nullable|boolean',
             'shipping_cost' => 'nullable|numeric|min:0',
             'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:4096',
-            'tags' => 'nullable|array|max:20',
-            'tags.*' => 'string|max:50',
+            'tags_text' => 'nullable|string|max:1000',
         ]);
 
         $images = [];
@@ -130,25 +160,26 @@ class ListingController extends Controller
             $validated['thumbnail'] = $images[0] ?? null;
         }
 
-        if (!empty($validated['tags'])) {
-            $validated['tags'] = array_values(array_filter(array_map('trim', $validated['tags'])));
+        if (array_key_exists('tags_text', $validated)) {
+            $validated['tags'] = array_values(array_filter(array_map('trim', explode(',', $validated['tags_text']))));
+        }
+
+        if ($request->input('publish')) {
+            $validated['status'] = MarketplaceListing::STATUS_PENDING_REVIEW;
+            $validated['is_active'] = false;
         }
 
         $listing = $this->listingService->createListing(Auth::user(), $validated);
 
-        if ($request->input('publish')) {
-            $listing->update(['status' => 'pending_review']);
-        }
-
-        return redirect()->route('marketplace.listings.show', $listing->slug)
+        return redirect()->route('marketplace.listings.show', $listing->id)
             ->with('success', 'Listing created successfully!');
     }
 
     public function edit($id)
     {
-        $listing = Listing::where('user_id', Auth::id())->findOrFail($id);
+        $listing = MarketplaceListing::where('user_id', Auth::id())->findOrFail($id);
 
-        if (in_array($listing->status, [Listing::STATUS_SOLD, Listing::STATUS_REMOVED])) {
+        if (in_array($listing->status, [MarketplaceListing::STATUS_SOLD, MarketplaceListing::STATUS_REMOVED])) {
             abort(403);
         }
 
@@ -163,8 +194,8 @@ class ListingController extends Controller
 
     public function update(Request $request, $id)
     {
-        $listing = Listing::where('user_id', Auth::id())->findOrFail($id);
-        if (in_array($listing->status, [Listing::STATUS_SOLD, Listing::STATUS_REMOVED])) {
+        $listing = MarketplaceListing::where('user_id', Auth::id())->findOrFail($id);
+        if (in_array($listing->status, [MarketplaceListing::STATUS_SOLD, MarketplaceListing::STATUS_REMOVED])) {
             abort(403);
         }
 
@@ -178,21 +209,29 @@ class ListingController extends Controller
             'location' => 'nullable|string|max:255',
             'available_for_shipping' => 'nullable|boolean',
             'shipping_cost' => 'nullable|numeric|min:0',
-            'tags' => 'nullable|array|max:20',
-            'tags.*' => 'string|max:50',
+            'tags_text' => 'nullable|string|max:1000',
         ]);
+
+        if (array_key_exists('tags_text', $validated)) {
+            $validated['tags'] = array_values(array_filter(array_map('trim', explode(',', $validated['tags_text']))));
+        }
+
+        if ($request->input('publish')) {
+            $validated['status'] = MarketplaceListing::STATUS_PENDING_REVIEW;
+            $validated['is_active'] = false;
+        }
 
         $this->listingService->updateListing($listing, $validated);
 
-        return redirect()->route('marketplace.listings.show', $listing->slug)
+        return redirect()->route('marketplace.listings.show', $listing->id)
             ->with('success', 'Listing updated successfully!');
     }
 
     public function destroy($id)
     {
-        $listing = Listing::where('user_id', Auth::id())->findOrFail($id);
+        $listing = MarketplaceListing::where('user_id', Auth::id())->findOrFail($id);
 
-        if ($listing->status === Listing::STATUS_SOLD) {
+        if ($listing->status === MarketplaceListing::STATUS_SOLD) {
             abort(403, 'Cannot delete a sold listing');
         }
 
@@ -202,7 +241,7 @@ class ListingController extends Controller
             ->with('success', 'Listing deleted');
     }
 
-    public function toggleFavourite(Listing $listing)
+    public function toggleFavourite(MarketplaceListing $listing)
     {
         $result = $this->favouriteService->toggle($listing, Auth::user());
 

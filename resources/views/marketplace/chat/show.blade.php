@@ -65,7 +65,7 @@
             </div>
         </div>
         @if($listing = $conversation->listing)
-        <a href="{{ route('marketplace.listings.show', $listing->slug) }}" class="text-sm text-blue-400 hover:underline">
+        <a href="{{ route('marketplace.listings.show', $listing->id) }}" class="text-sm text-blue-400 hover:underline">
             <i class="fas fa-box mr-1"></i>View Listing
         </a>
         @endif

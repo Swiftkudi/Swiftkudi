@@ -20,7 +20,7 @@
             <span class="text-gray-900 dark:text-gray-100 font-medium truncate max-w-[200px]">{{ $service->title }}</span>
         </nav>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_360px] gap-8">
             <!-- Main Content -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Hero Section -->
@@ -31,7 +31,7 @@
                     
                     <div class="relative z-10">
                         <!-- Status Badge -->
-                        <div class="flex items-center gap-3 mb-4">
+                        <div class="flex flex-wrap items-center gap-3 mb-4">
                             @if($service->category)
                                 <span class="px-3 py-1.5 bg-white/20 backdrop-blur-sm text-white text-sm font-medium rounded-full">
                                     {{ $service->category->name }}
@@ -54,15 +54,41 @@
                         <h1 class="text-3xl md:text-4xl font-bold text-white mb-4">{{ $service->title }}</h1>
                         
                         <!-- Quick Stats -->
-                        <div class="flex flex-wrap gap-6 text-white/90">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-clock"></i>
-                                <span>{{ $service->delivery_days }} days delivery</span>
+                        <div class="grid gap-3 sm:grid-cols-3 text-white/90">
+                            <div class="rounded-3xl bg-white/10 p-4">
+                                <p class="text-sm uppercase tracking-[0.25em] text-white/70">Delivery</p>
+                                <p class="mt-2 font-semibold">{{ $service->delivery_days }} days</p>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-redo"></i>
-                                <span>{{ $service->revisions_included }} revisions</span>
+                            <div class="rounded-3xl bg-white/10 p-4">
+                                <p class="text-sm uppercase tracking-[0.25em] text-white/70">Revisions</p>
+                                <p class="mt-2 font-semibold">{{ $service->revisions_included }}</p>
                             </div>
+                            <div class="rounded-3xl bg-white/10 p-4">
+                                <p class="text-sm uppercase tracking-[0.25em] text-white/70">Rating</p>
+                                <p class="mt-2 font-semibold">{{ number_format($service->seller->seller_rating ?? 0, 1) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Why Choose This Service -->
+                <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                        <i class="fas fa-bolt text-indigo-500"></i>
+                        Why Choose This Service?
+                    </h2>
+                    <div class="grid gap-3 sm:grid-cols-3">
+                        <div class="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20">
+                            <p class="text-sm text-indigo-700 dark:text-indigo-200 font-semibold mb-2">Reliable delivery</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Delivered in {{ $service->delivery_days }} days so your project stays on schedule.</p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20">
+                            <p class="text-sm text-purple-700 dark:text-purple-200 font-semibold mb-2">Clear revisions</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Includes {{ $service->revisions_included }} revisions to keep the result polished.</p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-green-50 dark:bg-emerald-900/20">
+                            <p class="text-sm text-emerald-700 dark:text-emerald-200 font-semibold mb-2">Delivery guarantee</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Your payment is protected and only released when you're satisfied.</p>
                         </div>
                     </div>
                 </div>
@@ -132,14 +158,16 @@
                         <div class="flex-1">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $service->seller->name ?? 'Unknown' }}</h3>
                             <p class="text-sm text-gray-500 dark:text-gray-400">Service Provider</p>
+                            <div class="mt-3 flex flex-wrap gap-3 text-sm text-gray-500 dark:text-gray-400">
+                                <span class="inline-flex items-center gap-2"><i class="fas fa-star text-yellow-400"></i> {{ number_format($service->seller->seller_rating ?? 0, 1) }}</span>
+                                <span>{{ $service->seller->seller_rating_count ?? 0 }} reviews</span>
+                                @if($service->seller->marketplace_seller_verified)
+                                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-200">Verified seller</span>
+                                @endif
+                            </div>
                         </div>
-                        <a href="{{ route('professional-services.provider-profile', $service->user_id) }}" 
-                           class="px-4 py-2 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl hover:bg-indigo-200 dark:hover:bg-indigo-500/30 transition-colors">
-                            View Profile
-                        </a>
                     </div>
                 </div>
-            </div>
 
             <!-- Sidebar -->
             <div class="lg:col-span-1">
@@ -177,7 +205,7 @@
                             @else
                                 <div class="w-full py-4 bg-gray-200 dark:bg-dark-700 text-gray-500 dark:text-gray-400 text-center rounded-xl font-medium">
                                     <i class="fas fa-lock mr-2"></i>
-                                    Currently Unavailable
+                                    Currently unavailable
                                 </div>
                             @endif
 
@@ -185,24 +213,24 @@
                             @auth
                                 <button onclick="showContactModal()" class="mt-3 w-full py-3 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                                     <i class="fas fa-comment-dots"></i>
-                                    Contact Seller
+                                    Contact seller
                                 </button>
 
                                 @if(auth()->id() !== $service->user_id)
                                     <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $service->id, 'participantId' => $service->user_id]) }}" class="mt-3 w-full py-3 border-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
                                         <i class="fas fa-comments"></i>
-                                        Open Chat
+                                        Open chat
                                     </a>
                                 @else
                                     <a href="{{ route('chat.index') }}" class="mt-3 w-full py-3 border-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
                                         <i class="fas fa-comments"></i>
-                                        Open Messages
+                                        Open messages
                                     </a>
                                 @endif
                             @else
                                 <a href="{{ route('login') }}" class="mt-3 w-full py-3 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                                     <i class="fas fa-sign-in-alt"></i>
-                                    Login to Contact
+                                    Login to contact
                                 </a>
                             @endauth
                         </div>

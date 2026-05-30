@@ -3,8 +3,9 @@
 namespace App\Services\Marketplace;
 
 use App\Models\FinancialTransaction;
-use App\Models\Marketplace\Order;
-use App\Models\Marketplace\Review;
+use App\Models\Marketplace\MarketplaceOrder;
+use App\Models\Marketplace\MarketplaceReview;
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -29,7 +30,7 @@ class TransactionService
         ];
     }
 
-    public function recordCommission(Order $order): void
+    public function recordCommission(MarketplaceOrder $order): void
     {
         $seller = $order->seller;
         $isPremium = $seller->marketplaceSubscriptions()
@@ -79,13 +80,13 @@ class TransactionService
 
     public function recalculateSellerRating(User $seller): void
     {
-        $avg = Review::where('reviewed_id', $seller->id)
+        $avg = MarketplaceReview::where('reviewed_id', $seller->id)
             ->where('is_approved', true)
             ->avg('rating');
 
         $seller->update([
             'seller_rating' => round($avg ?? 0, 2),
-            'seller_rating_count' => Review::where('reviewed_id', $seller->id)
+            'seller_rating_count' => MarketplaceReview::where('reviewed_id', $seller->id)
                 ->where('is_approved', true)
                 ->count(),
         ]);

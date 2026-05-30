@@ -60,6 +60,11 @@ class DatabaseSeeder extends Seeder
         // Always seed task categories
         $this->seedTaskCategories();
         
+        // Always seed universities
+        $this->call([
+            UniversitySeeder::class,
+        ]);
+        
         // Always seed marketplace categories
         $this->call([
             MarketplaceCategorySeeder::class,

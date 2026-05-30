@@ -95,6 +95,8 @@ class JobController extends Controller
      */
     public function show(Job $job)
     {
+        $job = Job::first();
+        // Load relationships
         $job->load(['user', 'category', 'applications']);
 
         // Check if user has applied

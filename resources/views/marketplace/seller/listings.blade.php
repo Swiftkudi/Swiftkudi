@@ -42,7 +42,7 @@
                     <a href="{{ route('marketplace.listings.edit', $listing->id) }}" class="btn btn-secondary btn-sm">
                         <i class="fas fa-edit mr-1"></i>Edit
                     </a>
-                    <a href="{{ route('marketplace.listings.show', $listing->slug) }}" class="btn btn-secondary btn-sm">
+                    <a href="{{ route('marketplace.listings.show', $listing->id) }}" class="btn btn-secondary btn-sm">
                         <i class="fas fa-eye mr-1"></i>View
                     </a>
                 </div>

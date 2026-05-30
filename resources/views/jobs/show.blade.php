@@ -5,7 +5,7 @@
 @section('content')
 <div class="py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_360px] gap-8">
             <!-- Main Content -->
             <div class="lg:col-span-2">
                 <!-- Job Header -->
@@ -49,6 +49,21 @@
                                 <i class="fas fa-calendar mr-1"></i>{{ $job->duration }}
                             </span>
                         @endif
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-3 mb-6">
+                        <div class="rounded-3xl bg-white dark:bg-dark-900 border border-gray-100 dark:border-dark-700 p-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget</p>
+                            <p class="mt-3 text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $job->budget_range }}</p>
+                        </div>
+                        <div class="rounded-3xl bg-white dark:bg-dark-900 border border-gray-100 dark:border-dark-700 p-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Expires</p>
+                            <p class="mt-3 text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $job->expires_at->diffForHumans() }}</p>
+                        </div>
+                        <div class="rounded-3xl bg-white dark:bg-dark-900 border border-gray-100 dark:border-dark-700 p-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Applicants</p>
+                            <p class="mt-3 text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $job->applications_count ?? 0 }}</p>
+                        </div>
                     </div>
 
                     <div class="text-2xl font-bold text-cyan-600 dark:text-cyan-400 mb-6">
@@ -130,22 +145,42 @@
             </div>
 
             <!-- Sidebar -->
-            <div class="space-y-6">
+            <div class="space-y-6 lg:sticky lg:top-24">
                 <!-- Employer Card -->
                 <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg border border-gray-100 dark:border-dark-700 p-6">
                     <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-4">About the Employer</h3>
-                    <div class="flex items-center gap-4 mb-4">
+                    <div class="flex items-start gap-4 mb-4">
                         <div class="w-12 h-12 rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
                             <span class="text-cyan-600 dark:text-cyan-400 font-bold text-lg">{{ substr($job->user->name, 0, 1) }}</span>
                         </div>
-                        <div>
+                        <div class="flex-1">
                             <div class="font-medium text-gray-900 dark:text-gray-100">{{ $job->user->name }}</div>
                             <div class="text-sm text-gray-500 dark:text-gray-400">Member since {{ $job->user->created_at->format('M Y') }}</div>
+                            <div class="mt-3 flex flex-wrap gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                @if($job->user->seller_rating)
+                                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                        <i class="fas fa-star text-yellow-400"></i> {{ number_format($job->user->seller_rating, 1) }}
+                                    </span>
+                                @endif
+                                @if($job->user->marketplace_seller_verified)
+                                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-200">
+                                        <i class="fas fa-check-circle"></i> Verified employer
+                                    </span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                     <a href="#" class="block w-full px-4 py-2.5 bg-gray-100 dark:bg-dark-800 hover:bg-gray-200 dark:hover:bg-dark-700 text-center text-gray-700 dark:text-gray-300 rounded-xl transition-colors">
                         <i class="fas fa-user mr-2"></i>View Profile
                     </a>
+                </div>
+                <div class="bg-white dark:bg-dark-900 rounded-2xl border border-gray-100 dark:border-dark-700 shadow-lg p-6">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-4">Why hire here?</h3>
+                    <div class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                        <p class="flex items-center gap-2"><i class="fas fa-lock text-cyan-500"></i>Secure agreements and milestones</p>
+                        <p class="flex items-center gap-2"><i class="fas fa-comments text-cyan-500"></i>Fast communication with verified clients</p>
+                        <p class="flex items-center gap-2"><i class="fas fa-trophy text-cyan-500"></i>Projects matched to top freelancers</p>
+                    </div>
                 </div>
 
                 <!-- Job Summary -->

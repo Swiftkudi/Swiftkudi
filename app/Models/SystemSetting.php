@@ -64,7 +64,6 @@ const GROUP_BOOST = 'boost';
         self::GROUP_VERIFICATION => 'Verification & Trust',
         self::GROUP_BOOST => 'Boost & Monetization',
         self::GROUP_REVIEW => 'Reviews & Ratings',
-         self::GROUP_MODULES => 'Modules',
     ];
 
     // Encryption for sensitive values

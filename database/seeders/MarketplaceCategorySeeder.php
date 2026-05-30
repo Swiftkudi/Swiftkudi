@@ -215,6 +215,84 @@ class MarketplaceCategorySeeder extends Seeder
             ]);
         }
 
+        // =====================
+        // STUDENT MARKETPLACE CATEGORIES (University Students Only)
+        // =====================
+        $studentCategories = [
+            'Academic Tutoring' => ['Course-Specific Tutoring', 'Exam Preparation', 'Difficult Subjects Help', 'One-on-One Sessions', 'Group Study Sessions'],
+            'Assignment & Project Help' => ['Essay Writing', 'Research Papers', 'Lab Reports', 'Programming Assignments', 'Project Guidance'],
+            'Thesis & Dissertation' => ['Thesis Writing', 'Dissertation Help', 'Research Methodology', 'Data Analysis', 'Literature Reviews'],
+            'Note-Taking & Study Guides' => ['Lecture Notes', 'Course Summaries', 'Study Guides', 'Exam Notes', 'Cheat Sheets'],
+            'Exam Prep & Past Papers' => ['Past Exam Papers', 'Practice Questions', 'Exam Strategy', 'Cramming Guides', 'Mock Tests'],
+            'Professional Development' => ['CV Writing', 'Interview Prep', 'Internship Prep', 'Portfolio Building', 'LinkedIn Profile'],
+            'Course-Specific Help' => ['Mathematics & Statistics', 'Programming & IT', 'Engineering Subjects', 'Science Courses', 'Humanities'],
+            'Academic Writing Services' => ['Proofreading', 'Editing', 'Citation Help (APA/MLA)', 'Plagiarism Check', 'Academic Formatting'],
+            'Research Assistance' => ['Literature Search', 'Journal Articles', 'Research Design', 'Statistical Analysis', 'Thesis Research'],
+        ];
+
+        $studentOrder = 0;
+        foreach ($studentCategories as $parent => $subs) {
+            $parentSlug = 'student-' . \Illuminate\Support\Str::slug($parent);
+            $parentCat = MarketplaceCategory::create([
+                'name' => $parent,
+                'slug' => $parentSlug,
+                'description' => $parent . ' for university students',
+                'type' => 'student',
+                'is_active' => true,
+                'order' => $studentOrder++,
+            ]);
+            foreach ($subs as $sub) {
+                MarketplaceCategory::create([
+                    'name' => $sub,
+                    'slug' => $parentSlug . '-' . \Illuminate\Support\Str::slug($sub),
+                    'description' => $sub . ' service for university students',
+                    'type' => 'student',
+                    'parent_id' => $parentCat->id,
+                    'is_active' => true,
+                    'order' => $studentOrder++,
+                ]);
+            }
+        }
+
+        // =====================
+        // STUDENT GOODS & SERVICES (Buy & Sell)
+        // =====================
+        $goodsCategories = [
+            'Accommodation' => ['Hostel Rooms', 'Off-Campus Apartments', 'Room Sharing', 'Lodging Services', 'Co-Living Space'],
+            'Food & Catering' => ['Meal Plans', 'Catering Services', 'Food Delivery', 'Snacks & Drinks', 'Homemade Meals'],
+            'Clothing & Fashion' => ['New Clothes', 'Pre-Owned Clothing', 'Designer Items', 'School Uniforms', 'Accessories'],
+            'Books & Course Materials' => ['Textbooks', 'Course Books', 'Used Books', 'E-Books', 'Reference Materials'],
+            'Electronics & Tech' => ['Laptops', 'Phones', 'Tablets', 'Chargers & Cables', 'Tech Accessories'],
+            'Furniture & Dorm Items' => ['Beds & Mattress', 'Wardrobes', 'Desks & Chairs', 'Bedding & Pillows', 'Storage Solutions'],
+            'Transport & Logistics' => ['Ride Sharing', 'Courier Services', 'Moving Services', 'Bike Rentals', 'Transport Cards'],
+            'Health & Beauty' => ['Medicines & Supplements', 'Skincare Products', 'Hair Care', 'Personal Hygiene', 'Fitness Services'],
+            'Miscellaneous Goods' => ['School Supplies', 'Sports Equipment', 'Gaming Items', 'Musical Instruments', 'Other Items'],
+        ];
+
+        $goodsOrder = 0;
+        foreach ($goodsCategories as $parent => $subs) {
+            $parentSlug = 'student-goods-' . \Illuminate\Support\Str::slug($parent);
+            $parentCat = MarketplaceCategory::create([
+                'name' => $parent,
+                'slug' => $parentSlug,
+                'description' => $parent . ' for university students',
+                'type' => 'student_goods',
+                'is_active' => true,
+                'order' => $goodsOrder++,
+            ]);
+            foreach ($subs as $sub) {
+                MarketplaceCategory::create([
+                    'name' => $sub,
+                    'slug' => $parentSlug . '-' . \Illuminate\Support\Str::slug($sub),
+                    'description' => $sub . ' for students',
+                    'type' => 'student_goods',
+                    'parent_id' => $parentCat->id,
+                    'is_active' => true,
+                    'order' => $goodsOrder++,
+                ]);
+            }
+        }
+
         // Summary
         $counts = [
             'task' => MarketplaceCategory::where('type', 'task')->count(),
@@ -222,9 +300,11 @@ class MarketplaceCategorySeeder extends Seeder
             'growth' => MarketplaceCategory::where('type', 'growth')->count(),
             'digital_product' => MarketplaceCategory::where('type', 'digital_product')->count(),
             'job' => MarketplaceCategory::where('type', 'job')->count(),
+            'student' => MarketplaceCategory::where('type', 'student')->count(),
+            'student_goods' => MarketplaceCategory::where('type', 'student_goods')->count(),
         ];
 
         echo "Categories seeded successfully!\n";
-        echo "Task: {$counts['task']}, Professional: {$counts['professional']}, Growth: {$counts['growth']}, Digital Product: {$counts['digital_product']}, Job: {$counts['job']}\n";
+        echo "Task: {$counts['task']}, Professional: {$counts['professional']}, Growth: {$counts['growth']}, Digital Product: {$counts['digital_product']}, Job: {$counts['job']}, Student Services: {$counts['student']}, Student Goods: {$counts['student_goods']}\n";
     }
 }

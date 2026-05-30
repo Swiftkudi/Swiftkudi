@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Marketplace;
 
 use App\Http\Controllers\Controller;
 use App\Services\Marketplace\ReviewService;
-use App\Models\Marketplace\Order;
+use App\Models\Marketplace\MarketplaceOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,13 +17,13 @@ class ReviewController extends Controller
         $this->reviewService = app(ReviewService::class);
     }
 
-    public function create(Order $order)
+    public function create(MarketplaceOrder $order)
     {
         if ($order->buyer_id !== Auth::id()) {
             abort(403, 'Unauthorized');
         }
 
-        if ($order->status !== Order::STATUS_DELIVERED) {
+        if ($order->status !== MarketplaceOrder::STATUS_DELIVERED) {
             abort(403, 'Order must be delivered before leaving a review');
         }
 
@@ -40,7 +40,7 @@ class ReviewController extends Controller
         return view('marketplace.reviews.create', compact('order'));
     }
 
-    public function store(Order $order, Request $request)
+    public function store(MarketplaceOrder $order, Request $request)
     {
         if ($order->buyer_id !== Auth::id()) {
             abort(403, 'Unauthorized');
@@ -69,7 +69,7 @@ class ReviewController extends Controller
 
     public function index()
     {
-        $reviews = \App\Models\Marketplace\Review::query()
+        $reviews = \App\Models\Marketplace\MarketplaceReview::query()
             ->with(['order', 'reviewer', 'reviewed'])
             ->where('reviewer_id', Auth::id())
             ->latest()

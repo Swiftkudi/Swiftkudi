@@ -15,7 +15,7 @@
             $listing = $favourite->listing;
         @endphp
         @if($listing)
-        <a href="{{ route('marketplace.listings.show', $listing->slug) }}"
+        <a href="{{ route('marketplace.listings.show', $listing->id) }}"
            class="listing-card bg-dark-800 rounded-2xl overflow-hidden border border-dark-700 hover:border-red-500/50 transition-all">
             @if($listing->images && count($listing->images) > 0)
                 <img src="{{ asset('storage/' . $listing->images[0]) }}" alt="{{ $listing->title }}"

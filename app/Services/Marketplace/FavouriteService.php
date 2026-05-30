@@ -2,15 +2,15 @@
 
 namespace App\Services\Marketplace;
 
-use App\Models\Marketplace\Favourite;
-use App\Models\Marketplace\Listing;
+use App\Models\Marketplace\MarketplaceFavourite;
+use App\Models\Marketplace\MarketplaceListing;
 use App\Models\User;
 
 class FavouriteService
 {
-    public function toggle(Listing $listing, User $user): array
+    public function toggle(MarketplaceListing $listing, User $user): array
     {
-        $existing = Favourite::where('user_id', $user->id)
+        $existing = MarketplaceFavourite::where('user_id', $user->id)
             ->where('listing_id', $listing->id)
             ->first();
 
@@ -20,21 +20,21 @@ class FavouriteService
             return ['favourited' => false];
         }
 
-        Favourite::create(['user_id' => $user->id, 'listing_id' => $listing->id]);
+        MarketplaceFavourite::create(['user_id' => $user->id, 'listing_id' => $listing->id]);
         $listing->increment('favourites_count');
         return ['favourited' => true];
     }
 
-    public function isFavourited(Listing $listing, User $user): bool
+    public function isFavourited(MarketplaceListing $listing, User $user): bool
     {
-        return Favourite::where('user_id', $user->id)
+        return MarketplaceFavourite::where('user_id', $user->id)
             ->where('listing_id', $listing->id)
             ->exists();
     }
 
     public function getUserFavourites(User $user)
     {
-        return Favourite::where('user_id', $user->id)
+        return MarketplaceFavourite::where('user_id', $user->id)
             ->with('listing')
             ->latest()
             ->paginate(20);

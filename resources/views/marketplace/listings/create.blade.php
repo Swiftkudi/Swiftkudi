@@ -126,10 +126,13 @@
 
         <!-- Tags -->
         <div class="mb-6">
-            <label class="form-label" for="tags">Tags (comma-separated)</label>
+            <label class="form-label" for="tags_text">Tags (comma-separated)</label>
             <input type="text" name="tags_text" id="tags_text"
                    class="w-full px-4 py-3 rounded-lg bg-dark-700 border border-dark-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                    value="{{ old('tags_text') }}" placeholder="e.g., textbooks, notes, electronics">
+            @error('tags_text')
+            <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+            @enderror
         </div>
 
         <!-- Images -->

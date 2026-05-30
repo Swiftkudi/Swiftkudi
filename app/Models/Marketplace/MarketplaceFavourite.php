@@ -5,7 +5,7 @@ namespace App\Models\Marketplace;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Favourite extends Model
+class MarketplaceFavourite extends Model
 {
     use HasFactory;
 
@@ -18,6 +18,6 @@ class Favourite extends Model
 
     public function listing()
     {
-        return $this->belongsTo(Listing::class);
+        return $this->belongsTo(MarketplaceListing::class);
     }
 }
