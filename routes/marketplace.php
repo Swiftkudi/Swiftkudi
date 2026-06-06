@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Marketplace\ListingController;
-use App\Http\Controllers\Marketplace\MarketplaceOnboardingController;
 use App\Http\Controllers\Marketplace\OrderController;
 use App\Http\Controllers\Marketplace\ReviewController;
 use App\Http\Controllers\Marketplace\MarketplaceChatController;
@@ -29,13 +28,6 @@ Route::middleware(['web'])->group(function () {
     Route::get('/search', [ListingController::class, 'search'])->name('marketplace.listings.search');
     Route::get('/category/{slug}', [ListingController::class, 'category'])->name('marketplace.listings.category');
     Route::get('/listing/{id}', [ListingController::class, 'show'])->name('marketplace.listings.show');
-
-    Route::middleware(['auth'])->prefix('onboarding')->name('marketplace.onboarding.')->group(function () {
-        Route::get('/buyer', [MarketplaceOnboardingController::class, 'buyer'])->name('buyer');
-        Route::post('/buyer', [MarketplaceOnboardingController::class, 'storeBuyer'])->name('buyer.store');
-        Route::get('/seller', [MarketplaceOnboardingController::class, 'seller'])->name('seller');
-        Route::post('/seller', [MarketplaceOnboardingController::class, 'storeSeller'])->name('seller.store');
-    });
 
     // Protected listing routes
     Route::middleware(['auth', 'check.email.required'])->group(function () {

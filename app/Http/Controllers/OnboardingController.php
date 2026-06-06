@@ -260,11 +260,37 @@ class OnboardingController extends Controller
                 return redirect()->route('wallet.activate')->with('success', 'Account type set successfully. Please activate your wallet to start using your account.');
 
             case 'freelancer':
+                $message = 'Freelancer onboarding started.';
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('freelancer');
+                if ($activationRequired) {
+                    $message .= ' Please activate your wallet to continue.';
+                }
+                if ($requirements['profile_required'] || $requirements['service_required']) {
+                    $message .= ' Please complete your profile and create your first service.';
+                }
+                return redirect()->route('onboarding.freelancer')->with('success', $message);
+
             case 'digital_seller':
+                $message = 'Digital seller onboarding started.';
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('digital_seller');
+                if ($activationRequired) {
+                    $message .= ' Please activate your wallet to continue.';
+                }
+                if ($requirements['product_required']) {
+                    $message .= ' Upload your first product to unlock marketplace browsing.';
+                }
+                return redirect()->route('onboarding.digital-product')->with('success', $message);
+
             case 'growth_seller':
-                $message = 'Seller onboarding started.';
-                $message .= ' Complete your student seller profile to start listing on the campus marketplace.';
-                return redirect()->route('marketplace.onboarding.seller')->with('success', $message);
+                $message = 'Growth seller onboarding started.';
+                $activationRequired = \App\Services\OnboardingSettingsService::isActivationRequired('growth_seller');
+                if ($activationRequired) {
+                    $message .= ' Please activate your wallet to continue.';
+                }
+                if ($requirements['listing_required']) {
+                    $message .= ' Create your first listing to unlock marketplace browsing.';
+                }
+                return redirect()->route('onboarding.growth')->with('success', $message);
 
             case 'buyer':
                 $message = 'Buyer onboarding started.';
@@ -273,10 +299,10 @@ class OnboardingController extends Controller
                     $message .= ' Please activate your wallet to continue.';
                 }
                 if ($requirements['category_selection_required'] && !$requirements['default_to_all']) {
-                    return redirect()->route('marketplace.onboarding.buyer')
-                        ->with('success', 'Please select your preferred categories and complete your student marketplace profile.');
+                    return redirect()->route('onboarding.buyer')
+                        ->with('success', 'Please select your preferred categories and complete your buyer onboarding.');
                 }
-                return redirect()->route('marketplace.onboarding.buyer')->with('success', 'Please complete your student marketplace profile.');
+                return redirect()->route('onboarding.buyer')->with('success', 'Please complete your buyer onboarding.');
 
             default:
                 return redirect()->route('dashboard')->with('success', 'Onboarding complete.');
@@ -1109,8 +1135,10 @@ public function completeReferralTask(Request $request)
     public function buyerOnboarding()
     {
         $user = Auth::user();
-        // For buyers, route student marketplace onboarding to the marketplace subdomain
-        return redirect()->route('marketplace.onboarding.buyer');
+        if (!$user->onboarding_completed) {
+            $user->update(['onboarding_completed' => true, 'onboarding_completed_at' => now()]);
+        }
+        return view('onboarding.buyer', compact('user'));
     }
 
     public function digitalProductOnboarding()
