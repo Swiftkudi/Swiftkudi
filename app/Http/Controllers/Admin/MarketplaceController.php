@@ -4,9 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceCategory;
-use App\Models\MarketplaceListing;
-use App\Models\MarketplaceListingImage;
-use App\Models\MarketplaceOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 

@@ -52,16 +52,19 @@ $this->routes(function () {
                  $marketplaceDomain = config('marketplace.full_domain') ?: (config('marketplace.subdomain') . '.' . config('marketplace.domain'));
              }
 
-             if ($marketplaceDomain) {
-                 Route::domain($marketplaceDomain)
-                     ->middleware('web')
-                     ->namespace($this->namespace)
-                     ->group(base_path('routes/marketplace.php'));
-             } else {
-                 Route::middleware('web')
-                     ->prefix('marketplace')
-                     ->namespace($this->namespace)
-                     ->group(base_path('routes/marketplace.php'));
+             $marketplaceRoutes = base_path('routes/marketplace.php');
+             if (file_exists($marketplaceRoutes)) {
+                 if ($marketplaceDomain) {
+                     Route::domain($marketplaceDomain)
+                         ->middleware('web')
+                         ->namespace($this->namespace)
+                         ->group($marketplaceRoutes);
+                 } else {
+                     Route::middleware('web')
+                         ->prefix('marketplace')
+                         ->namespace($this->namespace)
+                         ->group($marketplaceRoutes);
+                 }
              }
          });
     }
