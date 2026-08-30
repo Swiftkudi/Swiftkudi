@@ -7,7 +7,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
         <div class="mb-8">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Featured Products</h1>
+            <h1 class="text-3xl font-bold text-white">Featured Products</h1>
             <p class="mt-2 text-gray-600 dark:text-gray-400">Hand-picked premium digital products</p>
         </div>
 
@@ -29,7 +29,7 @@
                 @foreach($products as $product)
                     <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 overflow-hidden hover:shadow-xl transition-all transform hover:-translate-y-1">
                         <!-- Thumbnail -->
-                        <div class="aspect-video bg-gradient-to-br from-indigo-500 to-purple-600 relative">
+                        <div class="aspect-video bg-indigo-600 relative">
                             @if($product->thumbnail)
                                 <img src="{{ Storage::disk('public')->url($product->thumbnail) }}" alt="{{ $product->title }}" class="w-full h-full object-cover">
                             @else

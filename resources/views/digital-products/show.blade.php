@@ -152,7 +152,7 @@
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Review</label>
                                     <textarea name="comment" rows="4" class="w-full px-4 py-3 border border-gray-200 dark:border-dark-700 rounded-xl bg-gray-50 dark:bg-dark-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Share your experience with this product..."></textarea>
                                 </div>
-                                <button type="submit" class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
+                                <button type="submit" class="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
                                     Submit Review
                                 </button>
                             </form>
@@ -233,7 +233,7 @@
                         @else
                             <form method="POST" action="{{ route('digital-products.purchase', $product) }}">
                                 @csrf
-                                <button type="submit" class="block w-full text-center px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all mb-3">
+                                <button type="submit" class="block w-full text-center px-4 py-4 bg-indigo-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all mb-3">
                                     {{ $product->is_free ? 'Download Now' : 'Buy Now' }}
                                 </button>
                             </form>
@@ -242,7 +242,7 @@
                             </a>
                         @endif
                     @else
-                        <a href="{{ route('login') }}" class="block w-full text-center px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
+                        <a href="{{ route('login') }}" class="block w-full text-center px-4 py-4 bg-indigo-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
                             Login to Purchase
                         </a>
                     @endauth

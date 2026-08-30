@@ -149,6 +149,25 @@
                             <div class="w-11 h-6 bg-gray-200 dark:bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                         </label>
                     </div>
+
+                    <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 dark:border-dark-700 pt-5">
+                        @foreach([
+                            ['login_rate_limit_attempts', 'Login attempts', 5, 1, 50],
+                            ['login_rate_limit_minutes', 'Login lockout (minutes)', 5, 1, 1440],
+                            ['registration_rate_limit_attempts', 'Registration attempts', 5, 1, 50],
+                            ['registration_rate_limit_minutes', 'Registration window (minutes)', 15, 1, 1440],
+                            ['password_reset_rate_limit_attempts', 'Password reset attempts', 5, 1, 50],
+                            ['password_reset_rate_limit_minutes', 'Password reset window (minutes)', 15, 1, 1440],
+                            ['verification_rate_limit_attempts', 'Verification/resend attempts', 6, 1, 50],
+                            ['verification_rate_limit_minutes', 'Verification window (minutes)', 1, 1, 1440],
+                        ] as [$key, $label, $default, $min, $max])
+                            <div>
+                                <label for="{{ $key }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $label }}</label>
+                                <input type="number" name="{{ $key }}" id="{{ $key }}" value="{{ old($key, $settingsByKey[$key] ?? $default) }}" min="{{ $min }}" max="{{ $max }}" class="w-full rounded-xl border-gray-200 dark:border-dark-700 dark:bg-dark-800 focus:border-indigo-500 focus:ring-indigo-500 dark:text-white">
+                            </div>
+                        @endforeach
+                    </div>
+                    <p class="mt-4 text-xs leading-5 text-gray-500 dark:text-gray-400">These values control public sign-in, registration, password-reset and verification endpoints. Users receive a friendly retry time when a limit is reached.</p>
                 </div>
             </div>
 

@@ -144,7 +144,7 @@ return [
     'exa' => [
         'api_key' => env('EXA_API_KEY'),
     ],
-    'google' => [
+    'google_search' => [
         'search_api_key' => env('GOOGLE_SEARCH_API_KEY'),
         'search_engine_id' => env('GOOGLE_SEARCH_ENGINE_ID'),
     ],

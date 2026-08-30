@@ -5,12 +5,8 @@
 
 // ─── Push event ──────────────────────────────────────────────────────────────
 self.addEventListener('push', function (event) {
-    console.log('[SW] Push event received at', new Date().toISOString());
-    console.log('[SW] Notification permission:', Notification.permission);
-    
     let data = {};
     if (event.data) {
-        console.log('[SW RAW]', event.data.text());
         try {
             data = event.data.json();
         } catch (_) {
@@ -29,29 +25,25 @@ self.addEventListener('push', function (event) {
         },
     };
 
-    console.log('[SW] About to show notification:', title, options);
 
     event.waitUntil(
-        (async () => {
-            try {
-                const notif = await self.registration.showNotification(title, options);
-                console.log('[SW] ✓ showNotification resolved successfully');
-                return notif;
-            } catch (err) {
-                console.error('[SW] ✗ showNotification error:', err.name, err.message, err);
-                throw err;
-            }
-        })()
-    );
+self.registration.showNotification(title, options)    );
 });
 
 // ─── Notification click ──────────────────────────────────────────────────────
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
 
-    const targetUrl = (event.notification.data && event.notification.data.url)
+    const rawTarget = (event.notification.data && event.notification.data.url)
         ? event.notification.data.url
         : '/';
+    let targetUrl = '/';
+    try {
+        const parsed = new URL(rawTarget, self.location.origin);
+        if (parsed.origin === self.location.origin) {
+            targetUrl = parsed.pathname + parsed.search + parsed.hash;
+        }
+    } catch (_) {}
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {

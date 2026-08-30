@@ -78,7 +78,7 @@
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <i class="fas fa-user text-gray-400 dark:text-gray-500"></i>
                 </div>
-                <input id="name" type="text" name="name" :value="old('name')" required autofocus autocomplete="name"
+                <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus autocomplete="name"
                     placeholder="John Doe"
                     class="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all">
             </div>
@@ -92,7 +92,7 @@
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <i class="fas fa-envelope text-gray-400 dark:text-gray-500"></i>
                 </div>
-                <input id="email" type="email" name="email" :value="old('email')" required autocomplete="email"
+                <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="email"
                     placeholder="name@example.com"
                     class="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all">
             </div>

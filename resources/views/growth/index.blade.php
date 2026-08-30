@@ -9,10 +9,10 @@
         <div class="mb-8">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Growth Marketplace</h1>
+                    <h1 class="text-3xl font-bold text-white">Growth Marketplace</h1>
                     <p class="mt-2 text-gray-600 dark:text-gray-400">Backlinks, Influencers, Newsletters & Leads to grow your business</p>
                 </div>
-                <a href="{{ route('growth.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
+                <a href="{{ route('growth.create') }}" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-plus mr-2"></i> Create Listing
                 </a>
             </div>
@@ -21,7 +21,7 @@
         <!-- Navigation Tabs -->
         <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-2 mb-6">
             <div class="flex flex-wrap gap-2">
-                <a href="{{ route('growth.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30">
+                <a href="{{ route('growth.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-th-large mr-2"></i> Browse
                 </a>
                 <a href="{{ route('growth.my-listings') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
@@ -38,11 +38,11 @@
 
         <!-- Type Filters -->
         <div class="flex flex-wrap gap-2 mb-6">
-            <a href="{{ route('growth.index') }}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {{ !$type ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-dark-600' }}">
+            <a href="{{ route('growth.index') }}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {{ !$type ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-dark-600' }}">
                 All
             </a>
             @foreach($types as $key => $label)
-                <a href="{{ route('growth.type', $key) }}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {{ $type === $key ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-dark-600' }}">
+                <a href="{{ route('growth.type', $key) }}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {{ $type === $key ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-dark-600' }}">
                     {{ $label->name }}
                 </a>
             @endforeach
@@ -58,7 +58,7 @@
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="Search listings..." 
                         class="w-full px-4 py-2.5 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
-                <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-all">
+                <button type="submit" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:opacity-90 transition-all">
                     <i class="fas fa-search mr-2"></i> Search
                 </button>
             </form>
@@ -72,7 +72,7 @@
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No listings found</h3>
                 <p class="text-gray-500 dark:text-gray-400 mb-4">Try adjusting your search or browse all types</p>
-                <a href="{{ route('growth.create') }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:opacity-90">
+                <a href="{{ route('growth.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:opacity-90">
                     <i class="fas fa-plus mr-2"></i> Create a Listing
                 </a>
             </div>
@@ -81,7 +81,7 @@
                 @foreach($listings as $listing)
                     <a href="{{ route('growth.show', $listing->id) }}" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6 hover:shadow-xl transition-all group">
                         <div class="flex items-start justify-between mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center">
+                            <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center">
                                 <i class="fas fa-{{ $listing->type === 'backlinks' ? 'link' : ($listing->type === 'influencer' ? 'user-star' : ($listing->type === 'newsletter' ? 'envelope' : 'address-card')) }} text-white"></i>
                             </div>
                             <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded-full uppercase">
@@ -99,7 +99,7 @@
                         
                         <div class="flex items-center justify-between">
                             <div>
-                                <span class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                <span class="text-2xl font-bold text-white">
                                     ₦{{ number_format($listing->price) }}
                                 </span>
                             </div>

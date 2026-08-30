@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? config('app.name', 'Earn Desk') }}</title>
+    <meta name="robots" content="noindex,nofollow">
+    <title>{{ $title ?? config('app.name', 'SwiftKudi') }}</title>
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
@@ -70,23 +71,19 @@
             border-radius: 4px;
         }
     </style>
-</head>
-<body class="font-body bg-dark-950 text-gray-100 min-h-screen">
-    <!-- Background decoration -->
-    <div class="fixed inset-0 -z-10 overflow-hidden">
-        <div class="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
-        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl"></div>
-    </div>
+    <link rel="stylesheet" href="{{ asset('css/marketplace.css') }}">
 
+</head>
+<body class="marketplace-guest font-body bg-dark-950 text-gray-100 min-h-screen">
     <div class="min-h-screen flex flex-col">
         <!-- Header -->
         <header class="py-4 lg:py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
                 <a href="{{ route('dashboard') }}" class="flex items-center group">
-                    <div class="w-9 h-9 lg:w-10 lg:h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mr-2 lg:mr-3 shadow-lg shadow-indigo-500/20">
-                        <i class="fas fa-coins text-white text-base lg:text-lg"></i>
+                    <div class="w-9 h-9 lg:w-10 lg:h-10 bg-indigo-600 rounded-xl flex items-center justify-center mr-2 lg:mr-3">
+                        <i class="fas fa-briefcase text-white text-base lg:text-lg"></i>
                     </div>
-                    <span class="font-bold text-lg lg:text-xl bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">SwiftKudi</span>
+                    <span class="font-bold text-lg lg:text-xl text-white">SwiftKudi</span>
                 </a>
             </div>
         </header>
@@ -94,7 +91,10 @@
         <!-- Main Content -->
         <main class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
             <div class="w-full max-w-md">
-                {{ $slot }}
+                <div class="auth-marketplace-shell p-6 sm:p-8">
+                    {{ $slot }}
+                </div>
+                <p class="mt-5 text-center text-xs leading-5 text-gray-500">Secure marketplace access. Never share your password or verification code with anyone.</p>
             </div>
         </main>
 

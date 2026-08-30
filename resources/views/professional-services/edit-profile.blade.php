@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Provider Profile - SwiftKudi')
+@section('title', 'Edit Freelancer Profile | SwiftKudi')
+@section('robots', 'noindex,nofollow')
 
 @section('content')
 <div class="py-8">
@@ -10,13 +11,19 @@
             <a href="{{ route('professional-services.index') }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-2 mb-4">
                 <i class="fas fa-arrow-left"></i> Back to Services
             </a>
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Edit Provider Profile</h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">Manage your professional service provider profile</p>
+            <h1 class="text-3xl font-bold text-white">Edit Freelancer Profile</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">Build a clear, credible profile clients can understand quickly</p>
         </div>
 
         <form id="profile-form" action="{{ route('professional-services.update-profile') }}" method="POST" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
             @csrf
             @method('PUT')
+
+            <div class="mb-6">
+                <label for="professional_title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Professional title</label>
+                <input type="text" name="professional_title" id="professional_title" value="{{ old('professional_title', $profile->professional_title) }}" maxlength="160" required class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="e.g., Laravel & Flutter Developer">
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Use a specific title that describes the work you do.</p>
+            </div>
 
             <!-- Availability Status -->
             <div class="mb-6">
@@ -28,6 +35,11 @@
                         <p class="text-sm text-gray-500 dark:text-gray-400">Show clients that you're accepting new projects</p>
                     </div>
                 </label>
+            </div>
+
+            <div class="mb-6">
+                <label for="availability_note" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Availability note</label>
+                <input type="text" name="availability_note" id="availability_note" value="{{ old('availability_note', $profile->availability_note) }}" maxlength="255" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="e.g., Available up to 30 hrs/week">
             </div>
 
             <!-- Hourly Rate -->
@@ -49,10 +61,10 @@
                 <label for="bio" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Bio / About
                 </label>
-                <textarea name="bio" id="bio" rows="4"
+                <textarea name="bio" id="bio" rows="6" required minlength="40" maxlength="3000"
                     class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                     placeholder="Tell clients about yourself, your experience, and what makes you unique...">{{ $profile->bio }}</textarea>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Max 1000 characters</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">40–3000 characters. Focus on outcomes, experience and the types of clients you help.</p>
             </div>
 
             <!-- Skills -->
@@ -86,6 +98,22 @@
                 </div>
                 <input type="hidden" name="skills" id="skills-input" value="">
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter each skill individually using the Add button</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label for="languages" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Languages</label>
+                    <input type="text" name="languages" id="languages" value="{{ old('languages', implode(', ', $profile->languages ?? [])) }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" placeholder="English, Yoruba">
+                </div>
+                <div>
+                    <label for="education" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Education</label>
+                    <input type="text" name="education" id="education" value="{{ old('education', implode(', ', $profile->education ?? [])) }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" placeholder="Degree, school or relevant training">
+                </div>
+                <div class="md:col-span-2">
+                    <label for="work_experience" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Work experience</label>
+                    <textarea name="work_experience" id="work_experience" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" placeholder="Add roles or relevant experience, separated by new lines">{{ old('work_experience', implode("
+", $profile->work_experience ?? [])) }}</textarea>
+                </div>
             </div>
 
             <!-- Portfolio Links -->
@@ -153,7 +181,7 @@
             <!-- Submit Button -->
             <div class="flex justify-end">
                 <button type="submit"
-                    class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/30">
+                    class="marketplace-btn-primary">
                     <i class="fas fa-save mr-2"></i> Save Profile
                 </button>
             </div>

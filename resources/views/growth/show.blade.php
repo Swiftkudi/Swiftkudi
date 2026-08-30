@@ -69,7 +69,7 @@
                         <h3 class="font-semibold text-white mb-3">Seller Information</h3>
 
                         <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                            <div class="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
                                 {{ strtoupper(substr($growthListing->seller->name ?? 'U', 0, 2)) }}
                             </div>
 
@@ -101,7 +101,7 @@
                     </div>
 
                     @if($growthListing->status === 'active')
-                        <button onclick="createOrder()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg shadow-green-500/30">
+                        <button onclick="createOrder()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-lg shadow-green-500/30">
                             <i class="fas fa-shopping-cart mr-2"></i> Order Now
                         </button>
                     @else
@@ -154,7 +154,7 @@
 @auth
 <div id="contact-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
     <div class="bg-dark-900 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-dark-700">
-        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 rounded-t-3xl">
+        <div class="bg-indigo-600 p-6 rounded-t-3xl">
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-bold text-white">Contact Seller</h2>
 
@@ -195,7 +195,7 @@
                 </button>
 
                 <button type="submit"
-                        class="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/30">
+                        class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-paper-plane mr-2"></i>Send
                 </button>
             </div>

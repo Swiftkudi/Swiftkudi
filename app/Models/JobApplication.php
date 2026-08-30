@@ -33,6 +33,11 @@ class JobApplication extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function contract()
+    {
+        return $this->hasOne(Contract::class, 'job_application_id');
+    }
+
     public function getStatusLabelAttribute()
     {
         $labels = [

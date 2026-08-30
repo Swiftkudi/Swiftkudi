@@ -1,240 +1,174 @@
 @extends('layouts.app')
 
-@section('title', 'Hire Professionals - SwiftKudi')
+@section('title', 'Professional Services | ' . config('app.name', 'SwiftKudi'))
+@section('meta_description', 'Browse professional services on ' . config('app.name', 'SwiftKudi') . ' and compare scope, delivery time, pricing and provider reputation.')
 
 @section('content')
-@php
-$user = auth()->user();
-$accountType = $user->account_type ?? '';
-@endphp
-<div class="py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="mb-8">
-            <div class="rounded-[2rem] border border-gray-100 dark:border-dark-700 bg-white dark:bg-dark-900 shadow-lg p-8">
-                <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
-                    <div class="max-w-3xl">
-                        <p class="text-sm font-semibold uppercase tracking-[0.35em] text-indigo-600">Professional services</p>
-                        <h1 class="mt-4 text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Hire experts to complete your most important work</h1>
-                        <p class="mt-4 text-gray-600 dark:text-gray-400 text-lg max-w-2xl">Browse verified services, connect with top sellers, and launch your project with confidence.</p>
-                    </div>
-                    <div class="inline-flex shrink-0 rounded-3xl bg-indigo-600/5 p-4">
-                        <a href="{{ route('professional-services.create') }}" class="inline-flex items-center gap-3 rounded-2xl bg-indigo-600 px-5 py-3 text-white font-semibold shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700">
-                            <i class="fas fa-plus"></i>
-                            Create service
-                        </a>
-                    </div>
+<div class="marketplace-page py-8">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <section class="marketplace-panel overflow-hidden p-6 sm:p-8 lg:p-10">
+            <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                <div class="max-w-3xl">
+                    <span class="marketplace-eyebrow">Professional services</span>
+                    <h1 class="mt-4 text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-5xl">Get project-ready services from independent professionals.</h1>
+                    <p class="mt-4 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">Compare real service listings by scope, delivery time, price and provider history. Choose the offer that fits your project and keep the work connected to SwiftKudi messaging and marketplace payments.</p>
                 </div>
+                <div class="flex flex-wrap gap-3">
+                    <a href="{{ route('freelancers.index') }}" class="marketplace-button-secondary">Find talent</a>
+                    @auth
+                        <a href="{{ route('professional-services.create') }}" class="marketplace-button-primary"><i class="fas fa-plus"></i> Create service</a>
+                    @else
+                        <a href="{{ route('login') }}" class="marketplace-button-primary">Sign in to sell</a>
+                    @endauth
+                </div>
+            </div>
 
-                <div class="mt-10 grid gap-4 lg:grid-cols-[1fr_auto] items-center">
-                    <div class="rounded-3xl bg-gray-50 dark:bg-dark-800 p-6 shadow-sm border border-gray-100 dark:border-dark-700">
-                        <form action="{{ route('professional-services.index') }}" method="GET" class="relative">
-                            <label for="marketplace-search" class="sr-only">Search services</label>
-                            <input id="marketplace-search" name="search" value="{{ request('search') }}" placeholder="Search services, skills or expertise"
-                                class="w-full rounded-3xl border border-gray-200 dark:border-dark-600 bg-white dark:bg-dark-900 px-5 py-4 pr-14 text-sm text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:border-indigo-400 dark:focus:ring-indigo-900/30"
-                            />
-                            <button type="submit" class="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-full bg-indigo-600 p-3 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </form>
-                    </div>
-                    <div class="rounded-3xl bg-white dark:bg-dark-900 p-6 shadow-sm border border-gray-100 dark:border-dark-700">
-                        <p class="text-sm uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">Top categories</p>
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            @foreach($categories->take(6) as $category)
-                                <a href="{{ route('professional-services.index', ['category' => $category->slug]) }}" class="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-dark-700 bg-gray-50 dark:bg-dark-800 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition">{{ $category->name }}</a>
+            <form action="{{ route('professional-services.index') }}" method="GET" class="mt-8 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
+                <div>
+                    <label for="service-search" class="sr-only">Search professional services</label>
+                    <input id="service-search" class="marketplace-input" type="search" name="search" value="{{ request('search') }}" maxlength="120" placeholder="Search services or skills">
+                </div>
+                <div>
+                    <label for="service-category" class="sr-only">Category</label>
+                    <select id="service-category" name="category" class="marketplace-input">
+                        <option value="">All categories</option>
+                        @foreach($categories as $category)
+                            <option value="{{ $category->slug }}" @selected(request('category') === $category->slug)>{{ $category->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button class="marketplace-button-primary justify-center" type="submit"><i class="fas fa-search"></i> Search</button>
+            </form>
+
+            @if($categories->isNotEmpty())
+                <div class="mt-5 flex flex-wrap gap-2" aria-label="Popular service categories">
+                    <a href="{{ route('professional-services.index') }}" class="marketplace-chip {{ request('category') ? '' : 'marketplace-chip-active' }}">All</a>
+                    @foreach($categories->take(8) as $category)
+                        <a href="{{ route('professional-services.index', ['category' => $category->slug]) }}" class="marketplace-chip {{ request('category') === $category->slug ? 'marketplace-chip-active' : '' }}">{{ $category->name }}</a>
+                    @endforeach
+                </div>
+            @endif
+        </section>
+
+        @auth
+            <nav class="mt-5 flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950" aria-label="Services workspace">
+                <a href="{{ route('professional-services.index') }}" class="marketplace-subnav-active">Browse</a>
+                <a href="{{ route('professional-services.orders.index') }}" class="marketplace-subnav">My orders</a>
+                <a href="{{ route('professional-services.my-services') }}" class="marketplace-subnav">My services</a>
+                <a href="{{ route('professional-services.sales.index') }}" class="marketplace-subnav">Sales</a>
+                <a href="{{ route('professional-services.edit-profile') }}" class="marketplace-subnav">Freelancer profile</a>
+            </nav>
+        @endauth
+
+        <div class="mt-8 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside class="lg:sticky lg:top-24 lg:self-start">
+                <form action="{{ route('professional-services.index') }}" method="GET" class="marketplace-panel space-y-5 p-5">
+                    @if(request('search'))
+                        <input type="hidden" name="search" value="{{ request('search') }}">
+                    @endif
+                    <div>
+                        <label for="filter-category" class="marketplace-label">Category</label>
+                        <select id="filter-category" name="category" class="marketplace-input mt-2">
+                            <option value="">All categories</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->slug }}" @selected(request('category') === $category->slug)>{{ $category->name }}</option>
                             @endforeach
-                        </div>
+                        </select>
                     </div>
-                </div>
-                <div class="mt-6 grid gap-4 sm:grid-cols-3">
-                    <div class="rounded-3xl bg-gray-50 dark:bg-dark-800 p-6 shadow-sm border border-gray-100 dark:border-dark-700">
-                        <p class="text-sm uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">Services live</p>
-                        <p class="mt-3 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ $services->total() }}</p>
-                    </div>
-                    <div class="rounded-3xl bg-gray-50 dark:bg-dark-800 p-6 shadow-sm border border-gray-100 dark:border-dark-700">
-                        <p class="text-sm uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">Categories</p>
-                        <p class="mt-3 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ $categories->count() }}</p>
-                    </div>
-                    <div class="rounded-3xl bg-gray-50 dark:bg-dark-800 p-6 shadow-sm border border-gray-100 dark:border-dark-700">
-                        <p class="text-sm uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">Trusted sellers</p>
-                        <p class="mt-3 text-3xl font-semibold text-gray-900 dark:text-gray-100">Top rated talent</p>
-                    </div>
-                </div>
-
-                <div class="mt-8">
-                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">A curated marketplace for talented professionals</p>
-                    <p class="mt-3 text-sm text-gray-600 dark:text-gray-400 max-w-2xl">Search by category, skill, or delivery speed and connect with trusted service providers who can deliver your project on time.</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Navigation Tabs -->
-        <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-2 mb-6">
-            <div class="flex flex-wrap gap-2">
-               
-                <a href="{{ route('professional-services.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30">
-                    <i class="fas fa-th-large mr-2"></i> Browse
-                </a>
-                <a href="{{ route('professional-services.orders.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
-                    <i class="fas fa-shopping-cart mr-2"></i> My Orders
-                </a>
-               
-                <a href="{{ route('professional-services.my-services') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
-                    <i class="fas fa-briefcase mr-2"></i> My Services
-                </a>
-                <a href="{{ route('professional-services.sales.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
-                    <i class="fas fa-chart-line mr-2"></i> Sales
-                </a>
-                <a href="{{ route('professional-services.edit-profile') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
-                    <i class="fas fa-user-cog mr-2"></i> Profile
-                </a>
-               
-            </div>
-        </div>
-
-        <!-- Search & Filters -->
-        <div class="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)] mb-8">
-            <aside class="space-y-6 xl:sticky xl:top-24 xl:self-start">
-                <div class="bg-white dark:bg-dark-900 rounded-3xl border border-gray-100 dark:border-dark-700 shadow-lg p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Search services</h2>
-                    <form action="{{ route('professional-services.index') }}" method="GET" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
-                            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search services or skills" 
-                                class="w-full rounded-2xl border border-gray-200 dark:border-dark-600 bg-gray-50 dark:bg-dark-800 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <label for="min-price" class="marketplace-label">Min price</label>
+                            <input id="min-price" class="marketplace-input mt-2" type="number" min="0" step="100" name="min_price" value="{{ request('min_price') }}" placeholder="₦0">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
-                            <select name="category" class="w-full rounded-2xl border border-gray-200 dark:border-dark-600 bg-white dark:bg-dark-800 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                                <option value="">All categories</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->slug }}" {{ request('category') == $category->slug ? 'selected' : '' }}>{{ $category->name }}</option>
-                                @endforeach
-                            </select>
+                            <label for="max-price" class="marketplace-label">Max price</label>
+                            <input id="max-price" class="marketplace-input mt-2" type="number" min="0" step="100" name="max_price" value="{{ request('max_price') }}" placeholder="Any">
                         </div>
-                        <button type="submit" class="w-full inline-flex justify-center items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 text-white font-semibold hover:opacity-90 transition">Search</button>
-                    </form>
-                </div>
-
-                <div class="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-dark-900 dark:to-dark-800 rounded-3xl p-6 border border-indigo-100 dark:border-purple-800 shadow-sm">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Why hire here?</h3>
-                    <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
-                        <li class="flex gap-3"><span class="mt-1 text-indigo-600"><i class="fas fa-check-circle"></i></span> Verified sellers</li>
-                        <li class="flex gap-3"><span class="mt-1 text-indigo-600"><i class="fas fa-shield-alt"></i></span> Secure payments</li>
-                        <li class="flex gap-3"><span class="mt-1 text-indigo-600"><i class="fas fa-bolt"></i></span> Fast delivery options</li>
-                    </ul>
-                </div>
+                    </div>
+                    <div>
+                        <label for="delivery-days" class="marketplace-label">Delivery within</label>
+                        <select id="delivery-days" name="delivery_days" class="marketplace-input mt-2">
+                            <option value="">Any time</option>
+                            @foreach([1 => '1 day', 3 => '3 days', 7 => '7 days', 14 => '14 days', 30 => '30 days'] as $days => $label)
+                                <option value="{{ $days }}" @selected((string) request('delivery_days') === (string) $days)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="service-sort" class="marketplace-label">Sort by</label>
+                        <select id="service-sort" name="sort" class="marketplace-input mt-2">
+                            <option value="recommended" @selected(request('sort', 'recommended') === 'recommended')>Recommended</option>
+                            <option value="newest" @selected(request('sort') === 'newest')>Newest</option>
+                            <option value="price_asc" @selected(request('sort') === 'price_asc')>Price: low to high</option>
+                            <option value="price_desc" @selected(request('sort') === 'price_desc')>Price: high to low</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="marketplace-button-primary flex-1 justify-center">Apply</button>
+                        <a href="{{ route('professional-services.index') }}" class="marketplace-button-secondary justify-center">Reset</a>
+                    </div>
+                </form>
             </aside>
 
-            <div class="space-y-6">
-                @php
-                    $featuredServices = collect($services->items())->where('is_featured', true)->take(3);
-                @endphp
+            <section>
+                <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <span class="marketplace-eyebrow">Marketplace</span>
+                        <h2 class="mt-2 text-2xl font-bold text-slate-950 dark:text-white">{{ number_format($services->total()) }} service{{ $services->total() === 1 ? '' : 's' }}</h2>
+                    </div>
+                    @if(request()->hasAny(['search','category','min_price','max_price','delivery_days']))
+                        <a href="{{ route('professional-services.index') }}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">Clear all filters</a>
+                    @endif
+                </div>
 
-                @if($featuredServices->isNotEmpty())
-                    <section class="space-y-4">
-                        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-                            <div>
-                                <p class="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-600">Featured services</p>
-                                <h2 class="mt-2 text-3xl font-semibold text-gray-900 dark:text-gray-100">Top curated gigs</h2>
-                            </div>
-                            <a href="{{ route('professional-services.index') }}" class="text-sm font-medium text-indigo-600 dark:text-indigo-300 hover:underline">Browse all services</a>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            @foreach($featuredServices as $service)
-                                <a href="{{ route('professional-services.show', $service->id) }}" class="group block bg-white dark:bg-dark-900 rounded-3xl border border-gray-100 dark:border-dark-700 shadow-lg hover:shadow-xl transition-all p-6 h-full">
-                                    <div class="flex items-start justify-between mb-4 gap-3">
-                                        <div>
-                                            <p class="text-xs uppercase tracking-[0.3em] font-semibold text-indigo-600">{{ $service->category->name ?? 'General' }}</p>
-                                            <h3 class="mt-3 text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $service->title }}</h3>
-                                        </div>
+                @forelse($services as $service)
+                    <article class="marketplace-panel mb-4 p-5 sm:p-6">
+                        <a href="{{ route('professional-services.show', $service) }}" class="group block">
+                            <div class="flex flex-col gap-5 sm:flex-row sm:justify-between">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                                        <span class="marketplace-chip">{{ $service->category->name ?? 'General' }}</span>
                                         @if($service->is_featured)
-                                            <span class="rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 text-xs font-semibold">Featured</span>
+                                            <span class="marketplace-chip marketplace-chip-active">Featured placement</span>
                                         @endif
                                     </div>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-4 mb-5">{{ $service->description }}</p>
-                                    <div class="grid gap-3 text-sm text-gray-500 dark:text-gray-400 mb-6 sm:grid-cols-2">
-                                        <span class="inline-flex items-center gap-2"><i class="fas fa-clock"></i> {{ $service->delivery_days }}d delivery</span>
-                                        <span class="inline-flex items-center gap-2"><i class="fas fa-redo"></i> {{ $service->revisions_included }} revisions</span>
+                                    <h3 class="mt-4 text-xl font-bold text-slate-950 transition group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">{{ $service->title }}</h3>
+                                    <p class="mt-3 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ $service->description }}</p>
+                                    <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
+                                        <span><i class="far fa-clock mr-1.5"></i>{{ $service->delivery_days }} day{{ $service->delivery_days == 1 ? '' : 's' }} delivery</span>
+                                        <span><i class="fas fa-rotate-left mr-1.5"></i>{{ $service->revisions_included }} revision{{ $service->revisions_included == 1 ? '' : 's' }}</span>
                                     </div>
-                                    <div class="flex items-center justify-between gap-4 text-sm text-gray-600 dark:text-gray-400">
-                                        <span class="text-2xl font-semibold text-gray-900 dark:text-gray-100">₦{{ number_format($service->price) }}</span>
-                                        <span class="inline-flex items-center gap-2"><i class="fas fa-star text-yellow-400"></i> {{ number_format($service->seller->seller_rating ?? 0, 1) }} ({{ $service->seller->seller_rating_count ?? 0 }})</span>
+                                </div>
+                                <div class="shrink-0 sm:w-52 sm:text-right">
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Starting at</p>
+                                    <p class="mt-1 text-2xl font-bold text-slate-950 dark:text-white">₦{{ number_format((float) $service->price, 0) }}</p>
+                                    <div class="mt-4 text-sm text-slate-600 dark:text-slate-300">
+                                        <p class="font-semibold text-slate-900 dark:text-white">{{ $service->seller->name ?? 'Service provider' }}</p>
+                                        @if(($service->seller->seller_rating_count ?? 0) > 0)
+                                            <p class="mt-1"><i class="fas fa-star text-amber-500"></i> {{ number_format((float) $service->seller->seller_rating, 1) }} <span class="text-slate-400">({{ $service->seller->seller_rating_count }} reviews)</span></p>
+                                        @else
+                                            <p class="mt-1 text-slate-400">No reviews yet</p>
+                                        @endif
                                     </div>
-                                </a>
-                            @endforeach
-                        </div>
-                    </section>
-                @endif
-
-                <section class="space-y-6">
-                    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-                        <div>
-                            <p class="text-sm font-semibold uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400">Browse results</p>
-                            <h2 class="mt-2 text-3xl font-semibold text-gray-900 dark:text-gray-100">Service listings</h2>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Showing {{ $services->count() }} of {{ $services->total() }} services</p>
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            <span class="inline-flex items-center gap-2 rounded-full bg-gray-100 dark:bg-dark-800 px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Sort: Featured first</span>
-                        </div>
+                                </div>
+                            </div>
+                        </a>
+                    </article>
+                @empty
+                    <div class="marketplace-empty-state">
+                        <div class="marketplace-empty-icon"><i class="fas fa-magnifying-glass"></i></div>
+                        <h3 class="mt-4 text-xl font-bold text-slate-950 dark:text-white">No matching services</h3>
+                        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Try removing a filter or searching with a broader term.</p>
+                        <a href="{{ route('professional-services.index') }}" class="marketplace-button-primary mt-5">Browse all services</a>
                     </div>
+                @endforelse
 
-                    @if($services->isEmpty())
-                        <div class="text-center rounded-3xl bg-white dark:bg-dark-900 border border-gray-100 dark:border-dark-700 shadow-lg p-14">
-                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">No services found</p>
-                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Try a broader search or explore a different category.</p>
-                            <a href="{{ route('professional-services.create') }}" class="mt-6 inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-white font-semibold hover:opacity-90 transition">Create Service</a>
-                        </div>
-                    @else
-                        <div class="space-y-6">
-                            @foreach($services as $service)
-                                <a href="{{ route('professional-services.show', $service->id) }}" class="group block bg-white dark:bg-dark-900 rounded-3xl border border-gray-100 dark:border-dark-700 shadow-lg hover:shadow-xl transition-all p-6">
-                                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                        <div class="space-y-4">
-                                            <div class="flex flex-wrap items-center gap-3">
-                                                <span class="inline-flex items-center gap-2 rounded-full bg-indigo-50 text-indigo-700 px-3 py-1 text-xs font-semibold">{{ $service->category->name ?? 'General' }}</span>
-                                                @if($service->is_featured)
-                                                    <span class="inline-flex items-center gap-2 rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 text-xs font-semibold">Featured</span>
-                                                @endif
-                                            </div>
-                                            <h3 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $service->title }}</h3>
-                                            <p class="max-w-3xl text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{{ $service->description }}</p>
-                                            <div class="flex flex-wrap gap-3 text-sm text-gray-500 dark:text-gray-400">
-                                                <span class="inline-flex items-center gap-2"><i class="fas fa-clock"></i> {{ $service->delivery_days }}d delivery</span>
-                                                <span class="inline-flex items-center gap-2"><i class="fas fa-redo"></i> {{ $service->revisions_included }} revisions</span>
-                                            </div>
-                                        </div>
-                                        <div class="flex flex-col gap-4 text-right shrink-0 w-full sm:w-auto">
-                                            <div class="text-3xl font-semibold text-gray-900 dark:text-gray-100">₦{{ number_format($service->price) }}</div>
-                                            <div class="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 justify-end">
-                                                <span class="inline-flex items-center gap-2"><i class="fas fa-star text-yellow-400"></i> {{ number_format($service->seller->seller_rating ?? 0, 1) }}</span>
-                                                <span>({{ $service->seller->seller_rating_count ?? 0 }} reviews)</span>
-                                            </div>
-                                            <div class="inline-flex items-center gap-2 rounded-full bg-gray-100 dark:bg-dark-800 px-3 py-2 text-xs text-gray-600 dark:text-gray-300 justify-end">
-                                                <i class="fas fa-user"></i> {{ $service->seller->name ?? 'Seller' }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                        <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                                            <span class="inline-flex items-center gap-2"><i class="fas fa-bolt"></i> Fast response</span>
-                                            <span class="inline-flex items-center gap-2"><i class="fas fa-award"></i> Trusted professional</span>
-                                        </div>
-                                        <span class="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600">
-                                            <i class="fas fa-arrow-right"></i> View service
-                                        </span>
-                                    </div>
-                                </a>
-                            @endforeach
-                        </div>
-
-                        <div class="mt-8">
-                            <x-pagination :paginator="$services" :showPerPage="true" />
-                        </div>
-                    @endif
-                </section>
-            </div>
+                @if($services->hasPages())
+                    <div class="mt-7">
+                        {{ $services->links() }}
+                    </div>
+                @endif
+            </section>
         </div>
     </div>
 </div>

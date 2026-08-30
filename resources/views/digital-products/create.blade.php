@@ -234,7 +234,7 @@
                     <a href="{{ route('digital-products.my-products') }}" class="px-6 py-3 border border-gray-200 dark:border-dark-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-800 transition-colors font-medium text-center">
                         Cancel
                     </a>
-                    <button type="submit" class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
+                    <button type="submit" class="px-8 py-3 bg-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
                         <i class="fas fa-plus mr-2"></i> Create Product
                     </button>
                 </div>

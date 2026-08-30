@@ -21,7 +21,9 @@ use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\BoostController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,6 +31,14 @@ use Illuminate\Support\Facades\Route;
 | Web Routes
 |--------------------------------------------------------------------------
 */
+
+// Search-engine discovery (public and generated from real marketplace data)
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
+Route::get('/sitemap-pages.xml', [SitemapController::class, 'pages'])->name('sitemap.pages');
+Route::get('/sitemap-jobs.xml', [SitemapController::class, 'jobs'])->name('sitemap.jobs');
+Route::get('/sitemap-services.xml', [SitemapController::class, 'services'])->name('sitemap.services');
+Route::get('/sitemap-freelancers.xml', [SitemapController::class, 'freelancers'])->name('sitemap.freelancers');
+Route::get('/robots.txt', [SitemapController::class, 'robots'])->name('robots');
 
 // Health check endpoint (for monitoring)
 Route::get('/health', [HealthController::class, 'check'])->name('health');
@@ -39,14 +49,18 @@ Route::post('/webhooks/kora', [PaymentController::class, 'koraWebhook'])->name('
 Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhooks.stripe');
 
 // Public routes
-Route::get('/', function () {
-    return view('landing');
-})->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::view('/support', 'support')->name('support');
 // Session expired landing page (friendly notice when CSRF/session expires)
 Route::view('/session-expired', 'errors.session_expired')->name('session.expired');
 Route::view('/privacy-policy', 'legal.privacy')->name('legal.privacy');
 Route::view('/terms-of-service', 'legal.terms')->name('legal.terms');
+
+// Public SEO-friendly freelancer profiles
+Route::get('/freelancers', [ProfessionalServiceController::class, 'directory'])->name('freelancers.index');
+Route::get('/freelancers/{slug}', [ProfessionalServiceController::class, 'freelancerProfile'])
+    ->where('slug', '[A-Za-z0-9-]+')
+    ->name('freelancers.show');
 
 // Short referral link - stores code in session then redirects to register
 Route::get('/ref/{code}', [ReferralController::class, 'redirectWithCode'])->name('ref.redirect');
@@ -65,8 +79,12 @@ Route::middleware(['auth', 'check.email.required', 'logout.inactive', 'onboardin
         Route::get('/', [\App\Http\Controllers\UserNotificationController::class, 'page'])->name('index');
         Route::get('/feed', [\App\Http\Controllers\UserNotificationController::class, 'index'])->name('feed');
         Route::post('/{id}/read', [\App\Http\Controllers\UserNotificationController::class, 'markRead'])->name('read');
+        Route::post('/{id}/unread', [\App\Http\Controllers\UserNotificationController::class, 'markUnread'])->name('unread');
         Route::post('/read-all', [\App\Http\Controllers\UserNotificationController::class, 'markAllRead'])->name('read-all');
     });
+
+    Route::get('/settings/notification-preferences', [\App\Http\Controllers\NotificationPreferenceController::class, 'edit'])->name('notification-settings.edit');
+    Route::put('/settings/notification-preferences', [\App\Http\Controllers\NotificationPreferenceController::class, 'update'])->name('notification-settings.update');
     
     // Push Notification Subscriptions
     Route::prefix('push')->name('push.')->group(function () {
@@ -294,6 +312,7 @@ Route::middleware(['auth', 'check.email.required', 'logout.inactive', 'onboardin
         Route::get('/settings/currency', [\App\Http\Controllers\SettingsController::class, 'group'])->name('settings.currency')->defaults('group', 'currency');
         Route::get('/settings/notifications', [\App\Http\Controllers\SettingsController::class, 'notificationMessages'])->name('settings.notifications');
         Route::get('/settings/notifications/audit', [\App\Http\Controllers\SettingsController::class, 'notificationAudit'])->name('settings.notifications-audit');
+        Route::get('/settings/email-deliveries', [\App\Http\Controllers\SettingsController::class, 'emailDeliveries'])->name('settings.email-deliveries');
         Route::post('/settings/test-email', [\App\Http\Controllers\SettingsController::class, 'testEmail'])->name('settings.test-email');
         Route::post('/notifications/send', [\App\Http\Controllers\AdminController::class, 'sendNotification'])->name('notifications.send');
         Route::get('/settings/notification', [\App\Http\Controllers\SettingsController::class, 'group'])->name('settings.notification')->defaults('group', 'notification');
@@ -464,12 +483,14 @@ Route::middleware(['auth', 'check.email.required', 'logout.inactive', 'onboardin
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/', [ChatController::class, 'index'])->name('index');
         Route::get('/open/{type}/{referenceId}/{participantId}', [ChatController::class, 'open'])->name('open');
-        Route::get('/{conversation}', [ChatController::class, 'show'])->name('show');
+        Route::get('/messages/{message}/attachment', [ChatController::class, 'downloadAttachment'])->name('attachment');
+        // Static endpoints must be registered before /{conversation} so names like "unread" are not route-bound as IDs.
+        Route::get('/unread', [ChatController::class, 'getUnreadCount'])->name('unread');
         Route::post('/message', [ChatController::class, 'store'])->name('message');
-        Route::get('/{conversation}/messages', [ChatController::class, 'apiMessages'])->name('messages');
         Route::post('/send', [ChatController::class, 'apiSend'])->name('send');
         Route::post('/start', [ChatController::class, 'startConversation'])->name('start');
-        Route::get('/unread', [ChatController::class, 'getUnreadCount'])->name('unread');
+        Route::get('/{conversation}', [ChatController::class, 'show'])->name('show');
+        Route::get('/{conversation}/messages', [ChatController::class, 'apiMessages'])->name('messages');
         Route::post('/{conversation}/read', [ChatController::class, 'markAsRead'])->name('read');
         Route::post('/{conversation}/close', [ChatController::class, 'closeConversation'])->name('close');
     });
@@ -619,6 +640,8 @@ Route::prefix('jobs')->name('jobs.')->group(function () {
         // Applications
         Route::get('/applications', [JobController::class, 'applications'])->name('applications');
         Route::post('/{job}/apply', [JobController::class, 'apply'])->name('apply');
+        Route::post('/{job}/save', [JobController::class, 'save'])->name('save');
+        Route::delete('/{job}/save', [JobController::class, 'unsave'])->name('unsave');
         Route::post('/applications/{application}/withdraw', [JobController::class, 'withdrawApplication'])->name('withdraw');
         Route::post('/applications/{application}/hire', [JobController::class, 'hireApplicant'])->name('hire');
         Route::post('/applications/{application}/reject', [JobController::class, 'rejectApplicant'])->name('reject');
@@ -626,6 +649,19 @@ Route::prefix('jobs')->name('jobs.')->group(function () {
     
     // Single job view (public)
     Route::get('/{job}', [JobController::class, 'show'])->name('show');
+});
+
+// Contracts and milestone workrooms
+Route::prefix('contracts')->name('contracts.')->middleware(['auth', 'check.email.required'])->group(function () {
+    Route::get('/', [\App\Http\Controllers\ContractController::class, 'index'])->name('index');
+    Route::get('/{contract}', [\App\Http\Controllers\ContractController::class, 'show'])->name('show');
+    Route::post('/{contract}/milestones', [\App\Http\Controllers\ContractController::class, 'storeMilestone'])->name('milestones.store');
+    Route::post('/{contract}/milestones/{milestone}/fund', [\App\Http\Controllers\ContractController::class, 'fund'])->name('milestones.fund');
+    Route::post('/{contract}/milestones/{milestone}/start', [\App\Http\Controllers\ContractController::class, 'start'])->name('milestones.start');
+    Route::post('/{contract}/milestones/{milestone}/submit', [\App\Http\Controllers\ContractController::class, 'submit'])->name('milestones.submit');
+    Route::post('/{contract}/milestones/{milestone}/revision', [\App\Http\Controllers\ContractController::class, 'requestRevision'])->name('milestones.revision');
+    Route::post('/{contract}/milestones/{milestone}/approve', [\App\Http\Controllers\ContractController::class, 'approve'])->name('milestones.approve');
+    Route::get('/{contract}/milestones/{milestone}/files/{fileIndex}', [\App\Http\Controllers\ContractController::class, 'download'])->where('fileIndex', '[0-9]+')->name('milestones.download');
 });
 
 // Escrow Management
@@ -657,11 +693,11 @@ Route::prefix('disputes')->name('disputes.')->group(function () {
 Route::prefix('verification')->name('verification.')->group(function () {
     Route::middleware(['auth', 'check.email.required'])->group(function () {
         Route::get('/', [VerificationController::class, 'index'])->name('index');
-        Route::post('/email', [VerificationController::class, 'verifyEmail'])->name('email');
-        Route::post('/phone', [VerificationController::class, 'verifyPhone'])->name('phone');
-        Route::post('/phone/verify-code', [VerificationController::class, 'verifyPhoneCode'])->name('phone.verify-code');
-        Route::post('/identity', [VerificationController::class, 'verifyIdentity'])->name('identity');
-        Route::post('/address', [VerificationController::class, 'verifyAddress'])->name('address');
+        Route::post('/email', [VerificationController::class, 'submitEmail'])->name('email');
+        Route::post('/phone', [VerificationController::class, 'submitPhone'])->name('phone');
+        Route::post('/phone/verify-code', [VerificationController::class, 'verifyPhone'])->name('phone.verify-code');
+        Route::post('/identity', [VerificationController::class, 'submitIdentity'])->name('identity');
+        Route::post('/address', [VerificationController::class, 'submitAddress'])->name('address');
     });
 });
 

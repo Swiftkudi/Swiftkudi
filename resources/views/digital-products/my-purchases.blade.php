@@ -17,7 +17,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
         <div class="mb-8">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 class="text-3xl font-bold text-white">
                 My Purchases
             </h1>
             <p class="mt-2 text-gray-600 dark:text-gray-400">Download your purchased digital products</p>
@@ -79,7 +79,7 @@
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">No purchases yet</h3>
                 <p class="text-gray-500 dark:text-gray-400 mb-6">Browse our marketplace to find digital products.</p>
-                <a href="{{ route('digital-products.index') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
+                <a href="{{ route('digital-products.index') }}" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
                     Browse Products
                 </a>
             </div>

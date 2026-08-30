@@ -7,7 +7,7 @@
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
         <div class="mb-8">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Create New Service</h1>
+            <h1 class="text-3xl font-bold text-white">Create New Service</h1>
             <p class="mt-2 text-gray-600 dark:text-gray-400">Offer your professional services to other users</p>
         </div>
 
@@ -94,7 +94,7 @@
                     Cancel
                 </a>
                 <button type="submit" 
-                    class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
+                    class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
                     Create Service
                 </button>
             </div>

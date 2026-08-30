@@ -553,10 +553,15 @@ class ProfessionalServiceService
             $profile = ServiceProviderProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'is_available' => $data['is_available'] ?? true,
+                    'professional_title' => $data['professional_title'] ?? null,
+                    'is_available' => $data['is_available'] ?? false,
+                    'availability_note' => $data['availability_note'] ?? null,
                     'hourly_rate' => $data['hourly_rate'] ?? null,
                     'bio' => $data['bio'] ?? null,
                     'skills' => $data['skills'] ?? [],
+                    'languages' => $data['languages'] ?? [],
+                    'education' => $data['education'] ?? [],
+                    'work_experience' => $data['work_experience'] ?? [],
                     'portfolio_links' => $data['portfolio_links'] ?? [],
                     'certifications' => $data['certifications'] ?? [],
                 ]

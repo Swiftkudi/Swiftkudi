@@ -7,6 +7,7 @@ use Illuminate\Session\TokenMismatchException;
 use Throwable;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 
 class Handler extends ExceptionHandler
 {
@@ -68,6 +69,30 @@ class Handler extends ExceptionHandler
 
             return redirect()->route('session.expired')
                 ->with('warning', 'Your session expired for security reasons. Please sign in again to continue.');
+        });
+
+
+        // Give users a clear retry window instead of exposing a raw 429 page.
+        $this->renderable(function (ThrottleRequestsException $e, $request) {
+            $retryAfter = max(1, (int) ($e->getHeaders()['Retry-After'] ?? 60));
+            $minutes = (int) ceil($retryAfter / 60);
+            $message = $retryAfter < 60
+                ? "Too many requests. Please try again in {$retryAfter} seconds."
+                : "Too many requests. Please try again in about {$minutes} minute" . ($minutes === 1 ? '' : 's') . '.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'RATE_LIMITED',
+                    'message' => $message,
+                    'retry_after' => $retryAfter,
+                ], 429)->withHeaders(['Retry-After' => $retryAfter]);
+            }
+
+            return response()->view('errors.429', [
+                'message' => $message,
+                'retryAfter' => $retryAfter,
+            ], 429)->withHeaders(['Retry-After' => $retryAfter]);
         });
 
         // Return user-friendly validation details for all JSON form submissions.

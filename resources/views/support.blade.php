@@ -17,7 +17,7 @@
             <div class="rounded-3xl bg-dark-700 p-6 border border-dark-600">
                 <h2 class="text-xl font-semibold text-white mb-3">Marketplace help</h2>
                 <p class="text-gray-400 mb-4">Use the marketplace chat and order support tools if you need help with a specific listing or buyer/seller interaction.</p>
-                <a href="{{ route('marketplace.listings.index') }}" class="inline-flex items-center justify-center rounded-2xl border border-blue-500 bg-transparent px-5 py-3 text-sm font-semibold text-blue-400 hover:bg-blue-500/10 transition">Return to Marketplace</a>
+                <a href="{{ route('professional-services.index') }}" class="inline-flex items-center justify-center rounded-2xl border border-blue-500 bg-transparent px-5 py-3 text-sm font-semibold text-blue-400 hover:bg-blue-500/10 transition">Return to Marketplace</a>
             </div>
         </div>
 

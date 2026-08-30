@@ -133,8 +133,8 @@ class SocialMediaSearchService
         $profiles = [];
         
         try {
-            $apiKey = config('services.google.search_api_key', env('GOOGLE_SEARCH_API_KEY'));
-            $cx = config('services.google.search_engine_id', env('GOOGLE_SEARCH_ENGINE_ID'));
+            $apiKey = config('services.google_search.search_api_key', env('GOOGLE_SEARCH_API_KEY'));
+            $cx = config('services.google_search.search_engine_id', env('GOOGLE_SEARCH_ENGINE_ID'));
             
             if (empty($apiKey) || empty($cx)) {
                 Log::info('Google Search API key not configured');

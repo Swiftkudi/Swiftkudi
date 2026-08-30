@@ -32,6 +32,10 @@ class Kernel extends ConsoleKernel
 
           // Auto-release marketplace escrow funds nightly at 03:00
           $schedule->command('marketplace:auto-release')->dailyAt('03:00')->withoutOverlapping();
+
+          // User-selected non-critical notification digests.
+          $schedule->command('notifications:send-digests daily')->dailyAt('08:00')->withoutOverlapping();
+          $schedule->command('notifications:send-digests weekly')->weeklyOn(1, '08:15')->withoutOverlapping();
      }
 
     /**

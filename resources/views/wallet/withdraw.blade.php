@@ -55,7 +55,7 @@
         @else
             <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 overflow-hidden">
                 <!-- Header -->
-                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-white">
+                <div class="bg-indigo-600 p-8 text-white">
                     <div class="flex items-center justify-between">
                         <div>
                             <h1 class="text-2xl font-bold">Withdraw Funds</h1>
@@ -193,7 +193,7 @@
                         </div>
 
                         <!-- Submit Button -->
-                        <button type="submit" class="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-xl shadow-indigo-500/30 transition-all transform hover:scale-[1.02]">
+                        <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xl shadow-indigo-500/30 transition-all transform hover:scale-[1.02]">
                             <i class="fas fa-building mr-2"></i>
                             Withdraw ₦<span id="withdraw-amount">0</span>
                         </button>

@@ -13,20 +13,30 @@ class ServiceProviderProfile extends Model
 
     protected $fillable = [
         'user_id',
+        'slug',
+        'professional_title',
         'is_available',
+        'availability_note',
         'hourly_rate',
         'bio',
         'skills',
+        'languages',
+        'education',
+        'work_experience',
         'portfolio_links',
         'certifications',
         'total_orders_completed',
         'average_rating',
         'total_reviews',
+        'profile_views',
     ];
 
     protected $casts = [
         'hourly_rate' => 'decimal:2',
         'skills' => 'array',
+        'languages' => 'array',
+        'education' => 'array',
+        'work_experience' => 'array',
         'portfolio_links' => 'array',
         'certifications' => 'array',
         'is_available' => 'boolean',
@@ -79,5 +89,19 @@ class ServiceProviderProfile extends Model
     public function scopeTopRated($query)
     {
         return $query->orderBy('average_rating', 'desc');
+    }
+
+    public function getProfileCompletionAttribute(): int
+    {
+        $checks = [
+            !empty($this->professional_title),
+            !empty($this->bio),
+            !empty($this->skills),
+            !empty($this->hourly_rate),
+            !empty($this->languages),
+            !empty($this->portfolio_links),
+        ];
+
+        return (int) round((collect($checks)->filter()->count() / count($checks)) * 100);
     }
 }

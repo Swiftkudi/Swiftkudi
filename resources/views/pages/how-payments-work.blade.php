@@ -38,8 +38,8 @@
         <div style="background: #065f46; border-radius: 1rem; padding: 1.5rem; margin: 2rem 0;">
             <h3 style="color: #34d399;">✅ Benefits</h3>
             <ul style="margin-top: 1rem;">
-                <li>Clients only pay for approved work</li>
-                <li>Freelancers are guaranteed payment for completed work</li>
+                <li>Clients can review submitted work before approval and release</li>
+                <li>Funded work follows the platform release and dispute workflow</li>
                 <li>Dispute resolution available if issues arise</li>
             </ul>
         </div>

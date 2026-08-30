@@ -46,7 +46,25 @@ class UserNotificationController extends Controller
             $notification->update(['is_read' => true, 'read_at' => now()]);
         }
 
-        return response()->json(['success' => true]);
+        return $request->expectsJson()
+            ? response()->json(['success' => true])
+            : redirect()->back()->with('success', 'Notification marked as read.');
+    }
+
+    /**
+     * Mark a single notification as unread.
+     */
+    public function markUnread(Request $request, int $id)
+    {
+        $user = Auth::user();
+
+        AppNotification::where('id', $id)
+            ->where('user_id', $user->id)
+            ->update(['is_read' => false, 'read_at' => null]);
+
+        return $request->expectsJson()
+            ? response()->json(['success' => true])
+            : redirect()->back()->with('success', 'Notification marked as unread.');
     }
 
     /**
@@ -60,7 +78,9 @@ class UserNotificationController extends Controller
             ->where('is_read', false)
             ->update(['is_read' => true, 'read_at' => now()]);
 
-        return response()->json(['success' => true]);
+        return $request->expectsJson()
+            ? response()->json(['success' => true])
+            : redirect()->back()->with('success', 'All notifications marked as read.');
     }
 
     /**
@@ -77,11 +97,6 @@ class UserNotificationController extends Controller
         $unreadCount = AppNotification::where('user_id', $user->id)
             ->where('is_read', false)
             ->count();
-
-        // Mark all as read when viewing the page
-        AppNotification::where('user_id', $user->id)
-            ->where('is_read', false)
-            ->update(['is_read' => true, 'read_at' => now()]);
 
         return view('notifications.index', compact('notifications', 'unreadCount'));
     }

@@ -4,11 +4,11 @@ namespace App\Services;
 
 use App\Models\Notification as AppNotification;
 use App\Models\PushSubscription;
+use App\Models\NotificationPreference;
+use App\Models\NotificationDigestEntry;
 use App\Models\SystemSetting;
 use App\Models\User;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -43,23 +43,41 @@ class NotificationDispatchService
         ?string $settingKey = null,
         bool $notifyAdmins = false,
         bool $sendInApp = true,
-        bool $sendEmail = true
+        bool $sendEmail = true,
+        bool $sendPush = false
     ): void {
+        $data = $this->sanitizeActionData($data);
         $userEventEnabled = !$settingKey || SystemSetting::getBool($settingKey, true);
         $inAppEnabled = SystemSetting::getBool('notify_in_app_enabled', true);
         $emailEnabled = SystemSetting::getBool('notify_email_enabled', true);
+        $pushEnabled = SystemSetting::getBool('notify_push_enabled', true);
+        $preference = NotificationPreference::forUser($user);
+        $category = $this->resolvePreferenceCategory($settingKey, $data);
 
-        if ($userEventEnabled && $sendInApp && $inAppEnabled) {
+        if ($userEventEnabled && $sendInApp && $inAppEnabled &&
+            $preference->channelEnabled($category, NotificationPreference::CHANNEL_IN_APP)) {
             $this->sendInApp($user, $title, $message, $type, $data);
         }
 
-        if ($userEventEnabled && $sendEmail && $emailEnabled) {
+        if ($userEventEnabled && $sendEmail && $emailEnabled &&
+            $preference->channelEnabled($category, NotificationPreference::CHANNEL_EMAIL)) {
             [$emailSubject, $emailMessage] = $this->resolveEmailTemplate($settingKey, $title, $message, $user, $data);
-            // Queue email to avoid blocking HTTP requests
-            \App\Jobs\SendUserEmail::dispatch($user, $emailSubject, $emailMessage)->onQueue('notifications');
+            $frequency = (string) ($preference->email_frequency ?: 'instant');
+
+            if ($frequency !== 'instant' && !$this->mustDeliverImmediately($category)) {
+                $this->queueDigestEntry($user, $frequency, $category, $emailSubject, $emailMessage, $data);
+            } else {
+                \App\Jobs\SendUserEmail::dispatch(
+                    $user,
+                    $emailSubject,
+                    $emailMessage,
+                    $data['action_url'] ?? $data['url'] ?? null
+                )->onQueue('notifications');
+            }
         }
 
-        if ($userEventEnabled) {
+        if ($userEventEnabled && $sendPush && $pushEnabled &&
+            $preference->channelEnabled($category, NotificationPreference::CHANNEL_PUSH)) {
             $this->sendPush($user, $title, $message, $data);
         }
 
@@ -102,16 +120,143 @@ class NotificationDispatchService
                 continue;
             }
 
-            if ($inAppEnabled) {
+            $preference = NotificationPreference::forUser($admin);
+
+            if ($inAppEnabled && $preference->channelEnabled('system', NotificationPreference::CHANNEL_IN_APP)) {
                 $this->sendInApp($admin, $title, $message, AppNotification::TYPE_SYSTEM, $data);
             }
 
-            if ($emailEnabled) {
+            if ($emailEnabled && $preference->channelEnabled('system', NotificationPreference::CHANNEL_EMAIL)) {
                 $this->sendEmail($admin, $title, $message);
             }
 
-            $this->sendPush($admin, $title, $message, $data);
+            if (SystemSetting::getBool('notify_push_enabled', true) &&
+                $preference->channelEnabled('system', NotificationPreference::CHANNEL_PUSH)) {
+                $this->sendPush($admin, $title, $message, $data);
+            }
         }
+    }
+
+
+    /**
+     * Resolve legacy setting keys and modern event names to user-facing preference groups.
+     */
+    protected function resolvePreferenceCategory(?string $settingKey, array $data = []): string
+    {
+        $event = strtolower((string) ($data['event'] ?? $settingKey ?? 'system'));
+
+        if (str_contains($event, 'chat') || str_contains($event, 'message')) {
+            return 'messages';
+        }
+        if (str_contains($event, 'application') || str_contains($event, 'applicant') || str_contains($event, 'proposal')) {
+            return 'proposals';
+        }
+        if (str_contains($event, 'contract') || str_contains($event, 'milestone') || str_contains($event, 'service_order') ||
+            str_contains($event, 'service_delivered') || str_contains($event, 'revision')) {
+            return 'contracts';
+        }
+        if (str_contains($event, 'escrow') || str_contains($event, 'withdrawal') || str_contains($event, 'earnings') ||
+            str_contains($event, 'payment') || str_contains($event, 'wallet')) {
+            return 'payments';
+        }
+        if (str_contains($event, 'review')) {
+            return 'reviews';
+        }
+        if (str_contains($event, 'dispute')) {
+            return 'disputes';
+        }
+        if (str_contains($event, 'activation') || str_contains($event, 'account') || str_contains($event, 'security') ||
+            str_contains($event, 'password') || str_contains($event, 'verification') || str_contains($event, 'login')) {
+            return 'security';
+        }
+        if (str_contains($event, 'bundle') || str_contains($event, 'recommend') || str_contains($event, 'marketing')) {
+            return 'marketing';
+        }
+        if (str_starts_with($event, 'job_') || str_contains($event, 'job')) {
+            return 'jobs';
+        }
+
+        return 'system';
+    }
+
+    /**
+     * Time-sensitive marketplace and account notices stay instant even when the user
+     * chooses a digest for low-priority email.
+     */
+    protected function mustDeliverImmediately(string $category): bool
+    {
+        return in_array($category, ['messages', 'proposals', 'contracts', 'payments', 'disputes', 'security'], true);
+    }
+
+    protected function queueDigestEntry(User $user, string $frequency, string $category, string $title, string $message, array $data = []): void
+    {
+        if (!in_array($frequency, ['daily', 'weekly'], true)) {
+            $frequency = 'daily';
+        }
+
+        try {
+            NotificationDigestEntry::create([
+                'user_id' => $user->id,
+                'frequency' => $frequency,
+                'category' => $category,
+                'title' => $title,
+                'message' => $message,
+                'action_url' => $data['action_url'] ?? $data['url'] ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Notification digest entry could not be stored; falling back to instant email.', [
+                'user_id' => $user->id,
+                'category' => $category,
+                'error' => $e->getMessage(),
+            ]);
+
+            \App\Jobs\SendUserEmail::dispatch(
+                $user,
+                $title,
+                $message,
+                $data['action_url'] ?? $data['url'] ?? null
+            )->onQueue('notifications');
+        }
+    }
+
+
+    /**
+     * Keep notification deep links on this application. Notification payloads can
+     * be populated by multiple workflows, so validate once before any channel
+     * (in-app, email or push) receives the URL.
+     */
+    protected function sanitizeActionData(array $data): array
+    {
+        foreach (['action_url', 'url'] as $key) {
+            if (!array_key_exists($key, $data)) {
+                continue;
+            }
+
+            $value = is_string($data[$key]) ? trim($data[$key]) : '';
+            if ($value === '' || strlen($value) > 2048) {
+                unset($data[$key]);
+                continue;
+            }
+
+            if (str_starts_with($value, '/') && !str_starts_with($value, '//')) {
+                $data[$key] = $value;
+                continue;
+            }
+
+            $parts = parse_url($value);
+            $appParts = parse_url((string) config('app.url'));
+            $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+            $sameHost = !empty($parts['host']) && !empty($appParts['host'])
+                && strcasecmp((string) $parts['host'], (string) $appParts['host']) === 0;
+            $samePort = (int) ($parts['port'] ?? ($scheme === 'https' ? 443 : 80))
+                === (int) ($appParts['port'] ?? (strtolower((string) ($appParts['scheme'] ?? '')) === 'https' ? 443 : 80));
+
+            if (!in_array($scheme, ['http', 'https'], true) || !$sameHost || !$samePort) {
+                unset($data[$key]);
+            }
+        }
+
+        return $data;
     }
 
     protected function resolveEmailTemplate(?string $settingKey, string $title, string $message, User $user, array $data = []): array
@@ -173,6 +318,14 @@ class NotificationDispatchService
     /**
      * Public alias so controllers can trigger a push directly.
      */
+    /**
+     * Public push entry point used by queued jobs, admin broadcasts and test delivery.
+     */
+    public function sendPushToUser(User $user, string $title, string $message, array $data = []): void
+    {
+        $this->sendPush($user, $title, $message, $this->sanitizeActionData($data));
+    }
+
     /**
      * Send push notification to multiple users (batched for scalability)
      */
@@ -283,25 +436,8 @@ class NotificationDispatchService
             return;
         }
 
-        try {
-            $this->applyMailConfigFromSettings();
-            [$subject, $message] = $this->normalizeEmailContent($subject, $message);
-            $html = $this->buildHtmlEmail($subject, $message, $user);
-
-            Mail::send([], [], function ($mail) use ($user, $subject, $html) {
-                $mail->from(config('mail.from.address'), config('mail.from.name'))
-                    ->to($user->email)
-                    ->subject($subject)
-                    ->setBody($html, 'text/html');
-            });
-        } catch (\Throwable $e) {
-            Log::warning('Email notification dispatch failed', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'subject' => $subject,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        [$subject, $message] = $this->normalizeEmailContent($subject, $message);
+        \App\Jobs\SendUserEmail::dispatch($user, $subject, $message)->onQueue('notifications');
     }
 
     protected function normalizeEmailContent(string $subject, string $message): array
@@ -357,96 +493,5 @@ class NotificationDispatchService
             (string) ($entry['subject'] ?? $fallbackTitle),
             (string) ($entry['body'] ?? $fallbackMessage),
         ];
-    }
-
-    protected function buildHtmlEmail(string $subject, string $message, User $user): string
-    {
-        $siteName = e((string) config('app.name', 'SwiftKudi'));
-        $recipientName = e((string) ($user->name ?: 'there'));
-        $safeSubject = e($subject);
-        $safeMessage = nl2br(e($message));
-        $dashboardUrl = e((string) url('/dashboard'));
-        $year = date('Y');
-
-        return '<!doctype html>' .
-            '<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>' .
-            '<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">' .
-            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px;">' .
-            '<tr><td align="center">' .
-            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border-radius:12px;overflow:hidden;">' .
-            '<tr><td style="background:#4f46e5;padding:20px 24px;color:#ffffff;font-size:20px;font-weight:700;">' . $siteName . '</td></tr>' .
-            '<tr><td style="padding:24px;">' .
-            '<h2 style="margin:0 0 12px 0;font-size:20px;line-height:1.3;color:#111827;">' . $safeSubject . '</h2>' .
-            '<p style="margin:0 0 14px 0;font-size:14px;color:#374151;">Hello ' . $recipientName . ',</p>' .
-            '<div style="font-size:15px;line-height:1.7;color:#111827;">' . $safeMessage . '</div>' .
-            '<div style="margin-top:24px;">' .
-            '<a href="' . $dashboardUrl . '" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;">Open Dashboard</a>' .
-            '</div>' .
-            '</td></tr>' .
-            '<tr><td style="padding:16px 24px;background:#f9fafb;font-size:12px;color:#6b7280;">© ' . $year . ' ' . $siteName . '. This is an automated notification email.</td></tr>' .
-            '</table>' .
-            '</td></tr>' .
-            '</table>' .
-            '</body></html>';
-    }
-
-    protected function applyMailConfigFromSettings(): void
-    {
-        $selectedDriver = SystemSetting::get('smtp_driver', config('mail.default'));
-        $isTurbo = $selectedDriver === 'turbosmtp';
-        $driver = $isTurbo ? 'smtp' : $selectedDriver;
-
-        $host = SystemSetting::get('smtp_host', config('mail.mailers.smtp.host'));
-        if (empty($host) && $isTurbo) {
-            $host = config('services.turbosmtp.server', $host);
-        }
-
-        $port = SystemSetting::getNumber('smtp_port', config('mail.mailers.smtp.port'));
-        if ((empty($port) || $port <= 0) && $isTurbo) {
-            $port = (int) config('services.turbosmtp.port', 587);
-        }
-
-        $username = SystemSetting::get('smtp_username', config('mail.mailers.smtp.username'));
-        if (empty($username) && $isTurbo) {
-            $username = config('services.turbosmtp.username', $username);
-        }
-
-        $password = SystemSetting::getDecrypted('smtp_password', config('mail.mailers.smtp.password'));
-        if (empty($password) && $isTurbo) {
-            $password = config('services.turbosmtp.password', $password);
-        }
-
-        $encryption = strtolower((string) SystemSetting::get('smtp_encryption', config('mail.mailers.smtp.encryption')));
-        if (in_array($encryption, ['', 'none', 'null'], true)) {
-            $encryption = null;
-        }
-
-        $port = (int) $port;
-        if ($port <= 0) {
-            $port = $encryption === 'ssl' ? 465 : 587;
-        }
-
-        if ($encryption === 'ssl' && $port === 587) {
-            $port = 465;
-        }
-        if (($encryption === 'tls' || $encryption === null) && $port === 465) {
-            $port = 587;
-        }
-        $fromAddress = SystemSetting::get('smtp_from_email', config('mail.from.address'));
-        $fromName = SystemSetting::get('smtp_from_name', config('mail.from.name'));
-
-        Config::set('mail.default', $driver);
-        Config::set('mail.mailers.smtp.host', $host);
-        Config::set('mail.mailers.smtp.port', $port);
-        Config::set('mail.mailers.smtp.username', $username);
-        Config::set('mail.mailers.smtp.password', $password);
-        Config::set('mail.mailers.smtp.encryption', $encryption);
-        Config::set('mail.mailers.smtp.timeout', 30);
-        Config::set('mail.mailers.smtp.auth_mode', null);
-        Config::set('mail.from.address', $fromAddress);
-        Config::set('mail.from.name', $fromName);
-
-        app()->forgetInstance('mail.manager');
-        app()->forgetInstance('mailer');
     }
 }

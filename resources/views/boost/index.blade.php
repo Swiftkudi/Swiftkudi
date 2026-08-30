@@ -7,7 +7,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
         <div class="mb-8">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">Boost & Promotion</h1>
+            <h1 class="text-3xl font-bold bg-indigo-600 bg-clip-text text-transparent">Boost & Promotion</h1>
             <p class="mt-2 text-gray-600 dark:text-gray-400">Boost your listings to get more visibility and orders</p>
         </div>
 
@@ -95,7 +95,7 @@
                     </ul>
 
                     <button type="button" onclick="openBoostModal({{ $package->id }}, '{{ $package->name }}', {{ $package->price }}, {{ $package->duration_days }})" 
-                            class="w-full px-4 py-3 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-medium rounded-xl transition-colors">
+                            class="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors">
                         Select Package
                     </button>
                 </div>
@@ -142,7 +142,7 @@
 <div id="boost-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
     <div class="bg-white dark:bg-dark-900 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         <!-- Modal Header -->
-        <div class="bg-gradient-to-r from-pink-600 to-purple-600 p-6 rounded-t-3xl">
+        <div class="bg-indigo-600 p-6 rounded-t-3xl">
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-xl font-bold text-white">Boost Your Listing</h2>
@@ -222,7 +222,7 @@
                     Cancel
                 </button>
                 <button type="submit" id="submit-boost-btn"
-                        class="flex-1 py-3 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-xl font-bold hover:from-pink-700 hover:to-purple-700 transition-all shadow-lg shadow-pink-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-pink-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled>
                     <i class="fas fa-rocket mr-2"></i>Purchase Boost
                 </button>

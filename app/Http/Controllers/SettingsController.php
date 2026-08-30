@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SystemSetting;
 use App\Models\AdminRole;
 use App\Models\Notification;
+use App\Models\EmailDeliveryLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -110,6 +111,10 @@ class SettingsController extends Controller
             $this->ensureNotificationSettingsExist();
         }
 
+        if ($group === 'security') {
+            $this->ensureSecuritySettingsExist();
+        }
+
         if ($group === 'task-gate') {
             $this->ensureTaskGateSettingsExist();
         }
@@ -174,6 +179,10 @@ class SettingsController extends Controller
 
         if ($group === 'notification') {
             $this->ensureNotificationSettingsExist();
+        }
+
+        if ($group === 'security') {
+            $this->ensureSecuritySettingsExist();
         }
 
         $settings = SystemSetting::where('group', $group)->get();
@@ -310,6 +319,30 @@ class SettingsController extends Controller
             if ($setting->group !== 'task-gate') {
                 $currentValue = SystemSetting::get($key, $meta['value']);
                 SystemSetting::set($key, $currentValue, 'task-gate', $setting->type ?: $meta['type']);
+            }
+        }
+    }
+
+    /**
+     * Ensure security controls required by the public auth routes exist.
+     */
+    protected function ensureSecuritySettingsExist(): void
+    {
+        $defaults = [
+            'rate_limiting_enabled' => ['value' => true, 'type' => 'boolean'],
+            'login_rate_limit_attempts' => ['value' => 5, 'type' => 'number'],
+            'login_rate_limit_minutes' => ['value' => 5, 'type' => 'number'],
+            'registration_rate_limit_attempts' => ['value' => 5, 'type' => 'number'],
+            'registration_rate_limit_minutes' => ['value' => 15, 'type' => 'number'],
+            'password_reset_rate_limit_attempts' => ['value' => 5, 'type' => 'number'],
+            'password_reset_rate_limit_minutes' => ['value' => 15, 'type' => 'number'],
+            'verification_rate_limit_attempts' => ['value' => 6, 'type' => 'number'],
+            'verification_rate_limit_minutes' => ['value' => 1, 'type' => 'number'],
+        ];
+
+        foreach ($defaults as $key => $meta) {
+            if (!SystemSetting::keyExists($key)) {
+                SystemSetting::set($key, $meta['value'], 'security', $meta['type']);
             }
         }
     }
@@ -883,6 +916,39 @@ class SettingsController extends Controller
             ->pluck('type');
 
         return view('admin.settings.notifications-audit', compact('notifications', 'summary', 'types', 'search', 'type', 'adminOnly'));
+    }
+
+    /**
+     * Email delivery diagnostics for queued marketplace notifications.
+     */
+    public function emailDeliveries(Request $request)
+    {
+        $query = EmailDeliveryLog::query()->with('user:id,name,email')->latest();
+
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('recipient_email', 'like', '%' . $search . '%')
+                    ->orWhere('subject', 'like', '%' . $search . '%')
+                    ->orWhere('correlation_id', 'like', '%' . $search . '%');
+            });
+        }
+
+        $status = trim((string) $request->query('status', ''));
+        if ($status !== '') {
+            $query->where('status', $status);
+        }
+
+        $deliveries = $query->paginate(100)->withQueryString();
+        $summary = [
+            'total' => EmailDeliveryLog::count(),
+            'sent' => EmailDeliveryLog::where('status', 'sent')->count(),
+            'failed' => EmailDeliveryLog::where('status', 'failed')->count(),
+            'retrying' => EmailDeliveryLog::where('status', 'retrying')->count(),
+        ];
+        $statuses = EmailDeliveryLog::query()->select('status')->distinct()->orderBy('status')->pluck('status');
+
+        return view('admin.settings.email-deliveries', compact('deliveries', 'summary', 'statuses', 'search', 'status'));
     }
 
     /**

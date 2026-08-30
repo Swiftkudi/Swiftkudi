@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (!Schema::hasTable('disputes') || Schema::hasColumn('disputes', 'evidence')) {
+            return;
+        }
+
+        Schema::table('disputes', function (Blueprint $table) {
+            $table->json('evidence')->nullable()->after('reason');
+        });
+    }
+
+    public function down(): void
+    {
+        if (!Schema::hasTable('disputes') || !Schema::hasColumn('disputes', 'evidence')) {
+            return;
+        }
+
+        Schema::table('disputes', function (Blueprint $table) {
+            $table->dropColumn('evidence');
+        });
+    }
+};

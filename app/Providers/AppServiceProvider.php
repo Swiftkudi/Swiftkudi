@@ -100,83 +100,14 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
-        // Apply mail configuration from system settings if present
+        // Apply one centralized mail configuration for web requests and queue workers.
+        // Failure here must never make the application unavailable.
         try {
-            $enabled = SystemSetting::getBool('smtp_enabled', false);
-
-            if ($enabled) {
-                $selectedDriver = SystemSetting::get('smtp_driver', config('mail.default'));
-                $isTurbo = $selectedDriver === 'turbosmtp';
-                $driver = $isTurbo ? 'smtp' : $selectedDriver;
-
-                $host = SystemSetting::get('smtp_host', config('mail.mailers.smtp.host'));
-                if (empty($host) && $isTurbo) {
-                    $host = config('services.turbosmtp.server', $host);
-                }
-
-                $port = SystemSetting::getNumber('smtp_port', config('mail.mailers.smtp.port'));
-                if ((empty($port) || $port <= 0) && $isTurbo) {
-                    $port = (int) config('services.turbosmtp.port', 587);
-                }
-
-                $username = SystemSetting::get('smtp_username', config('mail.mailers.smtp.username'));
-                if (empty($username) && $isTurbo) {
-                    $username = config('services.turbosmtp.username', $username);
-                }
-
-                $password = SystemSetting::getDecrypted('smtp_password', config('mail.mailers.smtp.password'));
-                if (empty($password) && $isTurbo) {
-                    $password = config('services.turbosmtp.password', $password);
-                }
-
-                $encryption = strtolower((string) SystemSetting::get('smtp_encryption', config('mail.mailers.smtp.encryption')));
-                if (in_array($encryption, ['', 'none', 'null'], true)) {
-                    $encryption = null;
-                }
-
-                $port = (int) $port;
-                if ($port <= 0) {
-                    $port = $encryption === 'ssl' ? 465 : 587;
-                }
-
-                if ($encryption === 'ssl' && $port === 587) {
-                    $port = 465;
-                }
-                if (($encryption === 'tls' || $encryption === null) && $port === 465) {
-                    $port = 587;
-                }
-
-                $fromAddress = SystemSetting::get('smtp_from_email', config('mail.from.address'));
-                if (empty($fromAddress) && $isTurbo) {
-                    $fromAddress = config('services.turbosmtp.from_address', $fromAddress);
-                }
-
-                $fromName = SystemSetting::get('smtp_from_name', config('mail.from.name'));
-                if (empty($fromName) && $isTurbo) {
-                    $fromName = config('services.turbosmtp.from_name', $fromName);
-                }
-
-                Config::set('mail.default', $driver);
-                Config::set('mail.mailers.smtp.host', $host);
-                Config::set('mail.mailers.smtp.port', $port);
-                Config::set('mail.mailers.smtp.username', $username);
-                Config::set('mail.mailers.smtp.password', $password);
-                Config::set('mail.mailers.smtp.encryption', $encryption);
-                Config::set('mail.mailers.smtp.timeout', 30);
-                Config::set('mail.mailers.smtp.auth_mode', null);
-                Config::set('mail.from.address', $fromAddress);
-                Config::set('mail.from.name', $fromName);
-
-                // Rebind mailer to ensure runtime picks up new config
-                if (app()->bound('mail.manager')) {
-                    app()->forgetInstance('mail.manager');
-                }
-                if (app()->bound('mailer')) {
-                    app()->forgetInstance('mailer');
-                }
-            }
-        } catch (\Exception $e) {
-            // Do not break app boot on errors related to system settings
+            $this->app->make(\App\Services\MailConfigurationService::class)->apply();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Runtime mail configuration could not be applied', [
+                'error' => $e->getMessage(),
+            ]);
         }
 
         // Register model observers (safe/no-op if registration fails)

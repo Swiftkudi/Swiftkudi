@@ -90,7 +90,7 @@ class GoogleAuthController extends Controller
 
             // Check if user is admin
             if ($user->role === 'admin') {
-                return redirect()->intended(route('admin.dashboard'));
+                return redirect()->intended(route('admin.index'));
             }
 
             return redirect()->intended(route('dashboard'));
@@ -180,7 +180,7 @@ class GoogleAuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'redirect' => $user->role === 'admin' ? route('admin.dashboard') : route('dashboard'),
+                'redirect' => $user->role === 'admin' ? route('admin.index') : route('dashboard'),
             ]);
 
         } catch (\Exception $e) {

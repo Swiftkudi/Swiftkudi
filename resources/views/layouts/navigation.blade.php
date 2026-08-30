@@ -219,10 +219,10 @@
                         <div class="px-4 py-2 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Settings
                         </div>
-                        <x-dropdown-link :href="route('settings.profile')">
+                        <x-dropdown-link :href="route('dashboard.profile')">
                             <i class="fas fa-user mr-2"></i> Profile Settings
                         </x-dropdown-link>
-                        <x-dropdown-link :href="route('settings.index')">
+                        <x-dropdown-link :href="route('notification-settings.edit')">
                             <i class="fas fa-cog mr-2"></i> Account Settings
                         </x-dropdown-link>
 
@@ -241,6 +241,7 @@
                                 <i class="fas fa-sign-out-alt mr-2"></i> {{ __('Log Out') }}
                             </x-dropdown-link>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>

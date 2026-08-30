@@ -13,7 +13,7 @@
 
         <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 overflow-hidden">
             <!-- Header -->
-            <div class="bg-gradient-to-r from-green-500 to-teal-600 p-8 text-white">
+            <div class="bg-indigo-600 p-8 text-white">
                 <div class="flex items-center justify-between">
                     <div>
                         <h1 class="text-2xl font-bold">Deposit Funds</h1>
@@ -93,7 +93,7 @@
                     </div>
 
                     <!-- Submit Button -->
-                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold rounded-xl shadow-xl shadow-green-500/30 transition-all transform hover:scale-[1.02]">
+                    <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xl shadow-green-500/30 transition-all transform hover:scale-[1.02]">
                         <i class="fas fa-arrow-down mr-2"></i>
                         Deposit ₦<span id="deposit-amount">0</span>
                     </button>

@@ -1,350 +1,148 @@
 @extends('layouts.app')
 
-@section('title', 'Chat with ' . ($otherUser->name ?? 'User'))
+@section('title', 'Message ' . ($otherUser->name ?? 'User') . ' - SwiftKudi')
+@section('robots', 'noindex,nofollow')
 
 @push('styles')
-<style>
-    .messages-container {
-        scroll-behavior: smooth;
-    }
-    .message-bubble {
-        max-width: 75%;
-    }
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    .message-enter {
-        animation: slideIn 0.3s ease-out;
-    }
-</style>
+<style>.messages-container{scroll-behavior:smooth}.message-bubble{max-width:min(78%,42rem)}@keyframes messageIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}.message-enter{animation:messageIn .18s ease-out}</style>
 @endpush
 
 @section('content')
-<div class="py-6 min-h-screen bg-gray-950">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div
-            id="chat-config"
-            data-conversation-id="{{ $conversation->id }}"
-            data-last-message-id="{{ $conversation->messages->max('id') ?? 0 }}"
-            data-current-user-id="{{ auth()->id() }}"
-            data-send-url="{{ route('chat.send') }}"
-            data-messages-url="{{ route('chat.messages', $conversation) }}"
-        ></div>
+@php
+    $reference = $conversation->reference;
+    $contextTitle = optional($reference)->title ?: ucwords(str_replace('_',' ',$conversation->type));
+    $contextUrl = null;
+    if ($reference) {
+        $contextUrl = match($conversation->type) {
+            'job', 'jobs' => route('jobs.show', $reference),
+            'professional_service', 'service' => route('professional-services.show', $reference),
+            'task', 'tasks' => route('tasks.show', $reference),
+            'growth_service', 'growth' => route('growth.show', $reference),
+            'digital_product', 'product' => route('digital-products.show', $reference),
+            default => null,
+        };
+    }
+@endphp
+<div class="marketplace-page"><div class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div id="chat-config" data-conversation-id="{{ $conversation->id }}" data-last-message-id="{{ $conversation->messages->max('id') ?? 0 }}" data-current-user-id="{{ auth()->id() }}" data-send-url="{{ route('chat.send') }}" data-messages-url="{{ route('chat.messages', $conversation) }}"></div>
 
-        <!-- Header -->
-        <div class="mb-6">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <a href="{{ route('chat.index') }}" class="text-gray-400 hover:text-gray-200">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </a>
-                    <div class="flex items-center space-x-3">
-                        <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
-                            {{ strtoupper(substr($otherUser->name ?? 'U', 0, 2)) }}
-                        </div>
-                        <div>
-                            <h1 class="text-xl font-bold text-gray-100">{{ $otherUser->name ?? 'Unknown User' }}</h1>
-                            <p class="text-sm text-gray-400">{{ ucfirst($conversation->type) }}</p>
-                        </div>
+    <div class="overflow-hidden rounded-2xl border border-dark-700 bg-dark-900">
+        <header class="static h-auto border-b border-dark-700 bg-dark-900 px-4 py-4 sm:px-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex min-w-0 items-center gap-3"><a href="{{ route('chat.index') }}" class="flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-dark-700 text-gray-400 hover:bg-dark-800 hover:text-white"><i class="fas fa-arrow-left"></i></a><span class="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">{{ strtoupper(substr($otherUser->name ?? 'U',0,2)) }}</span><div class="min-w-0"><h1 class="truncate font-semibold text-white">{{ $otherUser->name ?? 'Unknown user' }}</h1><p class="truncate text-xs text-gray-500">{{ $contextTitle }}</p></div></div>
+                <div class="flex flex-wrap items-center gap-2">@if($contextUrl)<a href="{{ $contextUrl }}" class="marketplace-btn-secondary py-2"><i class="fas fa-arrow-up-right-from-square"></i>View context</a>@endif @if($conversation->status === 'active')<button type="button" onclick="closeConversation()" class="marketplace-btn-secondary py-2 text-gray-400">Close chat</button>@else<span class="marketplace-pill">{{ ucfirst($conversation->status) }}</span>@endif</div>
+            </div>
+        </header>
+
+        <div id="messages-container" class="messages-container h-[min(62vh,620px)] space-y-3 overflow-y-auto bg-dark-950/50 p-4 sm:p-6">
+            @forelse($conversation->messages as $message)
+                @php($isOwn = $message->sender_id === auth()->id())
+                <div class="flex {{ $isOwn ? 'justify-end' : 'justify-start' }} message-enter">
+                    <div class="message-bubble rounded-2xl px-4 py-3 {{ $isOwn ? 'rounded-br-md bg-indigo-600 text-white' : 'rounded-bl-md border border-dark-700 bg-dark-900 text-gray-100' }}">
+                        @if($message->message)<p class="whitespace-pre-wrap break-words text-sm leading-6">{{ $message->message }}</p>@endif
+                        @if($message->attachment_path)
+                            <div class="mt-2">@if(str_starts_with((string)$message->attachment_type,'image/'))<a href="{{ route('chat.attachment', $message) }}" target="_blank" rel="noopener"><img src="{{ route('chat.attachment', $message) }}" alt="Shared image" class="max-h-72 max-w-full rounded-lg object-contain"></a>@else<a href="{{ route('chat.attachment', $message) }}" class="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold underline"><i class="fas fa-paperclip"></i>Download attachment</a>@endif</div>
+                        @endif
+                        <p class="mt-1.5 text-[10px] {{ $isOwn ? 'text-indigo-100' : 'text-gray-600' }}">{{ $message->created_at->format('g:i A') }} @if($isOwn && $message->is_read)<span class="ml-1" title="Read">✓✓</span>@endif</p>
                     </div>
                 </div>
-                <div class="flex items-center space-x-2">
-                    @if($conversation->status === 'active')
-                        <button onclick="closeConversation()" class="px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
-                            Close Chat
-                        </button>
-                    @else
-                        <span class="px-3 py-1 text-xs font-medium rounded-full 
-                            {{ $conversation->status === 'closed' ? 'bg-gray-800 text-gray-300' : 'bg-green-900/40 text-green-300' }}">
-                            {{ ucfirst($conversation->status) }}
-                        </span>
-                    @endif
-                </div>
-            </div>
+            @empty
+                <div id="chat-empty" class="py-16 text-center"><span class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-dark-900 text-gray-600"><i class="far fa-comment"></i></span><p class="mt-4 text-sm font-semibold text-gray-300">Start the conversation</p><p class="mt-1 text-xs text-gray-600">Keep project details and decisions here for a clear work history.</p></div>
+            @endforelse
         </div>
 
-        <!-- Chat Area -->
-        <div class="bg-gray-900 rounded-xl shadow-sm border border-gray-800 overflow-hidden">
-            <!-- Messages -->
-            <div id="messages-container" class="h-[500px] overflow-y-auto p-6 space-y-4 messages-container bg-gray-900">
-                @forelse($conversation->messages as $message)
-                    @php
-                        $isOwn = $message->sender_id === auth()->id();
-                    @endphp
-                    <div class="flex {{ $isOwn ? 'justify-end' : 'justify-start' }} message-enter">
-                        <div class="message-bubble {{ $isOwn 
-                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl rounded-br-md' 
-                            : 'bg-gray-800 text-gray-100 rounded-2xl rounded-bl-md' }} px-4 py-3">
-                            @if($message->message)
-                                <p class="text-sm">{{ $message->message }}</p>
-                            @endif
-                            
-                            @if($message->attachment_path)
-                                <div class="mt-2">
-                                    @if(str_starts_with($message->attachment_type, 'image/'))
-                                        <img src="{{ asset('storage/' . $message->attachment_path) }}" alt="Attachment" class="max-w-[200px] rounded-lg">
-                                    @else
-                                        <a href="{{ asset('storage/' . $message->attachment_path) }}" target="_blank" class="flex items-center space-x-2 text-xs underline">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                            </svg>
-                                            <span>View Attachment</span>
-                                        </a>
-                                    @endif
-                                </div>
-                            @endif
-                            
-                            <p class="text-xs mt-1 {{ $isOwn ? 'text-blue-100' : 'text-gray-300' }}">
-                                {{ $message->created_at->format('g:i A') }}
-                                @if($isOwn && $message->is_read)
-                                    <span class="ml-1">✓✓</span>
-                                @endif
-                            </p>
-                        </div>
-                    </div>
-                @empty
-                    <div class="text-center py-12">
-                        <svg class="mx-auto h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        <p class="mt-4 text-gray-300">No messages yet</p>
-                        <p class="text-sm text-gray-500">Send a message to start the conversation</p>
-                    </div>
-                @endforelse
-            </div>
-
-            <!-- Input Area -->
-            @if($conversation->status === 'active')
-                <div class="border-t border-gray-800 p-4 bg-gray-900">
-                    <form id="message-form" class="flex items-end space-x-3">
-                        <div class="flex-1">
-                            <textarea 
-                                name="message" 
-                                id="message-input"
-                                rows="1"
-                                class="w-full px-4 py-3 bg-gray-800 text-gray-100 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none placeholder-gray-400"
-                                placeholder="Type your message..."
-                                oninput="autoResize(this)"
-                                onkeydown="handleKeyDown(event)"
-                            ></textarea>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <label class="cursor-pointer p-3 text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded-lg transition-colors">
-                                <input type="file" id="attachment-input" class="hidden" onchange="handleFileSelect(this)">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                </svg>
-                            </label>
-                            <button type="submit" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow-sm">
-                                Send
-                            </button>
-                        </div>
-                    </form>
-                    <div id="selected-file" class="hidden mt-2 flex items-center justify-between px-3 py-2 bg-gray-800 rounded-lg">
-                        <span class="text-sm text-gray-300 truncate" id="file-name"></span>
-                        <button type="button" onclick="clearFile()" class="text-gray-400 hover:text-gray-200">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            @else
-                <div class="border-t border-gray-800 p-4 bg-gray-900 text-center">
-                    <p class="text-gray-300">This conversation has been closed</p>
-                </div>
-            @endif
+        @if($conversation->status === 'active')
+        <div class="border-t border-dark-700 bg-dark-900 p-4 sm:p-5">
+            <div id="chat-error" class="mb-3 hidden rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"></div>
+            <form id="message-form" class="flex items-end gap-2 sm:gap-3"><div class="flex-1"><textarea id="message-input" name="message" rows="1" maxlength="5000" class="marketplace-input max-h-40 resize-none" placeholder="Write a message…" oninput="autoResize(this)" onkeydown="handleKeyDown(event)"></textarea></div><label class="flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-lg border border-dark-600 text-gray-400 hover:bg-dark-800 hover:text-white" title="Attach file"><input type="file" id="attachment-input" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.zip,.txt" onchange="handleFileSelect(this)"><i class="fas fa-paperclip"></i></label><button id="send-button" type="submit" class="marketplace-btn-primary h-11 px-5"><span>Send</span><i class="fas fa-paper-plane text-xs"></i></button></form>
+            <div id="selected-file" class="mt-2 hidden items-center justify-between rounded-lg border border-dark-700 bg-dark-950 px-3 py-2"><span id="file-name" class="truncate text-xs text-gray-400"></span><button type="button" onclick="clearFile()" class="text-gray-500 hover:text-red-300"><i class="fas fa-xmark"></i></button></div>
+            <p class="mt-2 text-[11px] text-gray-600">Enter to send · Shift+Enter for a new line · attachments up to 10 MB</p>
         </div>
+        @else<div class="border-t border-dark-700 bg-dark-900 p-5 text-center text-sm text-gray-500">This conversation is closed.</div>@endif
     </div>
-</div>
+</div></div>
 
 @push('scripts')
 <script>
-    const chatConfig = document.getElementById('chat-config');
+(() => {
+    const config = document.getElementById('chat-config');
+    const form = document.getElementById('message-form');
+    const input = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const errorBox = document.getElementById('chat-error');
+    const container = document.getElementById('messages-container');
+    if (!config || !container) return;
+
     let selectedFile = null;
-    const conversationId = Number(chatConfig?.dataset?.conversationId || 0);
-    let lastMessageId = Number(chatConfig?.dataset?.lastMessageId || 0);
-    const currentUserId = Number(chatConfig?.dataset?.currentUserId || 0);
-    const chatSendUrl = chatConfig?.dataset?.sendUrl || '/chat/send';
-    const chatMessagesUrl = chatConfig?.dataset?.messagesUrl || `/chat/${conversationId}/messages`;
+    const conversationId = Number(config.dataset.conversationId || 0);
+    let lastMessageId = Number(config.dataset.lastMessageId || 0);
+    const currentUserId = Number(config.dataset.currentUserId || 0);
+    const chatSendUrl = config.dataset.sendUrl;
+    const chatMessagesUrl = config.dataset.messagesUrl;
 
-    function autoResize(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-    }
+    window.autoResize = el => { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 160) + 'px'; };
+    window.handleKeyDown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form?.requestSubmit(); } };
+    window.handleFileSelect = el => { if (!el.files?.[0]) return; selectedFile = el.files[0]; document.getElementById('file-name').textContent = selectedFile.name; document.getElementById('selected-file').classList.remove('hidden'); document.getElementById('selected-file').classList.add('flex'); };
+    window.clearFile = () => { selectedFile = null; const fileInput = document.getElementById('attachment-input'); if (fileInput) fileInput.value=''; const box=document.getElementById('selected-file'); box?.classList.add('hidden'); box?.classList.remove('flex'); };
 
-    function handleKeyDown(event) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            document.getElementById('message-form').dispatchEvent(new Event('submit'));
-        }
-    }
-
-    function handleFileSelect(input) {
-        if (input.files && input.files[0]) {
-            selectedFile = input.files[0];
-            document.getElementById('file-name').textContent = selectedFile.name;
-            document.getElementById('selected-file').classList.remove('hidden');
-        }
-    }
-
-    function clearFile() {
-        selectedFile = null;
-        document.getElementById('attachment-input').value = '';
-        document.getElementById('selected-file').classList.add('hidden');
-    }
-
-    document.getElementById('message-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const input = document.getElementById('message-input');
-        const message = input.value.trim();
-        
-        if (!message && !selectedFile) return;
-
-        const formData = new FormData();
-        formData.append('conversation_id', conversationId);
-        if (message) formData.append('message', message);
-        if (selectedFile) formData.append('attachment', selectedFile);
-
-        try {
-            const response = await fetch(chatSendUrl, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: formData
-            });
-
-            const data = await response.json();
-            
-            if (data.success) {
-                input.value = '';
-                autoResize(input);
-                clearFile();
-                appendMessage(data.message);
-                lastMessageId = Math.max(lastMessageId, data.message.id || 0);
-                const container = document.getElementById('messages-container');
-                container.scrollTop = container.scrollHeight;
-            }
-        } catch (error) {
-            console.error('Error sending message:', error);
-            alert('Failed to send message. Please try again.');
-        }
-    });
-
-    function escapeHtml(value) {
-        return (value || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
-    function formatTime(dateString) {
-        try {
-            return new Date(dateString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        } catch (_) {
-            return '';
-        }
-    }
+    const escapeHtml = value => String(value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    const formatTime = value => { try { return new Date(value).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); } catch (_) { return ''; } };
+    const showError = message => { if (!errorBox) return; errorBox.textContent = message; errorBox.classList.remove('hidden'); };
+    const clearError = () => errorBox?.classList.add('hidden');
 
     function appendMessage(message) {
-        const container = document.getElementById('messages-container');
-        const isOwn = Number(message.sender_id) === Number(currentUserId);
+        document.getElementById('chat-empty')?.remove();
+        const isOwn = Number(message.sender_id) === currentUserId;
         const wrapper = document.createElement('div');
         wrapper.className = `flex ${isOwn ? 'justify-end' : 'justify-start'} message-enter`;
-
-        const bubbleClass = isOwn
-            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl rounded-br-md'
-            : 'bg-gray-800 text-gray-100 rounded-2xl rounded-bl-md';
-
-        const timeClass = isOwn ? 'text-blue-100' : 'text-gray-300';
-        let attachmentHtml = '';
-        if (message.attachment_path) {
-            const url = `/storage/${message.attachment_path}`;
-            if ((message.attachment_type || '').startsWith('image/')) {
-                attachmentHtml = `<div class="mt-2"><img src="${url}" alt="Attachment" class="max-w-[200px] rounded-lg"></div>`;
-            } else {
-                attachmentHtml = `<div class="mt-2"><a href="${url}" target="_blank" class="flex items-center space-x-2 text-xs underline"><span>View Attachment</span></a></div>`;
-            }
+        const bubbleClass = isOwn ? 'rounded-br-md bg-indigo-600 text-white' : 'rounded-bl-md border border-dark-700 bg-dark-900 text-gray-100';
+        const timeClass = isOwn ? 'text-indigo-100' : 'text-gray-600';
+        let attachment = '';
+        if (message.attachment_url) {
+            const safeUrl = escapeHtml(message.attachment_url);
+            attachment = (message.attachment_type || '').startsWith('image/')
+                ? `<div class="mt-2"><a href="${safeUrl}" target="_blank" rel="noopener"><img src="${safeUrl}" alt="Shared image" class="max-h-72 max-w-full rounded-lg object-contain"></a></div>`
+                : `<div class="mt-2"><a href="${safeUrl}" class="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold underline">Download attachment</a></div>`;
         }
-
-        wrapper.innerHTML = `
-            <div class="message-bubble ${bubbleClass} px-4 py-3">
-                ${message.message ? `<p class="text-sm">${escapeHtml(message.message)}</p>` : ''}
-                ${attachmentHtml}
-                <p class="text-xs mt-1 ${timeClass}">${formatTime(message.created_at)}</p>
-            </div>
-        `;
-
+        wrapper.innerHTML = `<div class="message-bubble rounded-2xl px-4 py-3 ${bubbleClass}">${message.message ? `<p class="whitespace-pre-wrap break-words text-sm leading-6">${escapeHtml(message.message)}</p>` : ''}${attachment}<p class="mt-1.5 text-[10px] ${timeClass}">${formatTime(message.created_at)}</p></div>`;
         container.appendChild(wrapper);
     }
 
+    form?.addEventListener('submit', async e => {
+        e.preventDefault(); clearError();
+        const text = input.value.trim();
+        if (!text && !selectedFile) return;
+        sendButton.disabled = true;
+        const body = new FormData(); body.append('conversation_id', conversationId); if (text) body.append('message', text); if (selectedFile) body.append('attachment', selectedFile);
+        try {
+            const response = await fetch(chatSendUrl, { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}, body });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || data.error || 'Message could not be sent.');
+            input.value=''; autoResize(input); clearFile(); appendMessage(data.message); lastMessageId=Math.max(lastMessageId, Number(data.message.id||0)); container.scrollTop=container.scrollHeight;
+        } catch (err) { showError(err.message || 'Message could not be sent. Please retry.'); }
+        finally { sendButton.disabled=false; }
+    });
+
     async function pollMessages() {
         try {
-            const response = await fetch(`${chatMessagesUrl}?since_id=${lastMessageId}`, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-
-            const data = await response.json();
-            if (!data.success || !Array.isArray(data.messages) || data.messages.length === 0) {
-                return;
-            }
-
-            const container = document.getElementById('messages-container');
-            const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
-
-            data.messages.forEach((message) => {
-                appendMessage(message);
-                lastMessageId = Math.max(lastMessageId, message.id || 0);
-            });
-
-            if (nearBottom) {
-                container.scrollTop = container.scrollHeight;
-            }
-        } catch (error) {
-            console.error('Message polling failed:', error);
-        }
+            const response = await fetch(`${chatMessagesUrl}?since_id=${lastMessageId}`, { headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'} });
+            if (!response.ok) return;
+            const data = await response.json(); if (!data.success || !Array.isArray(data.messages) || !data.messages.length) return;
+            const nearBottom = container.scrollHeight-container.scrollTop-container.clientHeight < 140;
+            data.messages.forEach(message => { if (Number(message.id) > lastMessageId) { appendMessage(message); lastMessageId=Math.max(lastMessageId,Number(message.id||0)); } });
+            if (nearBottom) container.scrollTop=container.scrollHeight;
+        } catch (_) {}
     }
 
-    function closeConversation() {
-        if (confirm('Are you sure you want to close this conversation?')) {
-            fetch(`/chat/${conversationId}/close`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                }
-            });
-        }
-    }
+    window.closeConversation = async () => {
+        if (!confirm('Close this conversation? You will no longer be able to send new messages here.')) return;
+        const response = await fetch(`/chat/${conversationId}/close`, {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}});
+        if (response.ok) location.reload();
+    };
 
-    // Scroll to bottom on load
-    window.addEventListener('load', function() {
-        const container = document.getElementById('messages-container');
-        container.scrollTop = container.scrollHeight;
-
-        setInterval(pollMessages, 5000);
-    });
+    container.scrollTop=container.scrollHeight;
+    setInterval(pollMessages, 5000);
+})();
 </script>
 @endpush
 @endsection

@@ -1,6 +1,37 @@
 @extends('layouts.app')
 
-@section('title', $service->title . ' - SwiftKudi')
+@php
+    $plainDescription = trim(preg_replace('/\s+/', ' ', strip_tags($service->description)) ?? '');
+    $serviceSchema = [
+        '@context' => 'https://schema.org',
+        '@type' => 'Service',
+        'name' => $service->title,
+        'description' => $plainDescription,
+        'url' => route('professional-services.show', $service),
+        'provider' => [
+            '@type' => 'Person',
+            'name' => $service->seller->name ?? 'Service provider',
+        ],
+        'offers' => [
+            '@type' => 'Offer',
+            'priceCurrency' => 'NGN',
+            'price' => (float) $service->price,
+            'availability' => $service->status === 'active' ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            'url' => route('professional-services.show', $service),
+        ],
+    ];
+@endphp
+
+@section('title', $service->title . ' | Professional Service | ' . config('app.name', 'SwiftKudi'))
+@section('meta_description', \Illuminate\Support\Str::limit($plainDescription, 155))
+@section('canonical', route('professional-services.show', $service))
+@section('robots', $service->status === 'active' ? 'index,follow' : 'noindex,follow')
+@section('og_title', $service->title . ' | ' . config('app.name', 'SwiftKudi'))
+@section('og_description', \Illuminate\Support\Str::limit($plainDescription, 180))
+
+@push('meta')
+<script type="application/ld+json">{!! json_encode($serviceSchema, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) !!}</script>
+@endpush
 
 @section('content')
 <div class="py-8">
@@ -75,20 +106,20 @@
                 <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
                         <i class="fas fa-bolt text-indigo-500"></i>
-                        Why Choose This Service?
+                        Service terms
                     </h2>
                     <div class="grid gap-3 sm:grid-cols-3">
                         <div class="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20">
-                            <p class="text-sm text-indigo-700 dark:text-indigo-200 font-semibold mb-2">Reliable delivery</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Delivered in {{ $service->delivery_days }} days so your project stays on schedule.</p>
+                            <p class="text-sm text-indigo-700 dark:text-indigo-200 font-semibold mb-2">Delivery target</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">The provider has listed a {{ $service->delivery_days }}-day delivery target for this service.</p>
                         </div>
                         <div class="p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20">
-                            <p class="text-sm text-purple-700 dark:text-purple-200 font-semibold mb-2">Clear revisions</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Includes {{ $service->revisions_included }} revisions to keep the result polished.</p>
+                            <p class="text-sm text-purple-700 dark:text-purple-200 font-semibold mb-2">Included revisions</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">The listing includes {{ $service->revisions_included }} revision{{ $service->revisions_included == 1 ? '' : 's' }} within the agreed service scope.</p>
                         </div>
                         <div class="p-4 rounded-2xl bg-green-50 dark:bg-emerald-900/20">
-                            <p class="text-sm text-emerald-700 dark:text-emerald-200 font-semibold mb-2">Delivery guarantee</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Your payment is protected and only released when you're satisfied.</p>
+                            <p class="text-sm text-emerald-700 dark:text-emerald-200 font-semibold mb-2">Marketplace workflow</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Requirements, delivery, revisions and payment status stay connected to the marketplace order workflow.</p>
                         </div>
                     </div>
                 </div>
@@ -152,7 +183,7 @@
                         About the Seller
                     </h2>
                     <div class="flex items-center gap-4">
-                        <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">
+                        <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">
                             {{ substr($service->seller->name ?? 'U', 0, 1) }}
                         </div>
                         <div class="flex-1">
@@ -175,7 +206,7 @@
                     <!-- Pricing Card -->
                     <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 overflow-hidden">
                         <!-- Price Header -->
-                        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+                        <div class="bg-indigo-600 p-6 text-white">
                             <div class="text-sm text-indigo-200 mb-1">Starting at</div>
                             <div class="text-4xl font-bold">₦{{ number_format($service->price) }}</div>
                         </div>
@@ -198,7 +229,7 @@
                         <div class="p-6">
                             @if($service->status === 'active')
                                 <button onclick="showOrderModal()" 
-                                        class="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transform hover:-translate-y-0.5">
+                                        class="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transform hover:-translate-y-0.5">
                                     <i class="fas fa-shopping-cart mr-2"></i>
                                     Order Now
                                 </button>
@@ -236,26 +267,26 @@
                         </div>
                     </div>
 
-                    <!-- Guarantee Card -->
+                    <!-- Marketplace workflow card -->
                     <div class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-6 border border-green-200 dark:border-green-800">
                         <div class="flex items-center gap-3 mb-3">
                             <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                                 <i class="fas fa-shield-alt text-white"></i>
                             </div>
-                            <h3 class="font-bold text-green-800 dark:text-green-300">Buyer Protection</h3>
+                            <h3 class="font-bold text-green-800 dark:text-green-300">Marketplace order workflow</h3>
                         </div>
                         <ul class="space-y-2 text-sm text-green-700 dark:text-green-400">
                             <li class="flex items-center gap-2">
                                 <i class="fas fa-check"></i>
-                                Secure payment via escrow
+                                Wallet / escrow handling where the order workflow applies
                             </li>
                             <li class="flex items-center gap-2">
                                 <i class="fas fa-check"></i>
-                                Money-back guarantee
+                                Order history, delivery and revision records
                             </li>
                             <li class="flex items-center gap-2">
                                 <i class="fas fa-check"></i>
-                                24/7 customer support
+                                Dispute workflow available for eligible marketplace orders
                             </li>
                         </ul>
                     </div>
@@ -270,7 +301,7 @@
 <div id="order-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
     <div class="bg-white dark:bg-dark-900 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         <!-- Modal Header -->
-        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 rounded-t-3xl">
+        <div class="bg-indigo-600 p-6 rounded-t-3xl">
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-bold text-white">Order Service</h2>
                 <button onclick="hideOrderModal()" class="text-white/80 hover:text-white transition-colors">
@@ -340,7 +371,7 @@
                     Cancel
                 </button>
                 <button type="submit" 
-                        class="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/30">
+                        class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-lock mr-2"></i>Pay & Order
                 </button>
             </div>
@@ -354,7 +385,7 @@
 <div id="contact-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
     <div class="bg-white dark:bg-dark-900 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         <!-- Modal Header -->
-        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 rounded-t-3xl">
+        <div class="bg-indigo-600 p-6 rounded-t-3xl">
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-bold text-white">Contact Seller</h2>
                 <button onclick="hideContactModal()" class="text-white/80 hover:text-white transition-colors">
@@ -394,18 +425,18 @@
                     Cancel
                 </button>
                 <button type="submit" 
-                        class="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/30">
+                        class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-paper-plane mr-2"></i>Send
                 </button>
             </div>
         </form>
     </div>
 </div>
-@endif
+@endauth
 
 <div
     id="service-show-config"
-    data-order-url="{{ route('professional-services.order', $service->id) }}"
+    data-order-url="{{ route('professional-services.order', $service) }}"
     data-contact-url="{{ route('professional-services.contact') }}"
     data-base-price="{{ $service->price }}"
 ></div>

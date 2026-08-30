@@ -27,6 +27,10 @@ class Dispute extends Model
     protected $fillable = [
         'order_id',
         'order_type',
+        'disputable_type',
+        'disputable_id',
+        'raiser_id',
+        'responder_id',
         'complainant_id',
         'respondent_id',
         'title',
@@ -34,13 +38,32 @@ class Dispute extends Model
         'status',
         'priority',
         'resolution',
+        'resolution_notes',
+        'reason',
+        'evidence',
         'resolved_at',
         'resolved_by',
     ];
 
     protected $casts = [
         'resolved_at' => 'datetime',
+        'evidence' => 'array',
     ];
+
+    public function disputable()
+    {
+        return $this->morphTo();
+    }
+
+    public function raiser()
+    {
+        return $this->belongsTo(User::class, 'raiser_id');
+    }
+
+    public function responder()
+    {
+        return $this->belongsTo(User::class, 'responder_id');
+    }
 
     public function complainant()
     {

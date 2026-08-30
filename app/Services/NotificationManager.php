@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Notification as AppNotification;
 use App\Models\SystemSetting;
+use App\Models\NotificationPreference;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
@@ -70,6 +71,11 @@ class NotificationManager
      public const EVENT_JOB_APPLICANT_HIRED = 'job_applicant_hired';
      public const EVENT_JOB_APPLICANT_REJECTED = 'job_applicant_rejected';
      public const EVENT_JOB_CLOSED = 'job_closed';
+    public const EVENT_CONTRACT_STARTED = 'contract_started';
+    public const EVENT_MILESTONE_FUNDED = 'milestone_funded';
+    public const EVENT_MILESTONE_SUBMITTED = 'milestone_submitted';
+    public const EVENT_MILESTONE_REVISION_REQUESTED = 'milestone_revision_requested';
+    public const EVENT_MILESTONE_RELEASED = 'milestone_released';
 
     // Delivery channels
     public const CHANNEL_IN_APP = 'in_app';
@@ -119,7 +125,7 @@ class NotificationManager
         $config = $this->getEventConfig($event);
 
         // Get enabled channels for this event
-        $channels = $this->getEnabledChannels($event);
+        $channels = $this->getEnabledChannels($event, $user);
 
         if (empty($channels)) {
             return;
@@ -172,25 +178,20 @@ class NotificationManager
                 'source' => 'admin_push'
             ];
 
-            // Send via selected channels
-            if (in_array('database', $channels) || in_array('email', $channels)) {
-                $this->dispatchService->sendToUser(
-                    $user,
-                    $title,
-                    $message,
-                    AppNotification::TYPE_SYSTEM,
-                    $data,
-                    null,
-                    false,
-                    in_array('database', $channels),
-                    in_array('email', $channels)
-                );
-            }
-
-            // Web Push
-            if (in_array('push', $channels)) {
-                $this->dispatchService->sendPushToUser($user, $title, $message);
-            }
+            // One dispatch path ensures global settings and the user's per-channel
+            // preferences are respected consistently for admin broadcasts too.
+            $this->dispatchService->sendToUser(
+                $user,
+                $title,
+                $message,
+                AppNotification::TYPE_SYSTEM,
+                $data,
+                null,
+                false,
+                in_array('database', $channels),
+                in_array('email', $channels),
+                in_array('push', $channels)
+            );
         }
     }
 
@@ -211,27 +212,69 @@ class NotificationManager
     /**
      * Get enabled channels for an event
      */
-    private function getEnabledChannels(string $event): array
+    private function getEnabledChannels(string $event, ?User $user = null): array
     {
         $channels = [];
 
-        // Check each channel
+        $category = $this->categoryForEvent($event);
+        $preference = $user ? NotificationPreference::forUser($user) : null;
+
+        // Global admin configuration and the user's own preferences must both allow a channel.
         if (SystemSetting::getBool("notify_{$event}_in_app", true) &&
-            SystemSetting::getBool('notify_in_app_enabled', true)) {
+            SystemSetting::getBool('notify_in_app_enabled', true) &&
+            (!$preference || $preference->channelEnabled($category, NotificationPreference::CHANNEL_IN_APP))) {
             $channels[] = self::CHANNEL_IN_APP;
         }
 
         if (SystemSetting::getBool("notify_{$event}_email", true) &&
-            SystemSetting::getBool('notify_email_enabled', true)) {
+            SystemSetting::getBool('notify_email_enabled', true) &&
+            (!$preference || $preference->channelEnabled($category, NotificationPreference::CHANNEL_EMAIL))) {
             $channels[] = self::CHANNEL_EMAIL;
         }
 
-        if (SystemSetting::getBool("notify_{$event}_push", false) &&
-            SystemSetting::getBool('notify_push_enabled', false)) {
+        if (SystemSetting::getBool("notify_{$event}_push", true) &&
+            SystemSetting::getBool('notify_push_enabled', true) &&
+            (!$preference || $preference->channelEnabled($category, NotificationPreference::CHANNEL_PUSH))) {
             $channels[] = self::CHANNEL_PUSH;
         }
 
         return $channels;
+    }
+
+    /**
+     * Map low-level events to the user-facing preference groups.
+     */
+    private function categoryForEvent(string $event): string
+    {
+        if (str_contains($event, 'message') || $event === self::EVENT_CHAT_MESSAGE_RECEIVED) {
+            return 'messages';
+        }
+        if (str_contains($event, 'application') || str_contains($event, 'applicant')) {
+            return 'proposals';
+        }
+        if (str_starts_with($event, 'job_')) {
+            return 'jobs';
+        }
+        if (str_starts_with($event, 'escrow_') || str_contains($event, 'withdrawal') || str_contains($event, 'earnings') || str_contains($event, 'payment')) {
+            return 'payments';
+        }
+        if (str_starts_with($event, 'review_')) {
+            return 'reviews';
+        }
+        if (str_contains($event, 'dispute')) {
+            return 'disputes';
+        }
+        if (str_contains($event, 'contract') || str_contains($event, 'milestone') || str_contains($event, 'service_delivered') || str_contains($event, 'revision')) {
+            return 'contracts';
+        }
+        if (str_contains($event, 'activation') || str_contains($event, 'account') || str_contains($event, 'onboarding')) {
+            return 'security';
+        }
+        if (str_contains($event, 'bundle') || str_contains($event, 'recommend')) {
+            return 'marketing';
+        }
+
+        return 'system';
     }
 
     /**
@@ -426,24 +469,55 @@ class NotificationManager
                 'type' => AppNotification::TYPE_JOB_CREATED,
             ],
             self::EVENT_JOB_APPLICATION_SUBMITTED => [
-                'title' => 'Application Submitted! 📝',
-                'message' => 'Your application for "' . ($data['job_title'] ?? 'job') . '" has been submitted successfully.',
+                'title' => ($data['recipient_role'] ?? null) === 'client' ? 'New Proposal Received' : 'Proposal Submitted',
+                'message' => ($data['recipient_role'] ?? null) === 'client'
+                    ? (($data['applicant_name'] ?? 'A freelancer') . ' submitted a proposal for "' . ($data['job_title'] ?? 'job') . '".')
+                    : ('Your proposal for "' . ($data['job_title'] ?? 'job') . '" was submitted successfully.'),
                 'type' => AppNotification::TYPE_JOB_APPLICATION_SUBMITTED,
             ],
             self::EVENT_JOB_APPLICANT_HIRED => [
-                'title' => 'Congratulations! You\'ve Been Hired! 🎉',
-                'message' => 'You have been hired for the job "' . ($data['job_title'] ?? 'job') . '".',
+                'title' => ($data['recipient_role'] ?? null) === 'client' ? 'Freelancer Hired' : 'You Were Hired',
+                'message' => ($data['recipient_role'] ?? null) === 'client'
+                    ? (($data['applicant_name'] ?? 'The freelancer') . ' has been hired for "' . ($data['job_title'] ?? 'job') . '". Your contract workroom is ready.')
+                    : ('You have been hired for "' . ($data['job_title'] ?? 'job') . '". Open the contract workroom to continue.'),
                 'type' => AppNotification::TYPE_JOB_APPLICANT_HIRED,
             ],
             self::EVENT_JOB_APPLICANT_REJECTED => [
-                'title' => 'Application Update',
-                'message' => 'Your application for "' . ($data['job_title'] ?? 'job') . '" has been reviewed and we will be moving forward with other candidates.',
+                'title' => ($data['recipient_role'] ?? null) === 'client' ? 'Proposal Declined' : 'Proposal Update',
+                'message' => ($data['recipient_role'] ?? null) === 'client'
+                    ? ('You declined ' . ($data['applicant_name'] ?? 'the freelancer') . '\'s proposal for "' . ($data['job_title'] ?? 'job') . '".')
+                    : ('Your proposal for "' . ($data['job_title'] ?? 'job') . '" was not selected this time.'),
                 'type' => AppNotification::TYPE_JOB_APPLICANT_REJECTED,
             ],
             self::EVENT_JOB_CLOSED => [
                 'title' => 'Job Closed',
                 'message' => 'Your job "' . ($data['job_title'] ?? 'job') . '" has been closed.',
                 'type' => AppNotification::TYPE_JOB_CLOSED,
+            ],
+            self::EVENT_CONTRACT_STARTED => [
+                'title' => 'Contract Started',
+                'message' => 'A contract for "' . ($data['contract_title'] ?? 'project') . '" is now active.',
+                'type' => AppNotification::TYPE_SYSTEM,
+            ],
+            self::EVENT_MILESTONE_FUNDED => [
+                'title' => 'Milestone Funded',
+                'message' => '"' . ($data['milestone_title'] ?? 'Milestone') . '" has been funded with ₦' . number_format($data['amount'] ?? 0, 2) . ' held in escrow.',
+                'type' => AppNotification::TYPE_PAYMENT,
+            ],
+            self::EVENT_MILESTONE_SUBMITTED => [
+                'title' => 'Milestone Submitted for Review',
+                'message' => 'Work for "' . ($data['milestone_title'] ?? 'milestone') . '" is ready for review.',
+                'type' => AppNotification::TYPE_SYSTEM,
+            ],
+            self::EVENT_MILESTONE_REVISION_REQUESTED => [
+                'title' => 'Revision Requested',
+                'message' => 'The client requested changes to "' . ($data['milestone_title'] ?? 'milestone') . '".',
+                'type' => AppNotification::TYPE_SYSTEM,
+            ],
+            self::EVENT_MILESTONE_RELEASED => [
+                'title' => 'Milestone Approved and Paid',
+                'message' => '"' . ($data['milestone_title'] ?? 'Milestone') . '" was approved and ₦' . number_format($data['amount'] ?? 0, 2) . ' was released.',
+                'type' => AppNotification::TYPE_EARNINGS,
             ],
             self::EVENT_GROWTH_LISTING_APPROVED => [
                 'title' => 'Growth Listing Approved',
@@ -504,7 +578,7 @@ class NotificationManager
             ],
             self::EVENT_ESCROW_REFUNDED => [
                 'title' => 'Escrow Refunded',
-                'Message' => 'Your escrow payment of ₦' . number_format($data['amount'] ?? 0, 2) . ' for "' . ($data['order_title'] ?? 'order') . '" has been refunded.',
+                'message' => 'Your escrow payment of ₦' . number_format($data['amount'] ?? 0, 2) . ' for "' . ($data['order_title'] ?? 'order') . '" has been refunded.',
                 'type' => AppNotification::TYPE_PAYMENT,
             ],
             self::EVENT_ESCROW_DISPUTED => [
@@ -594,6 +668,11 @@ class NotificationManager
              self::EVENT_JOB_APPLICANT_HIRED,
              self::EVENT_JOB_APPLICANT_REJECTED,
              self::EVENT_JOB_CLOSED,
+             self::EVENT_CONTRACT_STARTED,
+             self::EVENT_MILESTONE_FUNDED,
+             self::EVENT_MILESTONE_SUBMITTED,
+             self::EVENT_MILESTONE_REVISION_REQUESTED,
+             self::EVENT_MILESTONE_RELEASED,
          ];
      }
 

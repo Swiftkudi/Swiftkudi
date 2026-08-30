@@ -8,12 +8,12 @@
         <!-- Header -->
         <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 class="text-3xl font-bold text-white">
                     My Digital Products
                 </h1>
                 <p class="mt-2 text-gray-600 dark:text-gray-400">Manage your product listings and track performance</p>
             </div>
-            <a href="{{ route('digital-products.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
+            <a href="{{ route('digital-products.create') }}" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
                 <i class="fas fa-plus mr-2"></i> Add New Product
             </a>
         </div>
@@ -74,7 +74,7 @@
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">No products yet</h3>
                 <p class="text-gray-500 dark:text-gray-400 mb-6">Start selling your digital products by creating your first listing.</p>
-                <a href="{{ route('digital-products.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
+                <a href="{{ route('digital-products.create') }}" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
                     <i class="fas fa-plus mr-2"></i> Create Your First Product
                 </a>
             </div>

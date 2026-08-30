@@ -1,3 +1,136 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    :root {
+        --marketplace-brand: 79 70 229;
+    }
+
+    body {
+        @apply antialiased;
+    }
+}
+
+@layer components {
+    .marketplace-page {
+        @apply min-h-full bg-dark-950 text-gray-100;
+    }
+
+    .marketplace-container {
+        @apply mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8;
+    }
+
+    .marketplace-page-header {
+        @apply mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between;
+    }
+
+    .marketplace-eyebrow {
+        @apply text-xs font-semibold uppercase tracking-[0.16em] text-indigo-400;
+    }
+
+    .marketplace-title {
+        @apply font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl;
+    }
+
+    .marketplace-subtitle {
+        @apply mt-2 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base;
+    }
+
+    .marketplace-card {
+        @apply rounded-2xl border border-dark-700 bg-dark-900 shadow-sm;
+    }
+
+    .marketplace-card-hover {
+        @apply marketplace-card transition duration-200 hover:border-indigo-500/40 hover:bg-dark-800/80;
+    }
+
+    .marketplace-btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-dark-950 disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .marketplace-btn-primary {
+        @apply marketplace-btn bg-indigo-600 text-white hover:bg-indigo-500;
+    }
+
+    .marketplace-btn-secondary {
+        @apply marketplace-btn border border-dark-600 bg-dark-900 text-gray-200 hover:border-dark-500 hover:bg-dark-800;
+    }
+
+    .marketplace-input {
+        @apply w-full rounded-lg border border-dark-600 bg-dark-950 px-3.5 py-2.5 text-sm text-white placeholder-gray-500 shadow-sm focus:border-indigo-500 focus:ring-indigo-500;
+    }
+
+    .marketplace-label {
+        @apply mb-2 block text-sm font-semibold text-gray-200;
+    }
+
+    .marketplace-pill {
+        @apply inline-flex items-center rounded-full border border-dark-600 bg-dark-800 px-2.5 py-1 text-xs font-medium text-gray-300;
+    }
+
+    .marketplace-option-card {
+        @apply rounded-xl border border-dark-700 bg-dark-950/60 p-4;
+    }
+
+    .marketplace-checkbox {
+        @apply h-4 w-4 rounded border-dark-600 bg-dark-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-dark-900;
+    }
+
+    .marketplace-nav-link {
+        @apply inline-flex h-full items-center border-b-2 border-transparent px-3 text-sm font-semibold text-gray-300 transition hover:text-white;
+    }
+
+    .marketplace-nav-link-active {
+        @apply border-indigo-500 text-white;
+    }
+
+    .marketplace-nav-mobile {
+        @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-300 transition hover:bg-dark-800 hover:text-white;
+    }
+
+    .marketplace-nav-mobile-active {
+        @apply bg-indigo-500/10 text-indigo-300;
+    }
+
+    .marketplace-dropdown-link {
+        @apply flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-gray-300 transition hover:bg-dark-800 hover:text-white;
+    }
+
+    /* Compatibility aliases used across the redesigned marketplace surfaces. */
+    .marketplace-panel {
+        @apply rounded-2xl border border-dark-700 bg-dark-900 shadow-sm;
+    }
+
+    .marketplace-button-primary {
+        @apply marketplace-btn-primary;
+    }
+
+    .marketplace-button-secondary {
+        @apply marketplace-btn-secondary;
+    }
+
+    .marketplace-chip {
+        @apply marketplace-pill transition hover:border-indigo-500/50 hover:text-white;
+    }
+
+    .marketplace-chip-active {
+        @apply border-indigo-500/50 bg-indigo-500/10 text-indigo-300;
+    }
+
+    .marketplace-subnav {
+        @apply whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-300 transition hover:bg-dark-800 hover:text-white;
+    }
+
+    .marketplace-subnav-active {
+        @apply marketplace-subnav bg-indigo-500/10 text-indigo-300;
+    }
+
+    .marketplace-empty-state {
+        @apply marketplace-card flex min-h-[280px] flex-col items-center justify-center p-8 text-center;
+    }
+
+    .marketplace-empty-icon {
+        @apply flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-300;
+    }
+}

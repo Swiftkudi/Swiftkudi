@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class ProfessionalService extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'slug',
         'user_id',
         'title',
         'description',
@@ -36,6 +38,29 @@ class ProfessionalService extends Model
         'is_featured' => 'boolean',
         'featured_until' => 'integer',
     ];
+
+
+    protected static function booted(): void
+    {
+        static::created(function (ProfessionalService $service) {
+            if (!$service->slug) {
+                $service->forceFill(['slug' => Str::limit(Str::slug($service->title) ?: 'service', 190, '') . '-' . $service->id])->saveQuietly();
+            }
+        });
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $query = $this->newQuery();
+        return ctype_digit((string) $value)
+            ? $query->whereKey((int) $value)->first()
+            : $query->where($field ?: 'slug', $value)->first();
+    }
 
     // Status constants
     const STATUS_DRAFT = 'draft';

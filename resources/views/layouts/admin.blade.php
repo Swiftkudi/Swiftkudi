@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex,nofollow">
     <title>@yield('title', 'Admin Panel - SwiftKudi')</title>
     
     {{-- Favicon --}}
@@ -162,8 +163,10 @@
             background: #475569;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/marketplace.css') }}">
+
 </head>
-<body class="font-body bg-dark-950 text-gray-100 min-h-screen">
+<body class="marketplace-admin font-body bg-dark-950 text-gray-100 min-h-screen">
     <!-- Mobile Sidebar Overlay -->
     <div id="sidebar-overlay" class="sidebar-overlay lg:hidden"></div>
     
@@ -336,6 +339,22 @@
                         <a href="{{ route('admin.settings.notification') }}" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('admin.settings.notification') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }}">
                             <i class="fas fa-bell w-5 mr-2"></i>
                             Notifications
+                        </a>
+                    </li>
+
+                    <!-- SMTP / Email Settings -->
+                    <li>
+                        <a href="{{ route('admin.settings.smtp') }}" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('admin.settings.smtp') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }}">
+                            <i class="fas fa-envelope w-5 mr-2"></i>
+                            SMTP / Email
+                        </a>
+                    </li>
+
+                    <!-- Email Delivery Diagnostics -->
+                    <li>
+                        <a href="{{ route('admin.settings.email-deliveries') }}" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->routeIs('admin.settings.email-deliveries') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }}">
+                            <i class="fas fa-paper-plane w-5 mr-2"></i>
+                            Email Delivery
                         </a>
                     </li>
 
@@ -531,14 +550,10 @@
                 const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
                 await navigator.serviceWorker.ready;
 
-                if (Notification.permission === 'denied') return;
+                if (Notification.permission !== 'granted') return;
 
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {
-                    if (Notification.permission === 'default') {
-                        const permission = await Notification.requestPermission();
-                        if (permission !== 'granted') return;
-                    }
                     sub = await reg.pushManager.subscribe({
                         userVisibleOnly: true,
                         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),

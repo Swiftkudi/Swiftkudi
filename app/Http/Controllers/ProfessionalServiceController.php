@@ -14,6 +14,7 @@ use App\Services\NotificationManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ProfessionalServiceController extends Controller
@@ -25,7 +26,6 @@ class ProfessionalServiceController extends Controller
     {
         $this->service = $service;
         $this->notificationManager = $notificationManager;
-        $this->middleware(['auth', 'check.email.required']);
     }
 
     /**
@@ -33,41 +33,67 @@ class ProfessionalServiceController extends Controller
      */
     public function index(Request $request): View
     {
-        $perPage = $request->get('per_page', 15);
-        $perPage = in_array($perPage, [10, 15, 25, 50, 100]) ? $perPage : 15;
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'category' => ['nullable', 'string', 'max:190'],
+            'min_price' => ['nullable', 'numeric', 'min:0'],
+            'max_price' => ['nullable', 'numeric', 'min:0'],
+            'delivery_days' => ['nullable', 'integer', 'min:1', 'max:30'],
+            'sort' => ['nullable', 'in:recommended,newest,price_asc,price_desc'],
+            'per_page' => ['nullable', 'integer', 'in:10,15,25,50'],
+        ]);
 
-        $query = ProfessionalService::active()
-            ->with(['category', 'seller']);
+        $perPage = (int) ($validated['per_page'] ?? 15);
+        $query = ProfessionalService::active()->with(['category', 'seller']);
 
-        // Add buyer category filter
+        // Preserve the existing buyer onboarding/category preferences without
+        // hiding the rest of the marketplace from users who have not opted in.
         $user = auth()->user();
-        if ($user && $user->account_type === 'buyer') {
-            // Check if buyer onboarding is enabled and category selection is required
-            if (\App\Services\OnboardingSettingsService::isBuyerOnboardingEnabled() &&
-                \App\Services\OnboardingSettingsService::isBuyerCategorySelectionRequired() &&
-                $user->buyer_onboarding_completed) {
-
-                $buyerCategories = $user->getBuyerCategories();
-                if (!empty($buyerCategories)) {
-                    $query->whereIn('category_id', $buyerCategories);
-                }
+        if ($user && $user->account_type === 'buyer' &&
+            \App\Services\OnboardingSettingsService::isBuyerOnboardingEnabled() &&
+            \App\Services\OnboardingSettingsService::isBuyerCategorySelectionRequired() &&
+            $user->buyer_onboarding_completed) {
+            $buyerCategories = $user->getBuyerCategories();
+            if (!empty($buyerCategories)) {
+                $query->whereIn('category_id', $buyerCategories);
             }
         }
 
-        if ($request->category) {
-            $query->ofCategory($request->category);
+        if (!empty($validated['category'])) {
+            $query->ofCategory($validated['category']);
         }
 
-        if ($request->search) {
-            $query->search($request->search);
+        if (!empty($validated['search'])) {
+            $query->search(trim($validated['search']));
         }
 
-        $services = $query->orderBy('is_featured', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage)
-            ->appends($request->query());
+        if (isset($validated['min_price'])) {
+            $query->where('price', '>=', (float) $validated['min_price']);
+        }
+        if (isset($validated['max_price'])) {
+            $query->where('price', '<=', (float) $validated['max_price']);
+        }
+        if (isset($validated['delivery_days'])) {
+            $query->where('delivery_days', '<=', (int) $validated['delivery_days']);
+        }
 
-        $categories = ProfessionalServiceCategory::active()->get();
+        switch ($validated['sort'] ?? 'recommended') {
+            case 'newest':
+                $query->latest();
+                break;
+            case 'price_asc':
+                $query->orderBy('price')->latest('id');
+                break;
+            case 'price_desc':
+                $query->orderByDesc('price')->latest('id');
+                break;
+            default:
+                $query->orderByDesc('is_featured')->latest();
+                break;
+        }
+
+        $services = $query->paginate($perPage)->withQueryString();
+        $categories = ProfessionalServiceCategory::active()->orderBy('name')->get();
 
         return view('professional-services.index', compact('services', 'categories'));
     }
@@ -75,14 +101,13 @@ class ProfessionalServiceController extends Controller
     /**
      * Show service details
      */
-    public function show(int $id): View
+    public function show(ProfessionalService $service): View
     {
-        $service = ProfessionalService::with(['category', 'seller', 'addons'])
-            ->findOrFail($id);
+        $service->load(['category', 'seller', 'addons']);
 
         $userHasOrder = false;
         if (Auth::check()) {
-            $userHasOrder = ProfessionalServiceOrder::where('service_id', $id)
+            $userHasOrder = ProfessionalServiceOrder::where('service_id', $service->id)
                 ->where('buyer_id', Auth::id())
                 ->exists();
         }
@@ -196,7 +221,7 @@ class ProfessionalServiceController extends Controller
     /**
      * Create order / checkout
      */
-    public function createOrder(Request $request, int $serviceId)
+    public function createOrder(Request $request, ProfessionalService $service)
     {
         $validated = $request->validate([
             'addon_ids' => 'nullable|array',
@@ -207,7 +232,7 @@ class ProfessionalServiceController extends Controller
         $user = Auth::user();
         $result = $this->service->createOrder(
             $user, 
-            $serviceId, 
+            $service->id, 
             $validated['addon_ids'] ?? [],
             $validated['requirements']
         );
@@ -217,7 +242,7 @@ class ProfessionalServiceController extends Controller
                 $requiredTopup = max(0, (float) $result['required'] - (float) $result['available']);
                 session([
                     'pending_service_checkout' => [
-                        'service_id' => $serviceId,
+                        'service_id' => $service->id,
                         'addon_ids' => $validated['addon_ids'] ?? [],
                         'requirements' => $validated['requirements'],
                     ],
@@ -562,15 +587,28 @@ class ProfessionalServiceController extends Controller
     /**
      * Service provider profile
      */
-    public function providerProfile(int $userId): View
+    public function providerProfile(int $userId)
     {
-        $profile = ServiceProviderProfile::with('user')
-            ->where('user_id', $userId)
-            ->firstOrFail();
+        $profile = ServiceProviderProfile::with('user')->where('user_id', $userId)->firstOrFail();
+        $this->ensureProfileSlug($profile);
 
-        $services = ProfessionalService::where('user_id', $userId)
+        return redirect()->route('freelancers.show', $profile->slug, 301);
+    }
+
+    /**
+     * Public, SEO-friendly freelancer profile.
+     */
+    public function freelancerProfile(string $slug): View
+    {
+        $profile = ServiceProviderProfile::with('user')->where('slug', $slug)->firstOrFail();
+        if (!Auth::check() || Auth::id() !== $profile->user_id) {
+            $profile->increment('profile_views');
+        }
+
+        $services = ProfessionalService::where('user_id', $profile->user_id)
             ->where('status', ProfessionalService::STATUS_ACTIVE)
             ->with('category')
+            ->latest()
             ->get();
 
         return view('professional-services.provider-profile', compact('profile', 'services'));
@@ -586,6 +624,7 @@ class ProfessionalServiceController extends Controller
             ['user_id' => $user->id],
             ['is_available' => true]
         );
+        $this->ensureProfileSlug($profile);
 
         return view('professional-services.edit-profile', compact('profile'));
     }
@@ -597,10 +636,15 @@ class ProfessionalServiceController extends Controller
  public function updateProfile(Request $request)
     {
         $validated = $request->validate([
+            'professional_title' => 'required|string|min:3|max:160',
             'is_available' => 'boolean',
-            'hourly_rate' => 'nullable|numeric|min:0',
-            'bio' => 'nullable|string|max:1000',
+            'availability_note' => 'nullable|string|max:255',
+            'hourly_rate' => 'nullable|numeric|min:0|max:100000000',
+            'bio' => 'required|string|min:40|max:3000',
             'skills' => 'nullable|string',
+            'languages' => 'nullable|string',
+            'education' => 'nullable|string',
+            'work_experience' => 'nullable|string',
             'portfolio_links' => 'nullable|string',
             'certifications' => 'nullable|string',
         ], [
@@ -649,8 +693,22 @@ class ProfessionalServiceController extends Controller
             $validated['certifications'] = $validated['certifications'] ?? [];
         }
 
+        foreach (['languages', 'education', 'work_experience'] as $field) {
+            if (isset($validated[$field]) && is_string($validated[$field])) {
+                $decoded = json_decode($validated[$field], true);
+                $validated[$field] = json_last_error() === JSON_ERROR_NONE && is_array($decoded)
+                    ? array_values(array_filter($decoded))
+                    : array_values(array_filter(array_map('trim', preg_split('/[\r\n,]+/', $validated[$field]))));
+            } else {
+                $validated[$field] = $validated[$field] ?? [];
+            }
+        }
+
         $user = Auth::user();
         $result = $this->service->updateProviderProfile($user, $validated);
+        if (($result['success'] ?? false) && isset($result['profile'])) {
+            $this->ensureProfileSlug($result['profile']);
+        }
 
         if (!$result['success']) {
             return response()->json([
@@ -697,29 +755,76 @@ class ProfessionalServiceController extends Controller
      */
     public function directory(Request $request): View
     {
+        $validated = $request->validate([
+            'skill' => 'nullable|string|max:100',
+            'min_rating' => 'nullable|numeric|min:0|max:5',
+            'search' => 'nullable|string|max:120',
+            'max_rate' => 'nullable|numeric|min:0|max:1000000000',
+        ]);
+
         $query = ServiceProviderProfile::with('user')
             ->where('is_available', true);
 
-        if ($request->skill) {
-            $query->withSkill($request->skill);
+        if (!empty($validated['skill'])) {
+            $query->withSkill($validated['skill']);
         }
 
-        if ($request->min_rating) {
-            $query->where('average_rating', '>=', $request->min_rating);
+        if (isset($validated['min_rating'])) {
+            $query->where('average_rating', '>=', $validated['min_rating']);
+        }
+
+        if (!empty($validated['search'])) {
+            $term = trim($validated['search']);
+            $query->where(function ($q) use ($term) {
+                $q->where('professional_title', 'like', "%{$term}%")
+                    ->orWhere('bio', 'like', "%{$term}%")
+                    ->orWhere('skills', 'like', "%{$term}%")
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', "%{$term}%"));
+            });
+        }
+
+        if (isset($validated['max_rate'])) {
+            $query->where('hourly_rate', '<=', (float) $validated['max_rate']);
         }
 
         $providers = $query->orderBy('average_rating', 'desc')
-            ->paginate(20);
+            ->orderByDesc('total_orders_completed')
+            ->paginate(20)
+            ->withQueryString();
 
         // Get all unique skills for filter
         $allSkills = ServiceProviderProfile::whereNotNull('skills')
             ->pluck('skills')
-            ->flatten()
-            ->unique()
+            ->flatMap(function ($skills) {
+                if (is_array($skills)) {
+                    return $skills;
+                }
+
+                if (is_string($skills)) {
+                    $decoded = json_decode($skills, true);
+                    return is_array($decoded) ? $decoded : [$skills];
+                }
+
+                return [];
+            })
+            ->filter(fn ($skill) => is_string($skill) && trim($skill) !== '')
+            ->map(fn ($skill) => trim($skill))
+            ->unique(fn ($skill) => mb_strtolower($skill))
             ->sort()
+            ->values()
             ->take(50);
 
         return view('professional-services.directory', compact('providers', 'allSkills'));
+    }
+
+    private function ensureProfileSlug(ServiceProviderProfile $profile): void
+    {
+        if ($profile->slug) return;
+
+        $name = optional($profile->user)->name ?: optional($profile->user()->first())->name ?: 'freelancer';
+        $base = Str::slug($name) ?: 'freelancer';
+        $profile->slug = $base . '-' . $profile->user_id;
+        $profile->save();
     }
 
     /**

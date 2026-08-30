@@ -9,6 +9,21 @@ use Illuminate\Support\Facades\Auth;
 class DisputeController extends Controller
 {
     /**
+     * Generic dispute creation is intentionally order-driven.
+     *
+     * A dispute must be attached to an eligible marketplace order/escrow so
+     * users cannot manufacture disputes for unrelated records. Keep this
+     * route for backwards compatibility and direct users to the order flow.
+     */
+    public function create(Request $request)
+    {
+        return redirect()->route('disputes.index')->with(
+            'info',
+            'Open a dispute from the related order or escrow transaction so SwiftKudi can attach the correct payment and participant records.'
+        );
+    }
+
+    /**
      * Display all disputes.
      */
     public function index(Request $request)
@@ -88,6 +103,53 @@ class DisputeController extends Controller
         ]);
 
         return back()->with('success', 'Response submitted.');
+    }
+
+    /**
+     * Add private evidence files to a dispute.
+     */
+    public function submitEvidence(Request $request, Dispute $dispute)
+    {
+        $userId = (int) Auth::id();
+        $participantIds = array_values(array_filter([
+            (int) ($dispute->raiser_id ?? 0),
+            (int) ($dispute->responder_id ?? 0),
+            (int) ($dispute->complainant_id ?? 0),
+            (int) ($dispute->respondent_id ?? 0),
+            (int) ($dispute->user_id ?? 0),
+        ]));
+
+        abort_unless(in_array($userId, $participantIds, true), 403);
+
+        $validated = $request->validate([
+            'evidence' => 'required|array|min:1|max:5',
+            'evidence.*' => 'required|file|max:10240|mimes:jpg,jpeg,png,webp,pdf,doc,docx,txt,zip',
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        $items = is_array($dispute->evidence) ? $dispute->evidence : [];
+
+        foreach ($request->file('evidence', []) as $file) {
+            // Evidence is deliberately stored on the private local disk, not
+            // the public web disk. Access should always go through an
+            // authenticated dispute participant/admin endpoint.
+            $path = $file->store("disputes/{$dispute->id}/evidence", 'local');
+
+            $items[] = [
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'uploaded_by' => $userId,
+                'note' => $validated['note'] ?? null,
+                'uploaded_at' => now()->toIso8601String(),
+            ];
+        }
+
+        $dispute->evidence = $items;
+        $dispute->save();
+
+        return back()->with('success', 'Evidence uploaded securely.');
     }
 
     /**

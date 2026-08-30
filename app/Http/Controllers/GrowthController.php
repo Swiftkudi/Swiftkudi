@@ -253,48 +253,69 @@ class GrowthController extends Controller
     }
 
     /**
-     * Start conversation about a listing
+     * Contact a growth listing seller from the public listing page.
+     *
+     * The existing UI posts the listing id in the request body, so this
+     * method intentionally preserves that route contract for backwards
+     * compatibility while delegating conversation creation to the canonical
+     * marketplace conversation schema (type + reference_id).
+     */
+    public function contact(Request $request)
+    {
+        $validated = $request->validate([
+            'listing_id' => 'required|integer|exists:growth_listings,id',
+            'subject' => 'required|string|min:1|max:150',
+            'message' => 'required|string|min:1|max:1800',
+        ]);
+
+        $request->merge([
+            'message' => "Subject: {$validated['subject']}\n\n{$validated['message']}",
+        ]);
+
+        return $this->startConversation($request, (int) $validated['listing_id']);
+    }
+
+    /**
+     * Start or continue a marketplace conversation about a growth listing.
      */
     public function startConversation(Request $request, int $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'message' => 'required|string|min:1|max:2000',
         ]);
 
-        $listing = GrowthListing::active()->findOrFail($id);
+        $listing = GrowthListing::active()->with('seller')->findOrFail($id);
         $seller = $listing->seller;
         $buyer = auth()->user();
 
-        // Don't allow messaging yourself
-        if ($seller->id === $buyer->id) {
+        if (!$seller || !$buyer) {
+            abort(404);
+        }
+
+        // Don't allow messaging yourself.
+        if ((int) $seller->id === (int) $buyer->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'You cannot message yourself',
-            ], 400);
+                'message' => 'You cannot message yourself.',
+            ], 422);
         }
 
-        // Check for existing conversation
-        $conversation = MarketplaceConversation::where('growth_listing_id', $listing->id)
-            ->where('buyer_id', $buyer->id)
-            ->where('seller_id', $seller->id)
-            ->first();
+        $conversation = MarketplaceConversation::findOrCreate(
+            'growth_service',
+            $listing->id,
+            $buyer->id,
+            $seller->id
+        );
 
-        if (!$conversation) {
-            $conversation = MarketplaceConversation::create([
-                'growth_listing_id' => $listing->id,
-                'buyer_id' => $buyer->id,
-                'seller_id' => $seller->id,
-            ]);
-        }
-
-        // Add message
         MarketplaceMessage::create([
             'conversation_id' => $conversation->id,
             'sender_id' => $buyer->id,
-            'message' => $request->message,
+            'message' => $validated['message'],
+            'is_read' => false,
         ]);
 
-        // Notify seller
+        $conversation->update(['last_message_at' => now()]);
+
         $this->notificationManager->notify(
             NotificationManager::EVENT_GROWTH_MESSAGE_RECEIVED,
             $seller,
@@ -302,13 +323,14 @@ class GrowthController extends Controller
                 'conversation_id' => $conversation->id,
                 'listing_title' => $listing->title,
                 'sender_name' => $buyer->name,
-                'action_url' => route('messages.show', $conversation->id),
+                'action_url' => route('chat.show', $conversation),
             ]
         );
 
         return response()->json([
             'success' => true,
-            'message' => 'Message sent successfully',
+            'message' => 'Message sent successfully.',
+            'chat_url' => route('chat.show', $conversation),
         ]);
     }
 

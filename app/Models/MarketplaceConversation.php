@@ -44,9 +44,9 @@ class MarketplaceConversation extends Model
         return $this->hasMany(MarketplaceMessage::class, 'conversation_id')->where('is_read', false);
     }
 
-    public function unreadCount()
+    public function unreadCountFor(int $userId): int
     {
-        return $this->unreadMessages()->count();
+        return $this->unreadMessages()->where('sender_id', '!=', $userId)->count();
     }
 
     public function reference()
@@ -54,9 +54,9 @@ class MarketplaceConversation extends Model
         return $this->morphTo('reference', 'type', 'reference_id');
     }
 
-    public function markAsRead()
+    public function markAsReadFor(int $userId): void
     {
-        $this->unreadMessages()->update(['is_read' => true]);
+        $this->unreadMessages()->where('sender_id', '!=', $userId)->update(['is_read' => true]);
     }
 
     public function close()

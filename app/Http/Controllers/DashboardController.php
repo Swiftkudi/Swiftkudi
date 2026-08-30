@@ -24,12 +24,25 @@ class DashboardController extends Controller
         $user = Auth::user();
         /** @var \App\Models\User $user */
 
-        if ($user->account_type === 'buyer' && $user->onboarding_completed) {
-            return redirect()->route('marketplace.listings.index');
-        }
+        // Keep completed users inside real, registered SwiftKudi marketplace routes.
+        // The legacy `marketplace.listings.index` / `marketplace.seller.dashboard`
+        // names belonged to an unfinished route file and could throw RouteNotFoundException.
+        if ($user->onboarding_completed) {
+            if ($user->account_type === 'buyer') {
+                return redirect()->route('professional-services.index');
+            }
 
-        if (in_array($user->account_type, ['freelancer', 'digital_seller', 'growth_seller'], true) && $user->onboarding_completed) {
-            return redirect()->route('marketplace.seller.dashboard');
+            if ($user->account_type === 'freelancer') {
+                return redirect()->route('professional-services.my-services');
+            }
+
+            if ($user->account_type === 'digital_seller') {
+                return redirect()->route('digital-products.my-products');
+            }
+
+            if ($user->account_type === 'growth_seller') {
+                return redirect()->route('growth.my-listings');
+            }
         }
 
         $wallet = $user->wallet;

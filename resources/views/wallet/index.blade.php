@@ -12,12 +12,12 @@
                 <p class="text-gray-400 mt-1 text-sm lg:text-base">Manage your funds and transactions</p>
             </div>
             <div class="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
-                <a href="{{ route('wallet.deposit') }}" class="inline-flex items-center justify-center px-5 py-2.5 lg:px-6 lg:py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg shadow-green-500/30 text-sm lg:text-base">
+                <a href="{{ route('wallet.deposit') }}" class="inline-flex items-center justify-center px-5 py-2.5 lg:px-6 lg:py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-lg shadow-green-500/30 text-sm lg:text-base">
                     <i class="fas fa-arrow-down mr-2"></i>
                     Deposit
                 </a>
                 @if($wallet && $wallet->is_activated)
-                <a href="{{ route('wallet.withdraw') }}" class="inline-flex items-center justify-center px-5 py-2.5 lg:px-6 lg:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/30 text-sm lg:text-base">
+                <a href="{{ route('wallet.withdraw') }}" class="inline-flex items-center justify-center px-5 py-2.5 lg:px-6 lg:py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30 text-sm lg:text-base">
                     <i class="fas fa-arrow-up mr-2"></i>
                     Withdraw
                 </a>
@@ -78,7 +78,7 @@
         @else
             <!-- Balance Card -->
             <div class="bg-dark-900 rounded-2xl shadow-xl border border-dark-700 overflow-hidden mb-6 lg:mb-8">
-                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 lg:p-8 text-white">
+                <div class="bg-indigo-600 p-6 lg:p-8 text-white">
                     <div class="flex items-center justify-between mb-4">
                         <p class="text-sm font-medium opacity-90">Total Balance</p>
                         <div class="w-10 h-10 lg:w-12 lg:h-12 bg-white/20 rounded-xl flex items-center justify-center">

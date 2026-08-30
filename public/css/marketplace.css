@@ -1,0 +1,497 @@
+/*
+ * SwiftKudi Marketplace UI
+ * Production-safe standalone design layer. This file intentionally does not
+ * depend on Tailwind compilation, so redesigned marketplace surfaces render
+ * consistently immediately after deployment.
+ */
+:root {
+    --sk-brand-50: #eef2ff;
+    --sk-brand-100: #e0e7ff;
+    --sk-brand-300: #a5b4fc;
+    --sk-brand-400: #818cf8;
+    --sk-brand-500: #6366f1;
+    --sk-brand-600: #4f46e5;
+    --sk-brand-700: #4338ca;
+    --sk-bg: #020617;
+    --sk-surface: #0f172a;
+    --sk-surface-2: #111c30;
+    --sk-surface-3: #1e293b;
+    --sk-border: #253247;
+    --sk-border-strong: #334155;
+    --sk-text: #f8fafc;
+    --sk-text-soft: #cbd5e1;
+    --sk-muted: #94a3b8;
+    --sk-subtle: #64748b;
+    --sk-danger: #f87171;
+    --sk-success: #4ade80;
+    --sk-warning: #facc15;
+    --sk-radius-sm: .625rem;
+    --sk-radius: .875rem;
+    --sk-radius-lg: 1rem;
+    --sk-radius-xl: 1.25rem;
+    --sk-shadow: 0 10px 30px rgba(2, 6, 23, .24);
+}
+
+html { color-scheme: dark; }
+
+body.marketplace-app,
+body.marketplace-admin,
+body.marketplace-guest {
+    background: var(--sk-bg) !important;
+    color: var(--sk-text-soft);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* Core marketplace primitives */
+.marketplace-page {
+    min-height: 100%;
+    background: var(--sk-bg);
+    color: var(--sk-text-soft);
+}
+.marketplace-container {
+    width: 100%;
+    max-width: 1440px;
+    margin-inline: auto;
+    padding: 2rem 1rem;
+}
+@media (min-width: 640px) { .marketplace-container { padding-inline: 1.5rem; } }
+@media (min-width: 1024px) { .marketplace-container { padding-inline: 2rem; } }
+.marketplace-page-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+}
+@media (min-width: 640px) {
+    .marketplace-page-header { flex-direction: row; align-items: flex-end; justify-content: space-between; }
+}
+.marketplace-eyebrow {
+    color: var(--sk-brand-400);
+    font-size: .75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+}
+.marketplace-title {
+    margin: 0;
+    color: var(--sk-text);
+    font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 700;
+    letter-spacing: -.025em;
+}
+@media (min-width: 640px) { .marketplace-title { font-size: 1.875rem; line-height: 2.25rem; } }
+.marketplace-subtitle {
+    max-width: 48rem;
+    margin-top: .5rem;
+    color: var(--sk-muted);
+    font-size: .9375rem;
+    line-height: 1.55rem;
+}
+.marketplace-card,
+.marketplace-panel {
+    border: 1px solid var(--sk-border);
+    border-radius: var(--sk-radius-xl);
+    background: var(--sk-surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,.12);
+}
+.marketplace-card-hover {
+    border: 1px solid var(--sk-border);
+    border-radius: var(--sk-radius-xl);
+    background: var(--sk-surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,.12);
+    transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.marketplace-card-hover:hover {
+    border-color: rgba(99,102,241,.52);
+    background: #121d31;
+    box-shadow: var(--sk-shadow);
+    transform: translateY(-1px);
+}
+.marketplace-btn,
+.marketplace-btn-primary,
+.marketplace-btn-secondary,
+.marketplace-button-primary,
+.marketplace-button-secondary {
+    display: inline-flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    border-radius: .7rem;
+    padding: .625rem 1rem;
+    font-size: .875rem;
+    line-height: 1.25rem;
+    font-weight: 650;
+    text-decoration: none;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, transform .12s ease;
+}
+.marketplace-btn-primary,
+.marketplace-button-primary {
+    border: 1px solid var(--sk-brand-600);
+    background: var(--sk-brand-600);
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.14);
+}
+.marketplace-btn-primary:hover,
+.marketplace-button-primary:hover { background: var(--sk-brand-500); border-color: var(--sk-brand-500); color:#fff; }
+.marketplace-btn-secondary,
+.marketplace-button-secondary {
+    border: 1px solid var(--sk-border-strong);
+    background: var(--sk-surface);
+    color: #e2e8f0;
+}
+.marketplace-btn-secondary:hover,
+.marketplace-button-secondary:hover { background: var(--sk-surface-3); border-color: #475569; color:#fff; }
+.marketplace-btn:focus-visible,
+.marketplace-btn-primary:focus-visible,
+.marketplace-btn-secondary:focus-visible,
+.marketplace-button-primary:focus-visible,
+.marketplace-button-secondary:focus-visible {
+    outline: 2px solid var(--sk-brand-400);
+    outline-offset: 2px;
+}
+.marketplace-input {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid var(--sk-border-strong) !important;
+    border-radius: .7rem !important;
+    background: #07101f !important;
+    color: var(--sk-text) !important;
+    padding: .625rem .875rem !important;
+    font-size: .875rem !important;
+    box-shadow: none !important;
+}
+.marketplace-input::placeholder { color: var(--sk-subtle) !important; }
+.marketplace-input:focus {
+    border-color: var(--sk-brand-500) !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.14) !important;
+    outline: none !important;
+}
+.marketplace-label { display:block; margin-bottom:.5rem; color:#e2e8f0; font-size:.875rem; font-weight:650; }
+.marketplace-pill,
+.marketplace-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    border: 1px solid var(--sk-border-strong);
+    border-radius: 999px;
+    background: var(--sk-surface-3);
+    color: #cbd5e1;
+    padding: .25rem .625rem;
+    font-size: .75rem;
+    line-height: 1.1rem;
+    font-weight: 550;
+}
+.marketplace-chip:hover { border-color: rgba(99,102,241,.55); color:#fff; }
+.marketplace-chip-active { border-color: rgba(99,102,241,.55); background:rgba(99,102,241,.12); color:var(--sk-brand-300); }
+.marketplace-option-card { border:1px solid var(--sk-border); border-radius:.8rem; background:#07101f; padding:1rem; }
+.marketplace-checkbox { accent-color: var(--sk-brand-600); }
+.marketplace-empty-state {
+    display:flex;
+    min-height:280px;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:2rem;
+    text-align:center;
+    border:1px solid var(--sk-border);
+    border-radius:var(--sk-radius-xl);
+    background:var(--sk-surface);
+}
+.marketplace-empty-icon { display:flex; width:3rem; height:3rem; align-items:center; justify-content:center; border-radius:999px; background:rgba(99,102,241,.10); color:var(--sk-brand-300); }
+.marketplace-nav-link { display:inline-flex; height:100%; align-items:center; border-bottom:2px solid transparent; padding-inline:.75rem; color:#cbd5e1; font-size:.875rem; font-weight:650; }
+.marketplace-nav-link:hover { color:#fff; }
+.marketplace-nav-link-active { border-color:var(--sk-brand-500); color:#fff; }
+.marketplace-nav-mobile { display:flex; align-items:center; gap:.75rem; border-radius:.6rem; padding:.625rem .75rem; color:#cbd5e1; font-size:.875rem; font-weight:550; }
+.marketplace-nav-mobile:hover { background:var(--sk-surface-3); color:#fff; }
+.marketplace-nav-mobile-active { background:rgba(99,102,241,.10); color:var(--sk-brand-300); }
+.marketplace-dropdown-link { display:flex; align-items:center; gap:.5rem; border-radius:.6rem; padding:.625rem .75rem; color:#cbd5e1; font-size:.875rem; }
+.marketplace-dropdown-link:hover { background:var(--sk-surface-3); color:#fff; }
+.marketplace-subnav { white-space:nowrap; border-radius:.6rem; padding:.625rem 1rem; color:#cbd5e1; font-size:.875rem; font-weight:650; }
+.marketplace-subnav:hover { background:var(--sk-surface-3); color:#fff; }
+.marketplace-subnav-active { background:rgba(99,102,241,.10); color:var(--sk-brand-300); }
+
+/* Reusable stat and workspace patterns used by the final UI pass */
+.marketplace-stat-grid { display:grid; gap:1rem; grid-template-columns:repeat(1,minmax(0,1fr)); }
+@media (min-width:640px){ .marketplace-stat-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (min-width:1024px){ .marketplace-stat-grid{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
+.marketplace-stat { border:1px solid var(--sk-border); border-radius:var(--sk-radius-lg); background:var(--sk-surface); padding:1.25rem; }
+.marketplace-stat-label { color:var(--sk-muted); font-size:.8rem; font-weight:650; }
+.marketplace-stat-value { margin-top:.5rem; color:var(--sk-text); font-size:1.65rem; line-height:2rem; font-weight:750; letter-spacing:-.025em; }
+.marketplace-stat-meta { margin-top:.4rem; color:var(--sk-subtle); font-size:.78rem; }
+.marketplace-icon-box { display:flex; width:2.5rem; height:2.5rem; align-items:center; justify-content:center; border-radius:.75rem; background:rgba(99,102,241,.1); color:var(--sk-brand-300); }
+.marketplace-section-title { color:#fff; font-size:1.05rem; font-weight:700; }
+.marketplace-section-description { margin-top:.25rem; color:var(--sk-muted); font-size:.85rem; line-height:1.4rem; }
+.marketplace-list-row { display:flex; gap:1rem; align-items:flex-start; padding:1rem 1.25rem; border-top:1px solid var(--sk-border); }
+.marketplace-list-row:first-child { border-top:0; }
+.marketplace-list-row:hover { background:rgba(30,41,59,.45); }
+.marketplace-status { display:inline-flex; align-items:center; gap:.35rem; border-radius:999px; padding:.3rem .62rem; font-size:.72rem; line-height:1rem; font-weight:700; }
+.marketplace-status-success { background:rgba(34,197,94,.1); color:#86efac; border:1px solid rgba(34,197,94,.2); }
+.marketplace-status-warning { background:rgba(250,204,21,.1); color:#fde047; border:1px solid rgba(250,204,21,.2); }
+.marketplace-status-danger { background:rgba(248,113,113,.1); color:#fca5a5; border:1px solid rgba(248,113,113,.2); }
+.marketplace-status-info { background:rgba(99,102,241,.1); color:#a5b4fc; border:1px solid rgba(99,102,241,.2); }
+.marketplace-alert { border-radius:.875rem; border:1px solid var(--sk-border); background:var(--sk-surface); padding:1rem; }
+.marketplace-alert-warning { border-color:rgba(250,204,21,.22); background:rgba(250,204,21,.055); }
+.marketplace-alert-success { border-color:rgba(34,197,94,.22); background:rgba(34,197,94,.055); }
+.marketplace-alert-danger { border-color:rgba(248,113,113,.22); background:rgba(248,113,113,.055); }
+.marketplace-divider { border-color:var(--sk-border) !important; }
+
+/* Legacy compatibility layer: turns remaining pre-redesign views into the same
+   visual system without changing their controllers/business logic. Scoped to
+   signed-in user and admin shells so public SEO pages keep explicit styling. */
+.marketplace-app main { background:var(--sk-bg); }
+.marketplace-app main .bg-white,
+.marketplace-admin main .bg-white { background-color:var(--sk-surface) !important; }
+.marketplace-app main .bg-gray-50,
+.marketplace-app main .bg-gray-100,
+.marketplace-admin main .bg-gray-50,
+.marketplace-admin main .bg-gray-100 { background-color:var(--sk-surface-2) !important; }
+.marketplace-app main .border-gray-100,
+.marketplace-app main .border-gray-200,
+.marketplace-app main .border-gray-300,
+.marketplace-admin main .border-gray-100,
+.marketplace-admin main .border-gray-200,
+.marketplace-admin main .border-gray-300 { border-color:var(--sk-border) !important; }
+.marketplace-app main .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+.marketplace-admin main .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color:var(--sk-border) !important; }
+.marketplace-app main .text-gray-900,
+.marketplace-app main .text-gray-800,
+.marketplace-admin main .text-gray-900,
+.marketplace-admin main .text-gray-800 { color:var(--sk-text) !important; }
+.marketplace-app main .text-gray-700,
+.marketplace-admin main .text-gray-700 { color:var(--sk-text-soft) !important; }
+.marketplace-app main .text-gray-600,
+.marketplace-app main .text-gray-500,
+.marketplace-admin main .text-gray-600,
+.marketplace-admin main .text-gray-500 { color:var(--sk-muted) !important; }
+.marketplace-app main .text-gray-400,
+.marketplace-admin main .text-gray-400 { color:var(--sk-subtle) !important; }
+
+/* Convert old blue/purple gradient primary controls into one SwiftKudi action color. */
+.marketplace-app main [class*="bg-gradient-to-r"][class*="from-indigo"],
+.marketplace-app main [class*="bg-gradient-to-br"][class*="from-indigo"],
+.marketplace-admin main [class*="bg-gradient-to-r"][class*="from-indigo"],
+.marketplace-admin main [class*="bg-gradient-to-br"][class*="from-indigo"] {
+    background-image:none !important;
+    background-color:var(--sk-brand-600) !important;
+}
+.marketplace-app main [class*="bg-clip-text"][class*="text-transparent"],
+.marketplace-admin main [class*="bg-clip-text"][class*="text-transparent"] {
+    background-image:none !important;
+    color:var(--sk-text) !important;
+    -webkit-text-fill-color:var(--sk-text) !important;
+}
+.marketplace-app main .bg-blue-50,
+.marketplace-app main .bg-blue-100 { background-color:rgba(99,102,241,.09) !important; }
+.marketplace-app main .text-blue-500,
+.marketplace-app main .text-blue-600,
+.marketplace-app main .text-blue-700,
+.marketplace-app main .text-blue-800,
+.marketplace-app main .text-blue-900 { color:var(--sk-brand-300) !important; }
+.marketplace-app main .bg-purple-50,
+.marketplace-app main .bg-purple-100 { background-color:rgba(99,102,241,.09) !important; }
+.marketplace-app main .text-purple-500,
+.marketplace-app main .text-purple-600,
+.marketplace-app main .text-purple-700,
+.marketplace-app main .text-purple-800 { color:var(--sk-brand-300) !important; }
+
+/* Keep semantic status colors subtle and dark-mode appropriate. */
+.marketplace-app main .bg-green-50,
+.marketplace-app main .bg-green-100 { background-color:rgba(34,197,94,.075) !important; }
+.marketplace-app main .text-green-600,
+.marketplace-app main .text-green-700,
+.marketplace-app main .text-green-800,
+.marketplace-app main .text-green-900 { color:#86efac !important; }
+.marketplace-app main .border-green-200 { border-color:rgba(34,197,94,.22) !important; }
+.marketplace-app main .bg-yellow-50,
+.marketplace-app main .bg-yellow-100 { background-color:rgba(250,204,21,.075) !important; }
+.marketplace-app main .text-yellow-600,
+.marketplace-app main .text-yellow-700,
+.marketplace-app main .text-yellow-800,
+.marketplace-app main .text-yellow-900 { color:#fde047 !important; }
+.marketplace-app main .border-yellow-200 { border-color:rgba(250,204,21,.22) !important; }
+.marketplace-app main .bg-red-50,
+.marketplace-app main .bg-red-100 { background-color:rgba(248,113,113,.075) !important; }
+.marketplace-app main .text-red-600,
+.marketplace-app main .text-red-700,
+.marketplace-app main .text-red-800,
+.marketplace-app main .text-red-900 { color:#fca5a5 !important; }
+.marketplace-app main .border-red-200 { border-color:rgba(248,113,113,.22) !important; }
+
+/* Legacy cards: make the common combinations feel like one product. */
+.marketplace-app main .rounded-lg.shadow,
+.marketplace-app main .rounded-xl.shadow,
+.marketplace-app main .rounded-2xl.shadow-lg,
+.marketplace-app main .rounded-2xl.shadow-xl,
+.marketplace-admin main .rounded-lg.shadow,
+.marketplace-admin main .rounded-xl.shadow,
+.marketplace-admin main .rounded-2xl.shadow-lg {
+    border:1px solid var(--sk-border) !important;
+    box-shadow:0 1px 2px rgba(0,0,0,.12) !important;
+}
+.marketplace-app main .hover\:shadow-xl:hover,
+.marketplace-app main .hover\:shadow-lg:hover { box-shadow:var(--sk-shadow) !important; }
+.marketplace-app main .transform.hover\:-translate-y-1:hover { transform:translateY(-1px) !important; }
+
+/* Inputs across legacy views */
+.marketplace-app main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.marketplace-app main select,
+.marketplace-app main textarea,
+.marketplace-admin main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.marketplace-admin main select,
+.marketplace-admin main textarea,
+.marketplace-guest input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.marketplace-guest select,
+.marketplace-guest textarea {
+    border:1px solid var(--sk-border-strong) !important;
+    border-radius:.7rem !important;
+    background:#07101f !important;
+    color:var(--sk-text) !important;
+    box-shadow:none !important;
+}
+.marketplace-app main input:focus,
+.marketplace-app main select:focus,
+.marketplace-app main textarea:focus,
+.marketplace-admin main input:focus,
+.marketplace-admin main select:focus,
+.marketplace-admin main textarea:focus,
+.marketplace-guest input:focus,
+.marketplace-guest select:focus,
+.marketplace-guest textarea:focus {
+    border-color:var(--sk-brand-500) !important;
+    box-shadow:0 0 0 3px rgba(99,102,241,.14) !important;
+    outline:none !important;
+}
+.marketplace-app main input::placeholder,
+.marketplace-app main textarea::placeholder,
+.marketplace-guest input::placeholder,
+.marketplace-guest textarea::placeholder { color:var(--sk-subtle) !important; }
+
+/* Tables */
+.marketplace-app main table,
+.marketplace-admin main table { width:100%; color:var(--sk-text-soft); }
+.marketplace-app main thead,
+.marketplace-admin main thead { background:#0b1424 !important; }
+.marketplace-app main thead th,
+.marketplace-admin main thead th { color:var(--sk-muted) !important; font-size:.72rem; letter-spacing:.04em; }
+.marketplace-app main tbody,
+.marketplace-admin main tbody { background:var(--sk-surface) !important; }
+.marketplace-app main tbody tr,
+.marketplace-admin main tbody tr { border-color:var(--sk-border) !important; }
+.marketplace-app main tbody tr:hover,
+.marketplace-admin main tbody tr:hover { background:rgba(30,41,59,.42) !important; }
+
+/* Old primary buttons and links become one brand system, while semantic danger/status remains. */
+.marketplace-app main .bg-indigo-600,
+.marketplace-admin main .bg-indigo-600 { background-color:var(--sk-brand-600) !important; }
+.marketplace-app main .hover\:bg-indigo-700:hover,
+.marketplace-admin main .hover\:bg-indigo-700:hover { background-color:var(--sk-brand-500) !important; }
+.marketplace-app main .text-indigo-600,
+.marketplace-app main .text-indigo-500,
+.marketplace-admin main .text-indigo-600 { color:var(--sk-brand-300) !important; }
+
+/* Pagination */
+.marketplace-app nav[role="navigation"] a,
+.marketplace-app nav[role="navigation"] span,
+.marketplace-admin nav[role="navigation"] a,
+.marketplace-admin nav[role="navigation"] span {
+    border-color:var(--sk-border-strong) !important;
+}
+
+/* Auth shell: restrained, trustworthy presentation rather than decorative glow. */
+.marketplace-guest .auth-marketplace-shell {
+    width:100%;
+    border:1px solid var(--sk-border);
+    border-radius:1.25rem;
+    background:var(--sk-surface);
+    box-shadow:var(--sk-shadow);
+}
+.marketplace-guest .bg-white { background:var(--sk-surface) !important; }
+.marketplace-guest .text-gray-900,
+.marketplace-guest .text-gray-800 { color:var(--sk-text) !important; }
+.marketplace-guest .text-gray-700 { color:var(--sk-text-soft) !important; }
+.marketplace-guest .text-gray-600,
+.marketplace-guest .text-gray-500 { color:var(--sk-muted) !important; }
+.marketplace-guest .border-gray-200,
+.marketplace-guest .border-gray-300 { border-color:var(--sk-border) !important; }
+.marketplace-guest [class*="bg-gradient-to"] { background-image:none !important; background-color:var(--sk-brand-600) !important; }
+.marketplace-guest [class*="bg-clip-text"][class*="text-transparent"] { background-image:none !important; color:var(--sk-text) !important; -webkit-text-fill-color:var(--sk-text) !important; }
+
+/* Admin consistency */
+.marketplace-admin .admin-surface { border:1px solid var(--sk-border); border-radius:var(--sk-radius-lg); background:var(--sk-surface); }
+.marketplace-admin main { background:var(--sk-bg); }
+.marketplace-admin main .bg-blue-50,
+.marketplace-admin main .bg-blue-100,
+.marketplace-admin main .bg-purple-50,
+.marketplace-admin main .bg-purple-100 { background:rgba(99,102,241,.09) !important; }
+.marketplace-admin main .text-blue-600,
+.marketplace-admin main .text-blue-700,
+.marketplace-admin main .text-purple-600,
+.marketplace-admin main .text-purple-700 { color:var(--sk-brand-300) !important; }
+
+/* Responsiveness and accessibility */
+.marketplace-app main img,
+.marketplace-admin main img { max-width:100%; }
+.marketplace-app main .overflow-x-auto,
+.marketplace-admin main .overflow-x-auto { scrollbar-width:thin; scrollbar-color:#334155 #0f172a; }
+.marketplace-app main :focus-visible,
+.marketplace-admin main :focus-visible,
+.marketplace-guest :focus-visible { outline:2px solid var(--sk-brand-400); outline-offset:2px; }
+@media (max-width:639px) {
+    .marketplace-container { padding-top:1.25rem; padding-bottom:1.5rem; }
+    .marketplace-btn-primary,.marketplace-btn-secondary,.marketplace-button-primary,.marketplace-button-secondary { min-height:44px; }
+    .marketplace-app main table { min-width:680px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+}
+
+/* Final consistency pass: legacy marketplace modules occasionally used green,
+   pink or teal gradients for primary actions. Keep semantic success/status
+   panels intact, but normalize interactive CTAs to SwiftKudi's brand indigo. */
+.marketplace-app main a[class*="bg-gradient"][class*="from-green"],
+.marketplace-app main button[class*="bg-gradient"][class*="from-green"],
+.marketplace-app main input[type="submit"][class*="bg-gradient"][class*="from-green"],
+.marketplace-app main a[class*="bg-gradient"][class*="from-emerald"],
+.marketplace-app main button[class*="bg-gradient"][class*="from-emerald"],
+.marketplace-app main a[class*="bg-gradient"][class*="from-teal"],
+.marketplace-app main button[class*="bg-gradient"][class*="from-teal"],
+.marketplace-app main a[class*="bg-gradient"][class*="from-pink"],
+.marketplace-app main button[class*="bg-gradient"][class*="from-pink"],
+.marketplace-app main a[class*="bg-gradient"][class*="from-purple"],
+.marketplace-app main button[class*="bg-gradient"][class*="from-purple"] {
+    background-image: none !important;
+    background-color: var(--sk-brand-600) !important;
+    border-color: var(--sk-brand-600) !important;
+    color: #fff !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,.16) !important;
+}
+.marketplace-app main a[class*="bg-gradient"]:hover,
+.marketplace-app main button[class*="bg-gradient"]:hover {
+    transform: none !important;
+    box-shadow: 0 4px 14px rgba(2,6,23,.24) !important;
+}
+
+/* Keep commerce and growth modules visually subordinate to the core freelance
+   marketplace while preserving all of their existing functionality. */
+.marketplace-app main [class*="shadow-indigo-500"],
+.marketplace-app main [class*="shadow-purple-500"],
+.marketplace-app main [class*="shadow-pink-500"],
+.marketplace-app main [class*="shadow-green-500"] {
+    --tw-shadow-color: transparent !important;
+}
+
+/* Improve dense legacy panels and modal headers without changing business logic. */
+.marketplace-app main [class*="rounded-3xl"],
+.marketplace-app main [class*="rounded-2xl"] {
+    border-color: var(--sk-border);
+}
+.marketplace-app main [role="dialog"] [class*="bg-gradient-to-r"][class*="from-indigo"],
+.marketplace-app main .modal [class*="bg-gradient-to-r"][class*="from-indigo"] {
+    background-image: none !important;
+    background-color: var(--sk-surface-3) !important;
+}

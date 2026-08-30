@@ -108,7 +108,7 @@
                 <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 mb-6">
                     <h3 class="font-semibold text-white mb-4">Seller</h3>
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                        <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
                             {{ strtoupper(substr($order->seller->name ?? 'U', 0, 1)) }}
                         </div>
                         <div>

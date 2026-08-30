@@ -18,7 +18,7 @@ $accountType = $user->account_type ?? '';
         @if($wallet && $wallet->is_activated)
             <!-- Already Activated -->
             <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 overflow-hidden">
-                <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-8 text-white text-center">
+                <div class="bg-indigo-600 p-8 text-white text-center">
                     <div class="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-4">
                         <i class="fas fa-check-circle text-4xl"></i>
                     </div>
@@ -29,7 +29,7 @@ $accountType = $user->account_type ?? '';
                 </div>
                 <div class="p-8">
                     <div class="text-center">
-                        <a href="{{ route('dashboard') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all shadow-lg">
+                        <a href="{{ route('dashboard') }}" class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition-all shadow-lg">
                             <i class="fas fa-home mr-2"></i>
                             Go to Dashboard
                         </a>
@@ -40,7 +40,7 @@ $accountType = $user->account_type ?? '';
             <!-- Activation Form -->
             <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 overflow-hidden">
                 <!-- Header -->
-                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 sm:p-8 text-white text-center">
+                <div class="bg-indigo-600 p-6 sm:p-8 text-white text-center">
                     <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-4">
                         <i class="fas fa-rocket text-3xl sm:text-4xl"></i>
                     </div>
@@ -219,7 +219,7 @@ $accountType = $user->account_type ?? '';
                     @if(!$activationFeeEnabled || ($wallet && $wallet->getTotalBalanceAttribute() >= $actualFee))
                     <form action="{{ route('wallet.activate.process') }}" method="POST">
                         @csrf
-                        <button type="submit" class="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-xl shadow-indigo-500/30 transition-all transform hover:scale-[1.02] text-sm sm:text-base">
+                        <button type="submit" class="w-full py-3 sm:py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xl shadow-indigo-500/30 transition-all transform hover:scale-[1.02] text-sm sm:text-base">
                             <i class="fas fa-rocket mr-2"></i>
                             {{ $activationFeeEnabled ? 'Pay ₦' . number_format($actualFee, 0) . ' & Activate' : 'Activate Now (Free)' }}
                         </button>

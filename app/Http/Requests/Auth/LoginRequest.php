@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\SystemSetting;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -46,10 +47,18 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+            $maxAttempts = $this->maxAttempts();
+            RateLimiter::hit($this->throttleKey(), $this->decaySeconds());
+            $attempts = RateLimiter::attempts($this->throttleKey());
+            $remaining = max(0, $maxAttempts - $attempts);
+
+            $message = trans('auth.failed');
+            if ($remaining > 0) {
+                $message .= ' ' . $remaining . ' sign-in attempt' . ($remaining === 1 ? '' : 's') . ' remaining before a temporary lock.';
+            }
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => $message,
             ]);
         }
 
@@ -65,7 +74,7 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited()
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (!$this->rateLimitingEnabled() || ! RateLimiter::tooManyAttempts($this->throttleKey(), $this->maxAttempts())) {
             return;
         }
 
@@ -79,6 +88,33 @@ class LoginRequest extends FormRequest
                 'minutes' => ceil($seconds / 60),
             ]),
         ]);
+    }
+
+    private function rateLimitingEnabled(): bool
+    {
+        try {
+            return SystemSetting::getBool('rate_limiting_enabled', true);
+        } catch (\Throwable $e) {
+            return true;
+        }
+    }
+
+    private function maxAttempts(): int
+    {
+        try {
+            return max(1, (int) SystemSetting::get('login_rate_limit_attempts', 5));
+        } catch (\Throwable $e) {
+            return 5;
+        }
+    }
+
+    private function decaySeconds(): int
+    {
+        try {
+            return max(60, (int) SystemSetting::get('login_rate_limit_minutes', 5) * 60);
+        } catch (\Throwable $e) {
+            return 300;
+        }
     }
 
     /**

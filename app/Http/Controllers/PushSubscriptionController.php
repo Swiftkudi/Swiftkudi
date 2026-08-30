@@ -8,6 +8,7 @@ use App\Services\NotificationManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class PushSubscriptionController extends Controller
 {
@@ -25,10 +26,10 @@ class PushSubscriptionController extends Controller
     public function subscribe(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'endpoint'         => 'required|string',
-            'keys.p256dh'      => 'required|string',
-            'keys.auth'        => 'required|string',
-            'contentEncoding'  => 'nullable|string',
+            'endpoint'         => 'required|string|max:2048|url',
+            'keys.p256dh'      => 'required|string|max:512',
+            'keys.auth'        => 'required|string|max:255',
+            'contentEncoding'  => 'nullable|string|in:aes128gcm,aesgcm',
         ]);
 
         $user = Auth::user();
@@ -46,7 +47,7 @@ class PushSubscriptionController extends Controller
                 'endpoint_hash'    => $endpointHash,
                 'p256dh'           => $data['keys']['p256dh'],
                 'auth_token'       => $data['keys']['auth'],
-                'content_encoding' => $data['contentEncoding'] ?? 'aesgcm',
+                'content_encoding' => $data['contentEncoding'] ?? 'aes128gcm',
             ]
         );
 
@@ -59,7 +60,7 @@ class PushSubscriptionController extends Controller
     public function unsubscribe(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'endpoint' => 'required|string',
+            'endpoint' => 'required|string|max:2048|url',
         ]);
 
         PushSubscription::where('user_id', Auth::id())
@@ -99,9 +100,10 @@ class PushSubscriptionController extends Controller
                 'subs'    => $subs,
             ]);
         } catch (\Throwable $e) {
+            Log::warning('Push test failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
             return response()->json([
                 'status'  => 'error',
-                'message' => $e->getMessage(),
+                'message' => 'Push delivery could not be completed. Please check the push configuration and try again.',
             ], 500);
         }
     }

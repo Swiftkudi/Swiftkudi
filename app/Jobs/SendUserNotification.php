@@ -52,13 +52,9 @@ class SendUserNotification implements ShouldQueue
             $this->event,
             $this->notifyAdmins,
             $this->sendInApp,
-            $this->sendEmail
+            $this->sendEmail,
+            $this->sendPush
         );
-
-        // Send push notification if enabled
-        if ($this->sendPush) {
-            $dispatchService->sendPushToUser($this->user, $this->title, $this->message, $this->data);
-        }
 
         Log::info("Notification sent", [
             'event' => $this->event,

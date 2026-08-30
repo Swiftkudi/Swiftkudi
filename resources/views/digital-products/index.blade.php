@@ -9,14 +9,14 @@
         <div class="mb-8">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    <h1 class="text-3xl font-bold text-white">
                         Products Marketplace
                     </h1>
                     <p class="mt-2 text-gray-600 dark:text-gray-400">
                         Digital downloads, physical items & more
                     </p>
                 </div>
-                <a href="{{ route('digital-products.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
+                <a href="{{ route('digital-products.create') }}" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
                     <i class="fas fa-plus mr-2"></i> Sell Product
                 </a>
             </div>
@@ -25,7 +25,7 @@
         <!-- Navigation Tabs -->
         <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-2 mb-6">
             <div class="flex flex-wrap gap-2">
-                <a href="{{ route('digital-products.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30">
+                <a href="{{ route('digital-products.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-th-large mr-2"></i> Browse
                 </a>
                 <a href="{{ route('digital-products.my-products') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
@@ -111,7 +111,7 @@
                     <option value="price_low" {{ request('sort') == 'price_low' ? 'selected' : '' }}>Price: Low to High</option>
                     <option value="price_high" {{ request('sort') == 'price_high' ? 'selected' : '' }}>Price: High to Low</option>
                 </select>
-                <button type="submit" class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
+                <button type="submit" class="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
                     Filter
                 </button>
             </form>
@@ -127,7 +127,7 @@
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">No products found</h3>
                 <p class="text-gray-500 dark:text-gray-400 mb-6">Try adjusting your search or filters</p>
-                <a href="{{ route('digital-products.create') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
+                <a href="{{ route('digital-products.create') }}" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-medium">
                     <i class="fas fa-plus mr-2"></i> Be the first to sell
                 </a>
             </div>

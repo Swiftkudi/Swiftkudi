@@ -166,6 +166,21 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Get buyer's selected categories
      */
+    public function notificationPreference()
+    {
+        return $this->hasOne(NotificationPreference::class);
+    }
+
+    public function clientContracts()
+    {
+        return $this->hasMany(Contract::class, 'client_id');
+    }
+
+    public function freelancerContracts()
+    {
+        return $this->hasMany(Contract::class, 'freelancer_id');
+    }
+
     public function getBuyerCategories(): array
     {
         return $this->buyer_categories_selected ?? [];
@@ -587,6 +602,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function unlockGrowthSellerFeature(string $feature, int $months = 3): void
     {
         $this->unlockFeature($feature, $months);
+    }
+
+    /**
+     * Public freelancer marketplace profile.
+     */
+    public function freelancerProfile()
+    {
+        return $this->hasOne(ServiceProviderProfile::class, 'user_id');
     }
 
     /**

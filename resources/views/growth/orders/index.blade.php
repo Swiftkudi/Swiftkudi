@@ -6,7 +6,7 @@
 <div class="py-8">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="mb-8">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 class="text-3xl font-bold text-white">
                 My Orders
             </h1>
             <p class="mt-2 text-gray-600 dark:text-gray-400">

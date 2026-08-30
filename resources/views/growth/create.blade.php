@@ -10,7 +10,7 @@
             <a href="{{ route('growth.index') }}" class="text-indigo-600 hover:text-indigo-700 flex items-center gap-2 mb-4">
                 <i class="fas fa-arrow-left"></i> Back to Growth Marketplace
             </a>
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Create Growth Listing</h1>
+            <h1 class="text-3xl font-bold text-white">Create Growth Listing</h1>
             <p class="mt-2 text-gray-600 dark:text-gray-400">Offer backlinks, influencer promotion, newsletters, or leads</p>
         </div>
 
@@ -104,7 +104,7 @@
                     Cancel
                 </a>
                 <button type="submit" 
-                    class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
+                    class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
                     Create Listing
                 </button>
             </div>

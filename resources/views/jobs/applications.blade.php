@@ -1,103 +1,54 @@
 @extends('layouts.app')
 
-@section('title', 'My Applications - SwiftKudi')
+@section('title', 'My Proposals - SwiftKudi')
+@section('robots', 'noindex,nofollow')
 
 @section('content')
-<div class="py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">My Applications</h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">Track your job applications</p>
-        </div>
-
-        @if($applications->count() > 0)
-            <div class="space-y-4">
-                @foreach($applications as $application)
-                    <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg border border-gray-100 dark:border-dark-700 p-6">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center gap-3 mb-2">
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $application->job->title }}</h3>
-                                    <span class="px-3 py-1 text-xs font-medium rounded-full 
-                                        @if($application->status === 'pending') bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400
-                                        @elseif($application->status === 'hired') bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400
-                                        @elseif($application->status === 'rejected') bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400
-                                        @else bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-400 @endif">
-                                        {{ $application->status_label }}
-                                    </span>
-                                </div>
-                                <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                                    <span class="flex items-center gap-1">
-                                        <i class="fas fa-building"></i>{{ $application->job->user->name }}
-                                    </span>
-                                    <span class="flex items-center gap-1">
-                                        <i class="fas fa-money-bill"></i>₦{{ number_format($application->proposal_amount) }}
-                                    </span>
-                                    <span class="flex items-center gap-1">
-                                        <i class="fas fa-clock"></i>{{ $application->estimated_duration }}
-                                    </span>
-                                    <span class="flex items-center gap-1">
-                                        <i class="fas fa-calendar"></i>Applied {{ $application->created_at->diffForHumans() }}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <a href="{{ route('jobs.show', $application->job) }}" class="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                @if($application->status === 'pending')
-                                    <form action="{{ route('jobs.withdraw', $application) }}" method="POST" class="inline">
-                                        @csrf
-                                        <button type="submit" class="p-2 text-red-500 hover:text-red-600 transition-colors" onclick="return confirm('Are you sure you want to withdraw this application?')">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-                        </div>
-
-                        @if($application->cover_letter)
-                            <div class="mt-4 pt-4 border-t border-gray-100 dark:border-dark-700">
-                                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cover Letter</h4>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{{ $application->cover_letter }}</p>
-                            </div>
-                        @endif
-
-                        @if($application->status === 'hired' && $application->employer_notes)
-                            <div class="mt-4 pt-4 border-t border-gray-100 dark:border-dark-700">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                                        <i class="fas fa-check mr-1"></i>Hired
-                                    </span>
-                                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Message from Employer</h4>
-                                </div>
-                                <div class="p-4 bg-white dark:bg-dark-800 border border-green-200 dark:border-green-700/50 rounded-xl">
-                                    <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ $application->employer_notes }}</p>
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                @endforeach
-            </div>
-
-            <!-- Pagination -->
-            <div class="mt-6">
-                {{ $applications->links() }}
-            </div>
-        @else
-            <!-- Empty State -->
-            <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg border border-gray-100 dark:border-dark-700 p-12 text-center">
-                <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-dark-800 flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-paper-plane text-gray-400 text-3xl"></i>
-                </div>
-                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">No applications yet</h3>
-                <p class="text-gray-500 dark:text-gray-400 mb-6">Start applying for jobs that match your skills</p>
-                <a href="{{ route('jobs.index') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-medium rounded-xl transition-colors">
-                    <i class="fas fa-search mr-2"></i>Browse Jobs
-                </a>
-            </div>
-        @endif
+<div class="marketplace-page"><div class="marketplace-container">
+    <div class="marketplace-page-header">
+        <div><span class="marketplace-eyebrow">Freelancer workspace</span><h1 class="marketplace-title mt-2">My proposals</h1><p class="marketplace-subtitle">Track every proposal from submission through hiring.</p></div>
+        <a href="{{ route('jobs.index') }}" class="marketplace-btn-primary"><i class="fas fa-search"></i>Find work</a>
     </div>
-</div>
+
+    @if($applications->isEmpty())
+        <div class="marketplace-card p-10 text-center"><span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-300"><i class="far fa-paper-plane text-xl"></i></span><h2 class="mt-4 text-lg font-semibold text-white">No proposals yet</h2><p class="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">Browse active jobs and submit a focused proposal that explains how you will solve the client’s problem.</p><a href="{{ route('jobs.index') }}" class="marketplace-btn-primary mt-6">Browse jobs</a></div>
+    @else
+        <div class="space-y-4">
+            @foreach($applications as $application)
+                @php
+                    $job = $application->job;
+                    $statusClass = match($application->status) {
+                        'hired' => 'border-green-500/30 bg-green-500/10 text-green-300',
+                        'rejected' => 'border-red-500/30 bg-red-500/10 text-red-300',
+                        'withdrawn' => 'border-dark-600 bg-dark-800 text-gray-400',
+                        default => 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300',
+                    };
+                @endphp
+                <article class="marketplace-card p-5 sm:p-6">
+                    <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2"><span class="rounded-full border px-2.5 py-1 text-xs font-semibold {{ $statusClass }}">{{ $application->status_label }}</span><span class="text-xs text-gray-600">Submitted {{ $application->created_at->diffForHumans() }}</span></div>
+                            <a href="{{ route('jobs.show', $job) }}" class="mt-3 block text-lg font-semibold text-white hover:text-indigo-300">{{ $job->title }}</a>
+                            <p class="mt-1 text-sm text-gray-500">Client: {{ optional($job->user)->name ?: 'Client' }}</p>
+                            <div class="mt-4 flex flex-wrap gap-2"><span class="marketplace-pill">Proposal ₦{{ number_format((float)$application->proposal_amount) }}</span><span class="marketplace-pill">{{ $application->estimated_duration }}</span><span class="marketplace-pill">Job budget {{ $job->budget_range }}</span></div>
+                            @if($application->cover_letter)<div class="mt-5 border-t border-dark-700 pt-4"><p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Cover letter</p><p class="mt-2 line-clamp-3 text-sm leading-6 text-gray-400">{{ $application->cover_letter }}</p></div>@endif
+                        </div>
+                        <div class="flex flex-wrap gap-2 lg:w-56 lg:flex-col">
+                            @if($application->status === 'hired' && $application->contract)
+                                <a href="{{ route('contracts.show', $application->contract) }}" class="marketplace-btn-primary"><i class="fas fa-file-signature"></i>Open contract</a>
+                            @else
+                                <a href="{{ route('jobs.show', $job) }}" class="marketplace-btn-secondary"><i class="far fa-eye"></i>View job</a>
+                            @endif
+                            @if($job && $job->user_id !== auth()->id())<a href="{{ route('chat.open', ['type'=>'job','referenceId'=>$job->id,'participantId'=>$job->user_id]) }}" class="marketplace-btn-secondary"><i class="far fa-comment"></i>Message client</a>@endif
+                            @if(in_array($application->status, ['pending','reviewing','shortlisted'], true))
+                                <form action="{{ route('jobs.withdraw', $application) }}" method="POST" onsubmit="return confirm('Withdraw this proposal?')">@csrf<button class="marketplace-btn-secondary w-full text-red-300 hover:border-red-500/40 hover:bg-red-500/10"><i class="fas fa-xmark"></i>Withdraw</button></form>
+                            @endif
+                        </div>
+                    </div>
+                </article>
+            @endforeach
+        </div>
+        <div class="mt-6">{{ $applications->links() }}</div>
+    @endif
+</div></div>
 @endsection

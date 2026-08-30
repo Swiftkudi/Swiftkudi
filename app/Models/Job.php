@@ -6,12 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Job extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'slug',
         'user_id',
         'category_id',
         'title',
@@ -38,7 +40,32 @@ class Job extends Model
         'views_count' => 'integer',
         'applications_count' => 'integer',
         'positions_available' => 'integer',
+        'requirements' => 'array',
+        'benefits' => 'array',
     ];
+
+
+    protected static function booted(): void
+    {
+        static::created(function (Job $job) {
+            if (!$job->slug) {
+                $job->forceFill(['slug' => Str::limit(Str::slug($job->title) ?: 'job', 190, '') . '-' . $job->id])->saveQuietly();
+            }
+        });
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $query = $this->newQuery();
+        return ctype_digit((string) $value)
+            ? $query->whereKey((int) $value)->first()
+            : $query->where($field ?: 'slug', $value)->first();
+    }
 
     public function user(): BelongsTo
     {
@@ -55,10 +82,17 @@ class Job extends Model
         return $this->hasMany(JobApplication::class, 'job_id');
     }
 
+    public function bookmarks(): HasMany
+    {
+        return $this->hasMany(JobBookmark::class, 'job_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active')
-            ->where('expires_at', '>', now());
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            });
     }
 
     public function scopeExpired($query)
@@ -83,7 +117,9 @@ class Job extends Model
     {
         $types = [
             'full-time' => 'Full Time',
+            'full_time' => 'Full Time',
             'part-time' => 'Part Time',
+            'part_time' => 'Part Time',
             'contract' => 'Contract',
             'internship' => 'Internship',
         ];

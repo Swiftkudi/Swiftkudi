@@ -4,7 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? config('app.name', 'Earn Desk') }}</title>
+    <title>@yield('title', $title ?? config('app.name', 'SwiftKudi'))</title>
+    <meta name="description" content="@yield('meta_description', 'SwiftKudi connects clients with skilled professionals for jobs, services and secure project collaboration.')">
+    <meta name="robots" content="@yield('robots', auth()->check() ? 'noindex,nofollow' : 'index,follow')">
+    <link rel="canonical" href="@yield('canonical', url()->current())">
+    <meta property="og:title" content="@yield('og_title', trim($__env->yieldContent('title', config('app.name', 'SwiftKudi'))))">
+    <meta property="og:description" content="@yield('og_description', trim($__env->yieldContent('meta_description', 'Hire skilled professionals and find meaningful work on SwiftKudi.')))">
+    <meta property="og:url" content="@yield('canonical', url()->current())">
+    <meta property="og:type" content="@yield('og_type', 'website')">
+    <meta name="twitter:card" content="summary_large_image">
+    @stack('meta')
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
@@ -82,16 +91,16 @@
                         },
                         colors: {
                             primary: {
-                                50: '#eff6ff',
-                                100: '#dbeafe',
-                                200: '#bfdbfe',
-                                300: '#93c5fd',
-                                400: '#60a5fa',
-                                500: '#3b82f6',
-                                600: '#2563eb',
-                                700: '#1d4ed8',
-                                800: '#1e40af',
-                                900: '#1e3a8a',
+                                50: '#eef2ff',
+                                100: '#e0e7ff',
+                                200: '#c7d2fe',
+                                300: '#a5b4fc',
+                                400: '#818cf8',
+                                500: '#6366f1',
+                                600: '#4f46e5',
+                                700: '#4338ca',
+                                800: '#3730a3',
+                                900: '#312e81',
                             },
                             dark: {
                                 50: '#f8fafc',
@@ -565,209 +574,12 @@
             } catch(e) { /* ignore */ }
         })();
     </script>
+    <link rel="stylesheet" href="{{ asset('css/marketplace.css') }}">
+
 </head>
-<body class="font-body bg-dark-950 text-gray-100 min-h-screen">
+<body class="marketplace-app font-body bg-dark-950 text-gray-100 min-h-screen">
     <div class="min-h-screen flex flex-col">
-        <!-- Mobile Menu Overlay -->
-        <div id="mobile-menu-overlay" class="fixed inset-0 bg-black/60 z-40 hidden md:hidden" onclick="closeMobileMenu()"></div>
-        
-        <!-- Mobile Menu -->
-        <div id="mobile-menu" class="fixed top-0 left-0 h-full w-72 bg-dark-900 z-50 transform -translate-x-full transition-transform duration-300 md:hidden">
-            <div class="p-4 border-b border-dark-700">
-                <div class="flex items-center justify-between">
-                    <a href="{{ route('dashboard') }}" class="flex items-center">
-                        <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mr-3">
-                            <i class="fas fa-coins text-white text-lg"></i>
-                        </div>
-                        <span class="font-bold text-xl text-white">SwiftKudi</span>
-                    </a>
-                    <button onclick="closeMobileMenu()" class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-            </div>
-            @php
-$user = auth()->user();
-$accountType = $user->account_type ?? '';
-@endphp
-            <nav class="p-4 space-y-2">
-                <a href="{{ route('dashboard') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('dashboard') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
-                    <i class="fas fa-home mr-3 w-5"></i>Dashboard
-                </a>
-                <a href="{{ route('dashboard.profile') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('dashboard.profile') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
-                    <i class="fas fa-user mr-3 w-5"></i>Profile
-                </a>
-                @if($accountType === 'earner')
-                <a href="{{ route('tasks.index') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('tasks.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
-                    <i class="fas fa-tasks mr-3 w-5"></i>Tasks
-                </a>
-                @endif
-                <a href="{{ route('wallet.index') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('wallet.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
-                    <i class="fas fa-wallet mr-3 w-5"></i>Wallet
-                </a>
-                <a href="{{ route('chat.index') }}" class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('chat.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-all">
-                    <i class="fas fa-comments mr-3 w-5"></i>Chat
-                </a>
-                @if(Auth::check() && Auth::user()->is_admin)
-                <a href="{{ route('admin.index') }}" class="flex items-center px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800 transition-all">
-                    <i class="fas fa-cog mr-3 w-5"></i>Admin
-                </a>
-                @endif
-            </nav>
-            @auth
-            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-dark-700">
-                <div class="flex items-center space-x-3 mb-4">
-                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                        {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
-                    </div>
-                    <div>
-                        <p class="text-sm font-semibold text-white">{{ Auth::user()->name }}</p>
-                        <p class="text-xs text-gray-400">
-                            <i class="fas fa-naira-sign mr-0.5"></i>{{ number_format(Auth::user()->wallet ? (Auth::user()->wallet->withdrawable_balance + Auth::user()->wallet->promo_credit_balance) : 0, 2) }}
-                        </p>
-                    </div>
-                </div>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="w-full flex items-center justify-center px-4 py-2 rounded-lg bg-dark-800 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                    </button>
-                </form>
-            </div>
-            @endauth
-        </div>
-
-        <!-- Navigation (fixed to top) -->
-        <header class="fixed top-0 left-0 right-0 z-50 bg-dark-900/95 border-b border-dark-700 backdrop-blur-lg">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
-                    <!-- Mobile Menu Button -->
-                    <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800" onclick="openMobileMenu()">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
-                    
-                    <!-- Logo -->
-                    <div class="flex items-center">
-                        <a href="{{ route('dashboard') }}" class="flex items-center group">
-                            <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mr-3 shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 transition-all">
-                                <i class="fas fa-coins text-white text-lg"></i>
-                            </div>
-                            <span class="font-bold text-xl bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">SwiftKudi</span>
-                        </a>
-                    </div>
-
-                    <!-- Navigation -->
-                    <nav class="hidden md:flex space-x-1">
-                        <a href="{{ route('dashboard') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('dashboard') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
-                            <i class="fas fa-home mr-2"></i>Dashboard
-                        </a>
-                        <a href="{{ route('dashboard.profile') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('dashboard.profile') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
-                            <i class="fas fa-user mr-2"></i>Profile
-                        </a>
-                        @if($accountType === 'earner')
-                        <a href="{{ route('tasks.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('tasks.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
-                            <i class="fas fa-tasks mr-2"></i>Tasks
-                        </a>
-                        @endif
-                        <a href="{{ route('wallet.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('wallet.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
-                            <i class="fas fa-wallet mr-2"></i>Wallet
-                        </a>
-                        <a href="{{ route('chat.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium {{ request()->routeIs('chat.*') ? 'bg-indigo-500/10 text-indigo-400' : 'text-gray-400 hover:text-indigo-400 hover:bg-dark-800' }} transition-all">
-                            <i class="fas fa-comments mr-2"></i>Chat
-                        </a>
-                        @if(Auth::check() && Auth::user()->is_admin)
-                        <a href="{{ route('admin.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-indigo-400 hover:bg-dark-800 transition-all">
-                            <i class="fas fa-cog mr-2"></i>Admin
-                        </a>
-                        @endif
-                         @if($accountType === 'buyer')
-                        <a href="{{ route('settings.buyer-categories') }}" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-indigo-400 hover:bg-dark-800 transition-all">
-                            <i class="fas fa-cog mr-2"></i>settings
-                        </a>
-                        @endif
-                    </nav>
-
-                    <!-- Right Side -->
-                    <div class="flex items-center space-x-3 md:space-x-4">
-                        @auth
-                            @php
-                                $authUser = Auth::user();
-                                $wallet = $authUser->wallet ?? null;
-                                $balance = $wallet ? ($wallet->withdrawable_balance + $wallet->promo_credit_balance) : 0;
-                            @endphp
-
-                            <!-- Notification Bell -->
-                            <div class="relative" id="notif-bell-wrapper">
-                                <button id="notif-bell-btn"
-                                    class="relative p-2 md:p-2.5 rounded-xl bg-dark-800 hover:bg-indigo-500/10 text-gray-400 hover:text-indigo-400 transition-all focus:outline-none"
-                                    aria-label="Notifications"
-                                    onclick="toggleNotifDropdown(event)">
-                                    <i class="fas fa-bell text-lg"></i>
-                                    <span id="notif-badge"
-                                        class="absolute -top-1 -right-1 hidden min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full flex items-center justify-center leading-none">
-                                        0
-                                    </span>
-                                </button>
-
-                                <!-- Dropdown -->
-                                <div id="notif-dropdown"
-                                    class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-dark-900 border border-dark-700 rounded-2xl shadow-2xl shadow-black/40 z-[200] overflow-hidden"
-                                    onclick="event.stopPropagation()">
-
-                                    <!-- Header -->
-                                    <div class="flex items-center justify-between px-4 py-3 border-b border-dark-700">
-                                        <h3 class="text-sm font-semibold text-white">Notifications</h3>
-                                        <div class="flex items-center gap-2">
-                                            <button onclick="markAllNotifRead()"
-                                                class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                                                Mark all read
-                                            </button>
-                                            <a href="{{ route('notifications.index') }}"
-                                                class="text-xs text-gray-400 hover:text-white transition-colors ml-2">
-                                                View all
-                                            </a>
-                                        </div>
-                                    </div>
-
-                                    <!-- List -->
-                                    <div id="notif-list" class="max-h-[400px] overflow-y-auto divide-y divide-dark-700">
-                                        <div id="notif-empty" class="hidden px-4 py-8 text-center">
-                                            <i class="fas fa-bell-slash text-2xl text-gray-600 mb-2 block"></i>
-                                            <p class="text-sm text-gray-500">No notifications yet</p>
-                                        </div>
-                                        <div id="notif-loading" class="px-4 py-6 text-center">
-                                            <i class="fas fa-spinner fa-spin text-gray-500"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- /Notification Bell -->
-
-                            <div class="flex items-center space-x-2 md:space-x-3">
-                                <div class="hidden sm:block text-right">
-                                    <p class="text-sm font-semibold text-white">{{ $authUser->name }}</p>
-                                    <p class="text-xs text-gray-400 flex items-center justify-end">
-                                        <i class="fas fa-naira-sign mr-0.5"></i>{{ number_format($balance, 2) }}
-                                    </p>
-                                </div>
-                                <div class="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/30">
-                                    {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
-                                </div>
-                                <form method="POST" action="{{ route('logout') }}" class="hidden sm:block">
-                                    @csrf
-                                    <button type="submit" class="p-2 md:p-2.5 rounded-xl bg-dark-800 hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-all" title="Logout">
-                                        <i class="fas fa-sign-out-alt"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        @else
-                            <a href="{{ route('login') }}" class="px-3 md:px-4 py-2 text-sm font-medium text-gray-400 hover:text-indigo-400 transition-all">Log in</a>
-                            <a href="{{ route('register') }}" class="px-4 md:px-5 py-2 md:py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-medium transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50">Get Started</a>
-                        @endauth
-                    </div>
-                </div>
-            </div>
-        </header>
+        @include('layouts.marketplace-header')
 
         <!-- Alert messages -->
         <div id="flash-messages" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
@@ -837,7 +649,7 @@ $accountType = $user->account_type ?? '';
         </div>
 
         <!-- Page Content -->
-        <main class="flex-1">
+        <main class="marketplace-main flex-1">
             @yield('content')
         </main>
         
@@ -1110,13 +922,26 @@ $accountType = $user->account_type ?? '';
                     </div>
                     ${n.is_read ? '' : '<div class="mt-1 flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500"></div>'}`;
 
-                item.addEventListener('click', () => markOneRead(n.id, item));
+                item.addEventListener('click', async () => {
+                    const actionUrl = n.data && (n.data.action_url || n.data.url) ? (n.data.action_url || n.data.url) : null;
+                    await markOneRead(n.id, item);
+                    if (actionUrl && isSafeNotificationUrl(actionUrl)) window.location.assign(actionUrl);
+                });
                 list.appendChild(item);
             });
         }
 
         function escHtml(str) {
             return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function isSafeNotificationUrl(url) {
+            try {
+                const parsed = new URL(url, window.location.origin);
+                return parsed.origin === window.location.origin;
+            } catch (_) {
+                return false;
+            }
         }
 
         async function fetchNotifications(force) {
@@ -1217,21 +1042,19 @@ $accountType = $user->account_type ?? '';
                 const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
                 await navigator.serviceWorker.ready;
 
-                if (Notification.permission === 'denied') return;
+                // Never interrupt users with an unsolicited browser permission prompt.
+                // New permission requests are initiated explicitly from Notification Settings.
+                if (Notification.permission !== 'granted') return;
 
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {
-                    if (Notification.permission === 'default') {
-                        const permission = await Notification.requestPermission();
-                        if (permission !== 'granted') return;
-                    }
                     sub = await reg.pushManager.subscribe({
                         userVisibleOnly: true,
                         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
                     });
                 }
 
-                // POST subscription to server
+                // Sync an already-authorized subscription with the server.
                 const subscriptionJson = sub.toJSON();
                 await fetch('/push/subscribe', {
                     method: 'POST',

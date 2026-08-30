@@ -12,11 +12,11 @@ $accountType = $user->account_type ?? '';
         <!-- Header -->
         <div class="flex justify-between items-center mb-8">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">My Services</h1>
+                <h1 class="text-3xl font-bold text-white">My Services</h1>
                 <p class="mt-2 text-gray-600 dark:text-gray-400">Manage your professional service listings</p>
             </div>
             <a href="{{ route('professional-services.create') }}" 
-                class="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
+                class="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
                 + Create New Service
             </a>
         </div>
@@ -24,7 +24,7 @@ $accountType = $user->account_type ?? '';
         <!-- Navigation Tabs -->
         <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-2 mb-6">
             <div class="flex flex-wrap gap-2">
-                <a href="{{ route('professional-services.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30">
+                <a href="{{ route('professional-services.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-th-large mr-2"></i> Browse
                 </a>
                 <a href="{{ route('professional-services.orders.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
@@ -76,7 +76,7 @@ $accountType = $user->account_type ?? '';
                             <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-2">{{ $service->title }}</h3>
                             <p class="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">{{ $service->description }}</p>
                             <div class="flex justify-between items-center">
-                                <span class="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">₦{{ number_format($service->price) }}</span>
+                                <span class="text-lg font-bold text-white">₦{{ number_format($service->price) }}</span>
                                 <span class="text-sm text-gray-500 dark:text-gray-400">{{ $service->delivery_days }} days</span>
                             </div>
                         </div>
@@ -103,7 +103,7 @@ $accountType = $user->account_type ?? '';
                             </div>
                             <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-2">{{ $service->title }}</h3>
                             <p class="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">{{ $service->description }}</p>
-                            <span class="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">₦{{ number_format($service->price) }}</span>
+                            <span class="text-lg font-bold text-white">₦{{ number_format($service->price) }}</span>
                         </div>
                     @endforeach
                 </div>
