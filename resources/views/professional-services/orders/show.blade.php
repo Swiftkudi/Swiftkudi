@@ -1,297 +1,215 @@
 @extends('layouts.app')
 
-@section('title', 'Order Details - Professional Services')
+@section('title', 'Service Order #' . $order->id . ' - SwiftKudi')
+@section('robots', 'noindex,nofollow')
 
 @section('content')
-<div class="py-4 lg:py-8">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="mb-6">
-            <a href="{{ route('professional-services.orders.index') }}" class="inline-flex items-center text-indigo-400 hover:text-indigo-300 text-sm">
-                <i class="fas fa-arrow-left mr-2"></i> Back to Orders
-            </a>
+@php
+    $isSeller = auth()->id() === $order->seller_id;
+    $isBuyer = auth()->id() === $order->buyer_id;
+    $otherUser = $isSeller ? $order->buyer : $order->seller;
+    $backRoute = $isSeller ? 'professional-services.sales.index' : 'professional-services.orders.index';
+    $backLabel = $isSeller ? 'Back to sales' : 'Back to purchases';
+    $statusClass = match($order->status) {
+        'completed' => 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300',
+        'delivered' => 'border-indigo-500/25 bg-indigo-500/10 text-indigo-300',
+        'revision' => 'border-amber-500/25 bg-amber-500/10 text-amber-300',
+        'cancelled', 'refunded' => 'border-red-500/25 bg-red-500/10 text-red-300',
+        default => 'border-slate-700 bg-slate-800 text-slate-300',
+    };
+@endphp
+
+<div class="marketplace-page">
+    <div class="marketplace-container max-w-6xl">
+        <div class="mb-5">
+            <a href="{{ route($backRoute) }}" class="inline-flex items-center gap-2 text-sm font-semibold text-indigo-300 hover:text-indigo-200"><i class="fas fa-arrow-left"></i>{{ $backLabel }}</a>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 space-y-6">
-                <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold text-white">Order #{{ $order->id }}</h2>
-                        <span class="px-3 py-1 text-xs rounded-full font-medium
-                            @switch($order->status)
-                                @case('completed') bg-green-500/20 text-green-400 @break
-                                @case('paid') bg-blue-500/20 text-blue-400 @break
-                                @case('delivered') bg-yellow-500/20 text-yellow-400 @break
-                                @case('revision') bg-amber-500/20 text-amber-400 @break
-                                @case('cancelled') bg-red-500/20 text-red-400 @break
-                                @default bg-gray-500/20 text-gray-400 @break
-                            @endswitch">
-                            {{ ucfirst(str_replace('_', ' ', $order->status)) }}
-                        </span>
-                    </div>
-
-                    <h3 class="font-semibold text-white mb-2">{{ $order->service->title ?? 'Service Removed' }}</h3>
-                    <p class="text-gray-400 text-sm mb-4">{{ $order->service->description ?? 'No description available' }}</p>
-
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <span class="text-gray-500">Seller:</span>
-                            <span class="text-white ml-2">{{ $order->seller->name ?? 'Unknown' }}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-500">Created:</span>
-                            <span class="text-white ml-2">{{ $order->created_at->format('M d, Y H:i') }}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-500">Delivery:</span>
-                            <span class="text-white ml-2">{{ $order->service->delivery_days ?? 'N/A' }} days</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-500">Revisions:</span>
-                            <span class="text-white ml-2">{{ $order->revisions_requested ?? 0 }}</span>
-                        </div>
-                    </div>
+        <div class="marketplace-page-header">
+            <div>
+                <div class="mb-2 flex flex-wrap items-center gap-2">
+                    <span class="rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide {{ $statusClass }}">{{ str_replace('_', ' ', $order->status) }}</span>
+                    <span class="text-xs text-slate-500">Order #{{ $order->id }} · Created {{ $order->created_at->format('M j, Y') }}</span>
                 </div>
+                <h1 class="marketplace-title">{{ $order->service->title ?? 'Professional service order' }}</h1>
+                <p class="marketplace-subtitle">{{ $isSeller ? 'Manage delivery and client feedback from one workspace.' : 'Track delivery, revisions and escrow-backed completion from one workspace.' }}</p>
+            </div>
+            @if($otherUser)
+                <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $order->service_id, 'participantId' => $otherUser->id]) }}" class="marketplace-btn-primary"><i class="far fa-comment"></i>Message {{ $isSeller ? 'client' : 'seller' }}</a>
+            @endif
+        </div>
+
+        <div id="order-action-feedback" class="hidden marketplace-card mb-5 border-red-500/40 bg-red-500/5 p-4 text-sm text-red-200" role="alert" aria-live="polite"></div>
+
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+            <div class="space-y-5">
+                <section class="marketplace-card p-5 sm:p-6">
+                    <h2 class="text-lg font-semibold text-white">Order overview</h2>
+                    <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+                        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $isSeller ? 'Client' : 'Seller' }}</dt><dd class="mt-1 font-medium text-slate-200">{{ $otherUser->name ?? 'User' }}</dd></div>
+                        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Delivery promise</dt><dd class="mt-1 font-medium text-slate-200">{{ $order->service ? $order->service->delivery_days . ' days' : 'Not available' }}</dd></div>
+                        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Revisions requested</dt><dd class="mt-1 font-medium text-slate-200">{{ (int) ($order->revisions_requested ?? 0) }}</dd></div>
+                        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Last updated</dt><dd class="mt-1 font-medium text-slate-200">{{ $order->updated_at->diffForHumans() }}</dd></div>
+                    </dl>
+                    @if($order->service?->description)
+                        <div class="mt-5 border-t border-slate-800 pt-5"><h3 class="text-sm font-semibold text-slate-200">Service scope</h3><p class="mt-2 text-sm leading-6 text-slate-400">{{ $order->service->description }}</p></div>
+                    @endif
+                </section>
 
                 @if($order->requirements)
-                <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6">
-                    <h3 class="font-semibold text-white mb-3">Requirements</h3>
-                    <p class="text-gray-400 text-sm whitespace-pre-line">{{ $order->requirements }}</p>
-                </div>
+                    <section class="marketplace-card p-5 sm:p-6">
+                        <h2 class="text-lg font-semibold text-white">Client requirements</h2>
+                        <p class="mt-3 whitespace-pre-line text-sm leading-7 text-slate-400">{{ $order->requirements }}</p>
+                    </section>
                 @endif
 
                 @if($order->revision_notes)
-                <div class="bg-dark-900 rounded-2xl shadow-lg border border-amber-500/30 p-4 lg:p-6">
-                    <h3 class="font-semibold text-white mb-3 flex items-center">
-                        <i class="fas fa-undo mr-2 text-amber-400"></i>
-                        Revision Request Notes
-                    </h3>
-                    <p class="text-gray-400 text-sm whitespace-pre-line">{{ $order->revision_notes }}</p>
-                    @if($order->revisions_requested > 0)
-                        <p class="text-xs text-gray-500 mt-2">
-                            Revision #{{ $order->revisions_requested }} requested
-                        </p>
-                    @endif
-                </div>
+                    <section class="marketplace-card border-amber-500/25 p-5 sm:p-6">
+                        <div class="flex items-center gap-2"><i class="fas fa-rotate-left text-amber-300"></i><h2 class="text-lg font-semibold text-white">Revision request</h2></div>
+                        <p class="mt-3 whitespace-pre-line text-sm leading-7 text-slate-400">{{ $order->revision_notes }}</p>
+                        <p class="mt-3 text-xs text-amber-300">Revision request #{{ (int) ($order->revisions_requested ?? 0) }}</p>
+                    </section>
                 @endif
 
                 @if($order->delivery_notes)
-                <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6">
-                    <h3 class="font-semibold text-white mb-3">Delivery Notes</h3>
-                    <div class="text-gray-400 text-sm whitespace-pre-line">{{ $order->delivery_notes }}</div>
-                </div>
+                    <section class="marketplace-card border-indigo-500/25 p-5 sm:p-6">
+                        <div class="flex items-center gap-2"><i class="fas fa-box-open text-indigo-300"></i><h2 class="text-lg font-semibold text-white">Latest delivery</h2></div>
+                        <p class="mt-3 whitespace-pre-line text-sm leading-7 text-slate-400">{{ $order->delivery_notes }}</p>
+                        @if($order->delivered_at)<p class="mt-3 text-xs text-slate-500">Delivered {{ $order->delivered_at->diffForHumans() }}</p>@endif
+                    </section>
                 @endif
 
-                @if($order->messages && $order->messages->count() > 0)
-                <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6">
-                    <h3 class="font-semibold text-white mb-3">Messages</h3>
-                    <div class="space-y-3 max-h-80 overflow-y-auto">
-                        @foreach($order->messages as $message)
-                            <div class="p-3 rounded-lg {{ $message->sender_id === auth()->id() ? 'bg-indigo-500/20 border border-indigo-500/30' : 'bg-dark-800 border border-dark-700' }}">
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-xs text-gray-300">{{ $message->sender->name ?? 'User' }}</span>
-                                    <span class="text-xs text-gray-500">{{ $message->created_at->diffForHumans() }}</span>
+                @if($order->messages && $order->messages->isNotEmpty())
+                    <section class="marketplace-card p-5 sm:p-6">
+                        <div class="flex items-center justify-between gap-3"><div><h2 class="text-lg font-semibold text-white">Order notes</h2><p class="mt-1 text-sm text-slate-500">Earlier service-order messages preserved for this order.</p></div>@if($otherUser)<a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $order->service_id, 'participantId' => $otherUser->id]) }}" class="text-sm font-semibold text-indigo-300 hover:text-indigo-200">Open Messages</a>@endif</div>
+                        <div class="mt-5 max-h-96 space-y-3 overflow-y-auto pr-1">
+                            @foreach($order->messages as $message)
+                                <div class="rounded-xl border p-4 {{ $message->sender_id === auth()->id() ? 'border-indigo-500/25 bg-indigo-500/10' : 'border-slate-800 bg-slate-950/30' }}">
+                                    <div class="flex items-center justify-between gap-3"><span class="text-xs font-semibold text-slate-300">{{ $message->sender->name ?? 'User' }}</span><span class="text-xs text-slate-500">{{ $message->created_at->diffForHumans() }}</span></div>
+                                    <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-300">{{ $message->message }}</p>
                                 </div>
-                                <p class="text-sm text-gray-200 whitespace-pre-line">{{ $message->message }}</p>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
+                            @endforeach
+                        </div>
+                    </section>
                 @endif
             </div>
 
-            <div class="lg:col-span-1">
-                <div class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 mb-6">
-                    <h3 class="font-semibold text-white mb-4">Payment Summary</h3>
-                    <div class="space-y-3 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Service</span>
-                            <span class="text-white">₦{{ number_format($order->service_price, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Add-ons</span>
-                            <span class="text-white">₦{{ number_format($order->addons_total, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Platform Fee</span>
-                            <span class="text-white">₦{{ number_format($order->platform_commission, 2) }}</span>
-                        </div>
-                        <div class="border-t border-dark-700 pt-3 flex justify-between font-semibold">
-                            <span class="text-white">Total Paid</span>
-                            <span class="text-green-400">₦{{ number_format($order->total_amount, 2) }}</span>
-                        </div>
-                    </div>
+            <aside class="space-y-5 lg:sticky lg:top-24">
+                <section class="marketplace-card p-5">
+                    <h2 class="font-semibold text-white">Payment</h2>
+                    <dl class="mt-4 space-y-3 text-sm">
+                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Base service</dt><dd class="font-medium text-slate-200">₦{{ number_format((float) $order->service_price, 2) }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Add-ons</dt><dd class="font-medium text-slate-200">₦{{ number_format((float) $order->addons_total, 2) }}</dd></div>
+                        <div class="border-t border-slate-800 pt-3 flex justify-between gap-3"><dt class="font-semibold text-slate-200">Order total</dt><dd class="font-semibold text-white">₦{{ number_format((float) $order->total_amount, 2) }}</dd></div>
+                        @if($isSeller)
+                            <div class="flex justify-between gap-3"><dt class="text-slate-500">Platform commission</dt><dd class="font-medium text-slate-300">−₦{{ number_format((float) $order->platform_commission, 2) }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt class="font-semibold text-slate-200">Seller payout</dt><dd class="font-semibold text-emerald-300">₦{{ number_format((float) $order->seller_payout, 2) }}</dd></div>
+                        @else
+                            <div class="flex justify-between gap-3"><dt class="text-slate-500">Escrow amount</dt><dd class="font-medium text-indigo-300">₦{{ number_format((float) $order->escrow_amount, 2) }}</dd></div>
+                        @endif
+                    </dl>
+                </section>
 
-                    @if(auth()->id() === $order->seller_id || auth()->id() === $order->buyer_id)
-                    <div class="mt-4 pt-4 border-t border-dark-700">
-                        <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $order->service_id, 'participantId' => auth()->id() === $order->seller_id ? $order->buyer_id : $order->seller_id]) }}"
-                           class="w-full inline-flex items-center justify-center bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 py-2 rounded-lg transition-colors">
-                            <i class="fas fa-comments mr-2"></i>Go to Messages
-                        </a>
-                    </div>
-                    @endif
-                </div>
-
-                @if(auth()->id() === $order->seller_id && in_array($order->status, ['paid', 'in_progress']))
-                <div id="seller-delivery" class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 space-y-3">
-                    <h3 class="font-semibold text-white mb-4">Deliver Service</h3>
-                    <form action="{{ route('professional-services.orders.deliver', $order) }}" method="POST" class="delivery-form">
-                        @csrf
-                        <textarea name="notes" required minlength="10" placeholder="Delivery notes - describe what you've delivered" class="w-full mb-2 px-3 py-2 rounded bg-dark-800 border border-dark-700 text-gray-200 text-sm"></textarea>
-                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition-colors">
-                            <i class="fas fa-paper-plane mr-2"></i>Mark as Delivered
-                        </button>
-                    </form>
-                </div>
+                @if($isSeller && in_array($order->status, ['paid', 'in_progress'], true))
+                    <section id="seller-delivery" class="marketplace-card p-5">
+                        <p class="marketplace-eyebrow">Action required</p>
+                        <h2 class="mt-1 font-semibold text-white">Submit delivery</h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-500">Describe what you completed. The client will be notified and can approve or request a revision.</p>
+                        <form action="{{ route('professional-services.orders.deliver', $order) }}" method="POST" class="order-action-form mt-4 space-y-3">
+                            @csrf
+                            <div><label class="marketplace-label" for="delivery-notes">Delivery notes</label><textarea id="delivery-notes" name="notes" required minlength="10" maxlength="10000" rows="5" class="marketplace-input resize-y" placeholder="Summarize the completed work and any handoff information."></textarea></div>
+                            <button type="submit" class="marketplace-btn-primary w-full"><i class="fas fa-paper-plane"></i>Submit delivery</button>
+                        </form>
+                    </section>
                 @endif
 
-                @if(auth()->id() === $order->buyer_id && in_array($order->status, ['paid', 'delivered', 'revision']))
-                <div id="order-actions" class="bg-dark-900 rounded-2xl shadow-lg border border-dark-700 p-4 lg:p-6 space-y-3">
-                    <h3 class="font-semibold text-white mb-4">Buyer Actions</h3>
+                @if($isBuyer && in_array($order->status, ['delivered', 'revision'], true))
+                    <section id="buyer-review" class="marketplace-card p-5">
+                        <p class="marketplace-eyebrow">Action required</p>
+                        <h2 class="mt-1 font-semibold text-white">Review the delivery</h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-500">Approving releases escrow and records your review. Request a revision only when changes are genuinely needed.</p>
 
-                    @if(in_array($order->status, ['delivered', 'revision']))
-                    <form action="{{ route('professional-services.orders.approve', $order) }}" method="POST" class="action-form">
-                        @csrf
-                        <label class="block text-xs text-gray-400 mb-1">Rating (1-5)</label>
-                        <select name="rating" required class="w-full mb-2 px-3 py-2 rounded bg-dark-800 border border-dark-700 text-gray-200 text-sm">
-                            <option value="">Select rating</option>
-                            <option value="5">5 - Excellent</option>
-                            <option value="4">4 - Good</option>
-                            <option value="3">3 - Okay</option>
-                            <option value="2">2 - Poor</option>
-                            <option value="1">1 - Bad</option>
-                        </select>
-                        <textarea name="comment" required minlength="10" placeholder="Leave a quick review before releasing payment" class="w-full mb-2 px-3 py-2 rounded bg-dark-800 border border-dark-700 text-gray-200 text-sm"></textarea>
-                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors">
-                            <i class="fas fa-check mr-2"></i>Confirm Service & Release Payment
-                        </button>
-                    </form>
+                        <form action="{{ route('professional-services.orders.approve', $order) }}" method="POST" class="order-action-form mt-4 space-y-3">
+                            @csrf
+                            <div><label for="delivery-rating" class="marketplace-label">Rating</label><select id="delivery-rating" name="rating" required class="marketplace-input"><option value="">Select rating</option><option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3">3 — Okay</option><option value="2">2 — Poor</option><option value="1">1 — Bad</option></select></div>
+                            <div><label for="delivery-review" class="marketplace-label">Review</label><textarea id="delivery-review" name="comment" required minlength="10" maxlength="1000" rows="4" class="marketplace-input resize-y" placeholder="Describe your experience with the completed work."></textarea></div>
+                            <button type="submit" class="marketplace-btn-primary w-full"><i class="fas fa-check"></i>Approve & release payment</button>
+                        </form>
 
-                    <form action="{{ route('professional-services.orders.revision', $order) }}" method="POST" class="action-form">
-                        @csrf
-                        <input type="text" name="notes" required placeholder="Revision notes" class="w-full mb-2 px-3 py-2 rounded bg-dark-800 border border-dark-700 text-gray-200 text-sm">
-                        <button type="submit" class="w-full bg-amber-600/30 hover:bg-amber-600/40 text-amber-300 py-2 rounded-lg transition-colors">
-                            <i class="fas fa-undo mr-2"></i>Request Revision
-                        </button>
-                    </form>
-                    @endif
-
-                    @if(in_array($order->status, ['paid', 'delivered']))
-                    <form action="{{ route('professional-services.orders.cancel', $order) }}" method="POST" class="action-form">
-                        @csrf
-                        <button type="submit" class="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 py-2 rounded-lg transition-colors" onclick="return confirm('Cancel this order?')">
-                            <i class="fas fa-times mr-2"></i>Cancel Order
-                        </button>
-                    </form>
-                    @endif
-                </div>
+                        @if($order->canRequestRevision())
+                            <details class="mt-4 border-t border-slate-800 pt-4">
+                                <summary class="cursor-pointer text-sm font-semibold text-amber-300">Request a revision instead</summary>
+                                <form action="{{ route('professional-services.orders.revision', $order) }}" method="POST" class="order-action-form mt-3 space-y-3">
+                                    @csrf
+                                    <div><label for="revision-notes" class="marketplace-label">Revision notes</label><textarea id="revision-notes" name="notes" required minlength="10" maxlength="5000" rows="4" class="marketplace-input resize-y" placeholder="Be specific about what needs to change."></textarea></div>
+                                    <button type="submit" class="marketplace-btn-secondary w-full text-amber-200"><i class="fas fa-rotate-left"></i>Request revision</button>
+                                </form>
+                            </details>
+                        @endif
+                    </section>
                 @endif
-            </div>
+
+                @if($isBuyer && $order->canCancel())
+                    <section class="marketplace-card p-5">
+                        <h2 class="font-semibold text-white">Cancel order</h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-500">Cancellation follows the existing SwiftKudi escrow/refund rules for this order status.</p>
+                        <form action="{{ route('professional-services.orders.cancel', $order) }}" method="POST" class="order-action-form mt-4" data-confirm="Cancel this order?">
+                            @csrf
+                            <button type="submit" class="marketplace-btn-secondary w-full text-red-300"><i class="fas fa-times"></i>Cancel order</button>
+                        </form>
+                    </section>
+                @endif
+            </aside>
         </div>
     </div>
 </div>
 
 @push('scripts')
-    <script>
-        document.querySelectorAll('.action-form, .delivery-form').forEach((form) => {
-            form.addEventListener('submit', async (event) => {
-                event.preventDefault();
-                
-                // Disable all submit buttons in this form to prevent double-click
-                const submitButtons = form.querySelectorAll('button[type="submit"]');
-                submitButtons.forEach(btn => {
-                    btn.disabled = true;
-                    btn.classList.add('opacity-50', 'cursor-not-allowed');
-                    const originalText = btn.innerHTML;
-                    btn.setAttribute('data-original-text', originalText);
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
-                });
+<script>
+(function () {
+    const feedback = document.getElementById('order-action-feedback');
+    const forms = document.querySelectorAll('.order-action-form');
 
-                try {
-                    const response = await fetch(form.action, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            'Accept': 'application/json'
-                        },
-                        body: new FormData(form)
-                    });
-                    
-                    const data = await response.json();
-                    if (data.success) {
-                        // Show success notification if possible
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Success!',
-                                text: data.message || 'Action completed successfully',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                window.location.reload();
-                            });
-                        } else {
-                            window.location.reload();
-                        }
-                        return;
-                    }
-                    
-                    // Handle validation errors
-                    if (response.status === 422 || data.errors || data.error_list) {
-                        // Collect error messages
-                        let errorMsg = data.message || 'Please correct the following errors:';
-                        if (data.errors) {
-                            errorMsg += '\n\n' + Object.values(data.errors).flat().join('\n');
-                        }
-                        if (data.error_list) {
-                            errorMsg += '\n\n' + Object.values(data.error_list).join('\n');
-                        }
-                        
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Validation Error',
-                                html: errorMsg.replace(/\n/g, '<br>'),
-                            });
-                        } else {
-                            alert(errorMsg);
-                        }
-                    } else {
-                        // General error
-                        const msg = data.message || 'Action failed. Please try again.';
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: msg,
-                            });
-                        } else {
-                            alert(msg);
-                        }
-                    }
-                } catch (err) {
-                    console.error('Form submission error:', err);
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Network Error',
-                            text: 'Unable to connect to the server. Please check your connection and try again.',
-                        });
-                    } else {
-                        alert('An error occurred while submitting. Please try again.');
-                    }
-                } finally {
-                    // Re-enable buttons
-                    submitButtons.forEach(btn => {
-                        btn.disabled = false;
-                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                        const originalText = btn.getAttribute('data-original-text');
-                        if (originalText) {
-                            btn.innerHTML = originalText;
-                        }
-                    });
-                }
-            });
+    function showError(message) {
+        feedback.textContent = message;
+        feedback.classList.remove('hidden');
+        feedback.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    forms.forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            feedback.classList.add('hidden');
+            feedback.textContent = '';
+
+            if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) return;
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+
+            const button = form.querySelector('button[type="submit"]');
+            const original = button ? button.innerHTML : '';
+            if (button) { button.disabled = true; button.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>Processing…'; }
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: new FormData(form)
+                });
+                const data = await response.json().catch(() => ({ message: 'Unexpected server response.' }));
+                if (response.ok && data.success) { window.location.reload(); return; }
+
+                let message = data.message || 'The action could not be completed. Please try again.';
+                if (data.errors) message += ' ' + Object.values(data.errors).flat().join(' ');
+                showError(message);
+            } catch (error) {
+                console.error(error);
+                showError('Network error. Please check your connection and try again.');
+            } finally {
+                if (button) { button.disabled = false; button.innerHTML = original; }
+            }
         });
-    </script>
+    });
+})();
+</script>
 @endpush
 @endsection

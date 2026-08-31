@@ -1,165 +1,105 @@
 @extends('layouts.app')
 
 @section('title', 'My Services - SwiftKudi')
+@section('robots', 'noindex,nofollow')
 
 @section('content')
-@php
-$user = auth()->user();
-$accountType = $user->account_type ?? '';
-@endphp
-<div class="py-8">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
+<div class="marketplace-page">
+    <div class="marketplace-container">
+        <div class="marketplace-page-header">
             <div>
-                <h1 class="text-3xl font-bold text-white">My Services</h1>
-                <p class="mt-2 text-gray-600 dark:text-gray-400">Manage your professional service listings</p>
+                <p class="marketplace-eyebrow">Seller workspace</p>
+                <h1 class="marketplace-title">My services</h1>
+                <p class="marketplace-subtitle">Manage your service catalog and understand which listings are live, awaiting review or still in draft.</p>
             </div>
-            <a href="{{ route('professional-services.create') }}" 
-                class="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-indigo-500/30">
-                + Create New Service
-            </a>
+            <a href="{{ route('professional-services.create') }}" class="marketplace-btn-primary"><i class="fas fa-plus"></i>Create service</a>
         </div>
 
-        <!-- Navigation Tabs -->
-        <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-2 mb-6">
-            <div class="flex flex-wrap gap-2">
-                <a href="{{ route('professional-services.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
-                    <i class="fas fa-th-large mr-2"></i> Browse
-                </a>
-                <a href="{{ route('professional-services.orders.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
-                    <i class="fas fa-shopping-cart mr-2"></i> My Orders
-                </a>
-                <a href="{{ route('professional-services.my-services') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
-                    <i class="fas fa-briefcase mr-2"></i> My Services
-                </a>
-                <a href="{{ route('professional-services.sales.index') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
-                    <i class="fas fa-chart-line mr-2"></i> Sales
-                </a>
-                <a href="{{ route('professional-services.edit-profile') }}" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600">
-                    <i class="fas fa-user-cog mr-2"></i> Profile
-                </a>
+        @include('professional-services.partials.workspace-nav', ['activeWorkspace' => 'services'])
+
+        @php
+            $serviceTabs = [
+                'active' => ['label' => 'Active', 'collection' => $activeServices],
+                'pending' => ['label' => 'Pending review', 'collection' => $pendingServices],
+                'draft' => ['label' => 'Drafts', 'collection' => $draftServices],
+            ];
+        @endphp
+
+        <div class="marketplace-card mb-5 p-2" role="tablist" aria-label="Service statuses">
+            <div class="flex overflow-x-auto">
+                @foreach($serviceTabs as $key => $tab)
+                    <button type="button" class="service-tab-btn min-h-[42px] shrink-0 rounded-lg px-4 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-800 hover:text-white" data-tab="{{ $key }}" role="tab" aria-controls="services-{{ $key }}">
+                        {{ $tab['label'] }} <span class="ml-1 text-xs opacity-70">{{ $tab['collection']->count() }}</span>
+                    </button>
+                @endforeach
             </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="border-b border-gray-200 dark:border-dark-700 mb-6">
-            <nav class="flex space-x-8">
-                <button onclick="showTab('active')" class="py-3 px-1 border-b-2 font-medium text-sm tab-btn" data-tab="active">
-                    Active ({{ $activeServices->count() }})
-                </button>
-                <button onclick="showTab('pending')" class="py-3 px-1 border-b-2 font-medium text-sm tab-btn" data-tab="pending">
-                    Pending Review ({{ $pendingServices->count() }})
-                </button>
-                <button onclick="showTab('draft')" class="py-3 px-1 border-b-2 font-medium text-sm tab-btn" data-tab="draft">
-                    Drafts ({{ $draftServices->count() }})
-                </button>
-            </nav>
-        </div>
-
-        <!-- Active Services -->
-        <div id="tab-active" class="tab-content">
-            @if($activeServices->isEmpty())
-                <div class="text-center py-12 bg-white dark:bg-dark-900 rounded-2xl shadow-lg">
-                    <div class="w-16 h-16 bg-gray-100 dark:bg-dark-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-briefcase text-2xl text-gray-400"></i>
+        @foreach($serviceTabs as $key => $tab)
+            <section id="services-{{ $key }}" class="service-tab-panel hidden" role="tabpanel">
+                @if($tab['collection']->isEmpty())
+                    <div class="marketplace-card px-6 py-14 text-center">
+                        <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-indigo-500/10 text-indigo-300"><i class="fas {{ $key === 'active' ? 'fa-briefcase' : ($key === 'pending' ? 'fa-clock' : 'fa-file-lines') }}"></i></span>
+                        <h2 class="mt-4 text-lg font-semibold text-white">No {{ strtolower($tab['label']) }} services</h2>
+                        <p class="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">{{ $key === 'active' ? 'Create a clear service listing to start building your catalog.' : ($key === 'pending' ? 'Services submitted for moderation will appear here.' : 'Draft service listings will appear here when supported by the creation workflow.') }}</p>
+                        @if($key === 'active')<a href="{{ route('professional-services.create') }}" class="marketplace-btn-primary mt-5">Create a service</a>@endif
                     </div>
-                    <p class="text-gray-500 dark:text-gray-400">No active services yet</p>
-                    <a href="{{ route('professional-services.create') }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 mt-2 inline-block">
-                        Create your first service
-                    </a>
-                </div>
-            @else
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    @foreach($activeServices as $service)
-                        <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
-                            <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-2">{{ $service->title }}</h3>
-                            <p class="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">{{ $service->description }}</p>
-                            <div class="flex justify-between items-center">
-                                <span class="text-lg font-bold text-white">₦{{ number_format($service->price) }}</span>
-                                <span class="text-sm text-gray-500 dark:text-gray-400">{{ $service->delivery_days }} days</span>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-        </div>
-
-        <!-- Pending Services -->
-        <div id="tab-pending" class="tab-content hidden">
-            @if($pendingServices->isEmpty())
-                <div class="text-center py-12 bg-white dark:bg-dark-900 rounded-2xl shadow-lg">
-                    <div class="w-16 h-16 bg-gray-100 dark:bg-dark-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-clock text-2xl text-gray-400"></i>
+                @else
+                    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        @foreach($tab['collection'] as $service)
+                            @php
+                                $statusClass = match($service->status) {
+                                    'active' => 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300',
+                                    'pending' => 'border-amber-500/25 bg-amber-500/10 text-amber-300',
+                                    default => 'border-slate-700 bg-slate-800 text-slate-300',
+                                };
+                            @endphp
+                            <article class="marketplace-card flex h-full flex-col p-5">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide {{ $statusClass }}">{{ str_replace('_', ' ', $service->status) }}</span>
+                                        @if($service->category)<span class="marketplace-pill">{{ $service->category->name }}</span>@endif
+                                    </div>
+                                    <span class="text-xs text-slate-500">#{{ $service->id }}</span>
+                                </div>
+                                <h2 class="mt-4 text-lg font-semibold leading-6 text-white">{{ $service->title }}</h2>
+                                <p class="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">{{ $service->description }}</p>
+                                <dl class="mt-5 grid grid-cols-3 gap-2 border-t border-slate-800 pt-4 text-sm">
+                                    <div><dt class="text-xs text-slate-500">Price</dt><dd class="mt-1 font-semibold text-white">₦{{ number_format((float) $service->price) }}</dd></div>
+                                    <div><dt class="text-xs text-slate-500">Delivery</dt><dd class="mt-1 font-semibold text-white">{{ $service->delivery_days }}d</dd></div>
+                                    <div><dt class="text-xs text-slate-500">Orders</dt><dd class="mt-1 font-semibold text-white">{{ $service->orders_count ?? 0 }}</dd></div>
+                                </dl>
+                                <div class="mt-auto flex flex-wrap gap-2 pt-5">
+                                    <a href="{{ route('professional-services.show', $service) }}" class="marketplace-btn-secondary flex-1">View listing</a>
+                                    @if($service->status === 'active')
+                                        <a href="{{ route('professional-services.sales.index') }}" class="marketplace-btn-secondary">Sales</a>
+                                    @endif
+                                </div>
+                            </article>
+                        @endforeach
                     </div>
-                    <p class="text-gray-500 dark:text-gray-400">No pending services</p>
-                </div>
-            @else
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    @foreach($pendingServices as $service)
-                        <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 text-xs rounded">Pending Review</span>
-                            </div>
-                            <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-2">{{ $service->title }}</h3>
-                            <p class="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">{{ $service->description }}</p>
-                            <span class="text-lg font-bold text-white">₦{{ number_format($service->price) }}</span>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-        </div>
-
-        <!-- Draft Services -->
-        <div id="tab-draft" class="tab-content hidden">
-            @if($draftServices->isEmpty())
-                <div class="text-center py-12 bg-white dark:bg-dark-900 rounded-2xl shadow-lg">
-                    <div class="w-16 h-16 bg-gray-100 dark:bg-dark-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-file-alt text-2xl text-gray-400"></i>
-                    </div>
-                    <p class="text-gray-500 dark:text-gray-400">No drafts</p>
-                </div>
-            @else
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    @foreach($draftServices as $service)
-                        <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="px-2 py-1 bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 text-xs rounded">Draft</span>
-                            </div>
-                            <h3 class="font-semibold text-lg text-gray-900 dark:text-gray-100 mb-2">{{ $service->title }}</h3>
-                            <p class="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">{{ $service->description }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-        </div>
+                @endif
+            </section>
+        @endforeach
     </div>
 </div>
 
-<style>
-.tab-btn.active {
-    border-color: #4f46e5;
-    color: #4f46e5;
-}
-.tab-btn {
-    border-color: transparent;
-    color: #6b7280;
-}
-.tab-btn:hover {
-    border-color: #9ca3af;
-}
-</style>
-
 <script>
-function showTab(tab) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    
-    document.getElementById('tab-' + tab).classList.remove('hidden');
-    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-}
-
-// Show active tab by default
-showTab('active');
+(function () {
+    const buttons = Array.from(document.querySelectorAll('.service-tab-btn'));
+    const panels = Array.from(document.querySelectorAll('.service-tab-panel'));
+    function activate(key) {
+        buttons.forEach((button) => {
+            const active = button.dataset.tab === key;
+            button.classList.toggle('bg-indigo-600', active);
+            button.classList.toggle('text-white', active);
+            button.classList.toggle('text-slate-400', !active);
+            button.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        panels.forEach((panel) => panel.classList.toggle('hidden', panel.id !== `services-${key}`));
+    }
+    buttons.forEach((button) => button.addEventListener('click', () => activate(button.dataset.tab)));
+    activate('active');
+})();
 </script>
 @endsection

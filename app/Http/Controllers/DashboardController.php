@@ -9,6 +9,12 @@ use App\Models\TaskCompletion;
 use App\Models\TaskBundle;
 use App\Models\Badge;
 use App\Models\Referral;
+use App\Models\Job;
+use App\Models\JobApplication;
+use App\Models\Contract;
+use App\Models\ContractMilestone;
+use App\Models\MarketplaceConversation;
+use App\Models\MarketplaceMessage;
 use App\Services\SwiftKudiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,27 +29,6 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         /** @var \App\Models\User $user */
-
-        // Keep completed users inside real, registered SwiftKudi marketplace routes.
-        // The legacy `marketplace.listings.index` / `marketplace.seller.dashboard`
-        // names belonged to an unfinished route file and could throw RouteNotFoundException.
-        if ($user->onboarding_completed) {
-            if ($user->account_type === 'buyer') {
-                return redirect()->route('professional-services.index');
-            }
-
-            if ($user->account_type === 'freelancer') {
-                return redirect()->route('professional-services.my-services');
-            }
-
-            if ($user->account_type === 'digital_seller') {
-                return redirect()->route('digital-products.my-products');
-            }
-
-            if ($user->account_type === 'growth_seller') {
-                return redirect()->route('growth.my-listings');
-            }
-        }
 
         $wallet = $user->wallet;
 
@@ -133,10 +118,65 @@ class DashboardController extends Controller
             ? collect([$referralTask])->concat($regularTasks)
             : $regularTasks;
 
+        // Marketplace-first dashboard data. These queries use real job, proposal,
+        // contract, milestone and messaging records so the dashboard prioritizes
+        // next actions rather than decorative analytics.
+        $userId = $user->id;
+        $isFreelancer = $user->account_type === 'freelancer' || $user->freelancerProfile()->exists();
+        $isClient = $user->account_type === 'buyer' || Job::where('user_id', $userId)->exists();
+
+        $unreadMessages = MarketplaceMessage::whereHas('conversation', function ($query) use ($userId) {
+            $query->where(function ($q) use ($userId) {
+                $q->where('buyer_id', $userId)->orWhere('seller_id', $userId);
+            });
+        })->where('sender_id', '!=', $userId)->where('is_read', false)->count();
+
+        $activeContractsCount = Contract::where(function ($query) use ($userId) {
+            $query->where('client_id', $userId)->orWhere('freelancer_id', $userId);
+        })->where('status', Contract::STATUS_ACTIVE)->count();
+
+        $submittedForReviewCount = ContractMilestone::where('status', ContractMilestone::STATUS_SUBMITTED)
+            ->whereHas('contract', fn ($query) => $query->where('client_id', $userId))
+            ->count();
+
+        $revisionRequestedCount = ContractMilestone::where('status', ContractMilestone::STATUS_REVISION_REQUESTED)
+            ->whereHas('contract', fn ($query) => $query->where('freelancer_id', $userId))
+            ->count();
+
+        $proposalsSentCount = JobApplication::where('user_id', $userId)->count();
+        $proposalsReceivedCount = JobApplication::whereHas('job', fn ($query) => $query->where('user_id', $userId))
+            ->whereIn('status', ['pending', 'reviewing', 'shortlisted'])
+            ->count();
+        $activeJobsCount = Job::active()->where('user_id', $userId)->count();
+
+        $marketplaceStats = compact(
+            'unreadMessages', 'activeContractsCount', 'submittedForReviewCount',
+            'revisionRequestedCount', 'proposalsSentCount', 'proposalsReceivedCount', 'activeJobsCount'
+        );
+        $marketplaceStats['is_freelancer'] = $isFreelancer;
+        $marketplaceStats['is_client'] = $isClient;
+
+        $recentMarketplaceContracts = Contract::with(['client', 'freelancer', 'milestones'])
+            ->where(function ($query) use ($userId) {
+                $query->where('client_id', $userId)->orWhere('freelancer_id', $userId);
+            })
+            ->latest('updated_at')
+            ->limit(5)
+            ->get();
+
+        $recommendedJobs = $isFreelancer
+            ? Job::active()->with(['category', 'user'])->where('user_id', '!=', $userId)->latest()->limit(5)->get()
+            : collect();
+
+        $recentClientJobs = $isClient
+            ? Job::withCount('applications')->where('user_id', $userId)->latest()->limit(5)->get()
+            : collect();
+
         // Featured bundles
         $featuredBundles = TaskBundle::where('is_active', true)
-            ->whereNull('expires_at')
-            ->orWhere('expires_at', '>', now())
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
             ->take(3)
             ->get();
 
@@ -163,7 +203,11 @@ class DashboardController extends Controller
             'featuredBundles',
             'myTasks',
             'activationFeeEnabled',
-            'activationFee'
+            'activationFee',
+            'marketplaceStats',
+            'recentMarketplaceContracts',
+            'recommendedJobs',
+            'recentClientJobs'
         ));
     }
 

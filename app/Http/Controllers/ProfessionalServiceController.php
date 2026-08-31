@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProfessionalService;
+use App\Models\Contract;
 use App\Models\ProfessionalServiceCategory;
 use App\Models\ProfessionalServiceMessage;
 use App\Models\ProfessionalServiceOrder;
+use App\Models\ProfessionalServiceReview;
 use App\Models\MarketplaceConversation;
 use App\Models\MarketplaceMessage;
 use App\Models\ServiceProviderProfile;
@@ -15,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ProfessionalServiceController extends Controller
@@ -103,7 +106,12 @@ class ProfessionalServiceController extends Controller
      */
     public function show(ProfessionalService $service): View
     {
-        $service->load(['category', 'seller', 'addons']);
+        if ($service->status !== ProfessionalService::STATUS_ACTIVE && (!Auth::check() || Auth::id() !== $service->user_id)) {
+            abort(404);
+        }
+
+        $service->load(['category', 'seller.freelancerProfile', 'addons']);
+        $reviews = $service->reviews()->with('reviewer')->latest()->limit(8)->get();
 
         $userHasOrder = false;
         if (Auth::check()) {
@@ -112,7 +120,7 @@ class ProfessionalServiceController extends Controller
                 ->exists();
         }
 
-        return view('professional-services.show', compact('service', 'userHasOrder'));
+        return view('professional-services.show', compact('service', 'userHasOrder', 'reviews'));
     }
 
     /**
@@ -138,12 +146,19 @@ class ProfessionalServiceController extends Controller
             'price' => 'required|numeric|min:100',
             'delivery_days' => 'required|integer|min:1|max:30',
             'revisions_included' => 'required|integer|min:0|max:5',
-            'portfolio_links' => 'nullable|array',
-            'addons' => 'nullable|array',
-            'addons.*.name' => 'required|string',
-            'addons.*.price' => 'required|numeric|min:0',
-            'addons.*.delivery_days_extra' => 'nullable|integer|min:0',
+            'portfolio_links' => 'nullable|array|max:3',
+            'portfolio_links.*' => 'nullable|url|max:2048',
+            'addons' => 'nullable|array|max:10',
+            'addons.*.name' => 'required|string|max:120',
+            'addons.*.description' => 'nullable|string|max:500',
+            'addons.*.price' => 'required|numeric|min:0|max:1000000000',
+            'addons.*.delivery_days_extra' => 'nullable|integer|min:0|max:30',
         ]);
+
+        $validated['portfolio_links'] = array_values(array_filter(array_map(
+            static fn ($link) => trim((string) $link),
+            $validated['portfolio_links'] ?? []
+        )));
 
         $user = Auth::user();
         $result = $this->service->createService($user, $validated);
@@ -201,16 +216,19 @@ class ProfessionalServiceController extends Controller
         $activeServices = ProfessionalService::where('user_id', $user->id)
             ->where('status', ProfessionalService::STATUS_ACTIVE)
             ->with('category')
+            ->withCount('orders')
             ->get();
 
         $pendingServices = ProfessionalService::where('user_id', $user->id)
             ->where('status', ProfessionalService::STATUS_PENDING)
             ->with('category')
+            ->withCount('orders')
             ->get();
 
         $draftServices = ProfessionalService::where('user_id', $user->id)
             ->where('status', ProfessionalService::STATUS_DRAFT)
             ->with('category')
+            ->withCount('orders')
             ->get();
 
         return view('professional-services.my-services', compact(
@@ -385,13 +403,13 @@ class ProfessionalServiceController extends Controller
         
         $activeOrders = ProfessionalServiceOrder::forBuyer($user->id)
             ->whereIn('status', ['paid', 'in_progress', 'delivered', 'revision'])
-            ->with('service')
+            ->with(['service', 'seller'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         $completedOrders = ProfessionalServiceOrder::forBuyer($user->id)
             ->where('status', 'completed')
-            ->with('service')
+            ->with(['service', 'seller'])
             ->orderBy('completed_at', 'desc')
             ->limit(10)
             ->get();
@@ -611,7 +629,23 @@ class ProfessionalServiceController extends Controller
             ->latest()
             ->get();
 
-        return view('professional-services.provider-profile', compact('profile', 'services'));
+        // Public work history is intentionally limited to marketplace records the
+        // platform can substantiate. No inferred earnings, success score or fake
+        // client history is generated for presentation purposes.
+        $completedContracts = Contract::with('client')
+            ->where('freelancer_id', $profile->user_id)
+            ->where('status', Contract::STATUS_COMPLETED)
+            ->latest('completed_at')
+            ->limit(8)
+            ->get();
+
+        $reviews = ProfessionalServiceReview::with(['reviewer', 'order.service'])
+            ->where('reviewee_id', $profile->user_id)
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        return view('professional-services.provider-profile', compact('profile', 'services', 'completedContracts', 'reviews'));
     }
 
     /**
@@ -653,7 +687,7 @@ class ProfessionalServiceController extends Controller
             'certifications.array' => 'Certifications must be a valid list.',
             'hourly_rate.numeric' => 'Hourly rate must be a valid number.',
             'hourly_rate.min' => 'Hourly rate cannot be negative.',
-            'bio.max' => 'Bio cannot exceed 1000 characters.',
+            'bio.max' => 'Bio cannot exceed 3000 characters.',
         ]);
 
         // Convert skills from JSON string to array
@@ -679,6 +713,20 @@ class ProfessionalServiceController extends Controller
             }
         } else {
             $validated['portfolio_links'] = $validated['portfolio_links'] ?? [];
+        }
+
+        $validated['portfolio_links'] = array_values(array_unique(array_map(
+            static fn ($link) => trim((string) $link),
+            $validated['portfolio_links']
+        )));
+        if (count($validated['portfolio_links']) > 10) {
+            throw ValidationException::withMessages(['portfolio_links' => 'You can add up to 10 portfolio links.']);
+        }
+        foreach ($validated['portfolio_links'] as $link) {
+            $scheme = strtolower((string) parse_url($link, PHP_URL_SCHEME));
+            if (!filter_var($link, FILTER_VALIDATE_URL) || !in_array($scheme, ['http', 'https'], true)) {
+                throw ValidationException::withMessages(['portfolio_links' => 'Portfolio links must be valid http or https URLs.']);
+            }
         }
 
         // Convert certifications from JSON string to array
@@ -759,7 +807,9 @@ class ProfessionalServiceController extends Controller
             'skill' => 'nullable|string|max:100',
             'min_rating' => 'nullable|numeric|min:0|max:5',
             'search' => 'nullable|string|max:120',
+            'min_rate' => 'nullable|numeric|min:0|max:1000000000',
             'max_rate' => 'nullable|numeric|min:0|max:1000000000',
+            'sort' => 'nullable|in:recommended,rating,completed,rate_low,rate_high',
         ]);
 
         $query = ServiceProviderProfile::with('user')
@@ -783,14 +833,32 @@ class ProfessionalServiceController extends Controller
             });
         }
 
+        if (isset($validated['min_rate'])) {
+            $query->where('hourly_rate', '>=', (float) $validated['min_rate']);
+        }
+
         if (isset($validated['max_rate'])) {
             $query->where('hourly_rate', '<=', (float) $validated['max_rate']);
         }
 
-        $providers = $query->orderBy('average_rating', 'desc')
-            ->orderByDesc('total_orders_completed')
-            ->paginate(20)
-            ->withQueryString();
+        switch ($validated['sort'] ?? 'recommended') {
+            case 'rating':
+                $query->orderByDesc('average_rating')->orderByDesc('total_reviews');
+                break;
+            case 'completed':
+                $query->orderByDesc('total_orders_completed')->orderByDesc('average_rating');
+                break;
+            case 'rate_low':
+                $query->orderByRaw('hourly_rate IS NULL')->orderBy('hourly_rate');
+                break;
+            case 'rate_high':
+                $query->orderByDesc('hourly_rate');
+                break;
+            default:
+                $query->orderByDesc('average_rating')->orderByDesc('total_orders_completed')->latest('updated_at');
+        }
+
+        $providers = $query->paginate(20)->withQueryString();
 
         // Get all unique skills for filter
         $allSkills = ServiceProviderProfile::whereNotNull('skills')

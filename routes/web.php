@@ -22,6 +22,8 @@ use App\Http\Controllers\BoostController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MarketplaceSearchController;
+use App\Http\Controllers\MyWorkController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +52,7 @@ Route::post('/webhooks/stripe', [PaymentController::class, 'stripeWebhook'])->na
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/search', [MarketplaceSearchController::class, 'index'])->name('marketplace.search');
 Route::view('/support', 'support')->name('support');
 // Session expired landing page (friendly notice when CSRF/session expires)
 Route::view('/session-expired', 'errors.session_expired')->name('session.expired');
@@ -73,6 +76,7 @@ Route::post('/auth/google/one-tap', [GoogleAuthController::class, 'oneTap'])->na
 Route::middleware(['auth', 'check.email.required', 'logout.inactive', 'onboarding'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/my-work', [MyWorkController::class, 'index'])->name('my-work.index');
 
     // User In-App Notifications
     Route::prefix('notifications')->name('notifications.')->group(function () {

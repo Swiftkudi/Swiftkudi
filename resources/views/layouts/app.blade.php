@@ -155,9 +155,9 @@
             transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
         
-        /* Smooth theme switching */
-        * {
-            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        /* Keep motion deliberate: interactive controls transition, static content does not. */
+        a, button, input, textarea, select, summary {
+            transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
         }
 
         /* Fallback: ensure main respects header height even before JS runs */
@@ -199,16 +199,16 @@
         input:focus,
         textarea:focus,
         select:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
             outline: none;
         }
         
         .dark input:focus,
         .dark textarea:focus,
         .dark select:focus {
-            border-color: #60a5fa;
-            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+            border-color: #818cf8;
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
         }
         
         /* Input placeholder styling */

@@ -4,387 +4,199 @@
 @section('robots', 'noindex,nofollow')
 
 @section('content')
-<div class="py-8">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="mb-8">
-            <a href="{{ route('professional-services.index') }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-2 mb-4">
-                <i class="fas fa-arrow-left"></i> Back to Services
-            </a>
-            <h1 class="text-3xl font-bold text-white">Edit Freelancer Profile</h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">Build a clear, credible profile clients can understand quickly</p>
+@php
+    $skillsArray = is_array($profile->skills) ? $profile->skills : (json_decode($profile->skills, true) ?: []);
+    $portfolioArray = is_array($profile->portfolio_links) ? $profile->portfolio_links : (json_decode($profile->portfolio_links, true) ?: []);
+    $certsArray = is_array($profile->certifications) ? $profile->certifications : (json_decode($profile->certifications, true) ?: []);
+@endphp
+<div class="marketplace-page">
+    <div class="marketplace-container max-w-6xl">
+        <div class="marketplace-page-header">
+            <div>
+                <p class="marketplace-eyebrow">Professional identity</p>
+                <h1 class="marketplace-title">Edit freelancer profile</h1>
+                <p class="marketplace-subtitle">Keep the information clients use to compare talent clear, current and evidence-based.</p>
+            </div>
+            @if($profile->slug)
+                <a href="{{ route('freelancers.show', $profile->slug) }}" class="marketplace-btn-secondary"><i class="far fa-eye"></i>View public profile</a>
+            @endif
         </div>
 
-        <form id="profile-form" action="{{ route('professional-services.update-profile') }}" method="POST" class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
+        @include('professional-services.partials.workspace-nav', ['activeWorkspace' => 'profile'])
+
+        <div id="profile-feedback" class="hidden marketplace-card mb-5 border-red-500/40 bg-red-500/5 p-4 text-sm text-red-200" role="alert" aria-live="polite"></div>
+
+        <form id="profile-form" action="{{ route('professional-services.update-profile') }}" method="POST" class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start" novalidate>
             @csrf
             @method('PUT')
 
-            <div class="mb-6">
-                <label for="professional_title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Professional title</label>
-                <input type="text" name="professional_title" id="professional_title" value="{{ old('professional_title', $profile->professional_title) }}" maxlength="160" required class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="e.g., Laravel & Flutter Developer">
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Use a specific title that describes the work you do.</p>
-            </div>
-
-            <!-- Availability Status -->
-            <div class="mb-6">
-                <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" name="is_available" value="1" {{ $profile->is_available ? 'checked' : '' }} 
-                        class="w-5 h-5 rounded border-gray-300 dark:border-dark-600 text-indigo-600 focus:ring-indigo-500">
-                    <div>
-                        <span class="font-medium text-gray-900 dark:text-gray-100">Available for Work</span>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Show clients that you're accepting new projects</p>
+            <div class="space-y-6">
+                <section class="marketplace-card p-5 sm:p-6">
+                    <div class="mb-5 border-b border-slate-800 pb-4"><p class="marketplace-eyebrow">Positioning</p><h2 class="mt-1 text-lg font-semibold text-white">Professional overview</h2><p class="mt-1 text-sm leading-6 text-slate-400">Tell clients what you do, what kind of work you accept and the rate information already supported by SwiftKudi.</p></div>
+                    <div class="space-y-5">
+                        <div><label for="professional_title" class="marketplace-label">Professional title <span class="text-red-400">*</span></label><input type="text" name="professional_title" id="professional_title" value="{{ old('professional_title', $profile->professional_title) }}" minlength="3" maxlength="160" required class="marketplace-input" placeholder="e.g. Laravel & Flutter Developer"></div>
+                        <div class="rounded-xl border border-slate-800 bg-slate-950/35 p-4"><label class="flex cursor-pointer items-start gap-3"><input type="checkbox" name="is_available" value="1" {{ old('is_available', $profile->is_available) ? 'checked' : '' }} class="mt-1 h-5 w-5 rounded border-slate-600 bg-slate-900 text-indigo-600 focus:ring-indigo-500"><span><span class="font-semibold text-slate-200">Available for work</span><span class="mt-1 block text-sm leading-6 text-slate-500">Show clients that you are currently accepting new projects.</span></span></label></div>
+                        <div><label for="availability_note" class="marketplace-label">Availability note</label><input type="text" name="availability_note" id="availability_note" value="{{ old('availability_note', $profile->availability_note) }}" maxlength="255" class="marketplace-input" placeholder="e.g. Available up to 30 hrs/week"></div>
+                        <div><label for="hourly_rate" class="marketplace-label">Hourly rate (₦)</label><input type="number" name="hourly_rate" id="hourly_rate" value="{{ old('hourly_rate', $profile->hourly_rate) }}" min="0" max="100000000" step="0.01" class="marketplace-input" placeholder="5000"><p class="mt-1.5 text-xs text-slate-500">Shown only as the profile rate already supported by the marketplace.</p></div>
+                        <div><div class="flex items-end justify-between gap-3"><label for="bio" class="marketplace-label">Professional bio <span class="text-red-400">*</span></label><span class="mb-2 text-xs text-slate-500">40–3,000 characters</span></div><textarea name="bio" id="bio" rows="8" required minlength="40" maxlength="3000" class="marketplace-input min-h-[200px] resize-y" placeholder="Focus on the outcomes you deliver, your experience and the types of clients you help.">{{ old('bio', $profile->bio) }}</textarea></div>
                     </div>
-                </label>
-            </div>
+                </section>
 
-            <div class="mb-6">
-                <label for="availability_note" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Availability note</label>
-                <input type="text" name="availability_note" id="availability_note" value="{{ old('availability_note', $profile->availability_note) }}" maxlength="255" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="e.g., Available up to 30 hrs/week">
-            </div>
-
-            <!-- Hourly Rate -->
-            <div class="mb-6">
-                <label for="hourly_rate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Hourly Rate (₦)
-                </label>
-                <div class="relative">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">₦</span>
-                    <input type="number" name="hourly_rate" id="hourly_rate" value="{{ $profile->hourly_rate }}"
-                        class="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        placeholder="e.g., 5000" min="0">
-                </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Set your hourly rate for clients to see</p>
-            </div>
-
-            <!-- Bio -->
-            <div class="mb-6">
-                <label for="bio" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Bio / About
-                </label>
-                <textarea name="bio" id="bio" rows="6" required minlength="40" maxlength="3000"
-                    class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                    placeholder="Tell clients about yourself, your experience, and what makes you unique...">{{ $profile->bio }}</textarea>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">40–3000 characters. Focus on outcomes, experience and the types of clients you help.</p>
-            </div>
-
-            <!-- Skills -->
-            <div class="mb-6">
-                <label for="skills" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Skills
-                </label>
-                <div id="skills-container" class="flex flex-wrap gap-2 mb-2">
-                    @php
-                        $skillsArray = is_array($profile->skills) ? $profile->skills : (json_decode($profile->skills, true) ?: []);
-                    @endphp
-                    @if($skillsArray)
-                        @foreach($skillsArray as $skill)
-                            <span class="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-full text-sm">
-                                {{ $skill }}
-                                <button type="button" onclick="removeSkill(this)" class="hover:text-indigo-900 dark:hover:text-indigo-100">
-                                    <i class="fas fa-times text-xs"></i>
-                                </button>
-                            </span>
-                        @endforeach
-                    @endif
-                </div>
-                <div class="flex gap-2">
-                    <input type="text" id="skill-input"
-                        class="flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        placeholder="Add a skill (e.g., Web Design, Copywriting)">
-                    <button type="button" onclick="addSkill()"
-                        class="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">
-                        Add
-                    </button>
-                </div>
-                <input type="hidden" name="skills" id="skills-input" value="">
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter each skill individually using the Add button</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                    <label for="languages" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Languages</label>
-                    <input type="text" name="languages" id="languages" value="{{ old('languages', implode(', ', $profile->languages ?? [])) }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" placeholder="English, Yoruba">
-                </div>
-                <div>
-                    <label for="education" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Education</label>
-                    <input type="text" name="education" id="education" value="{{ old('education', implode(', ', $profile->education ?? [])) }}" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" placeholder="Degree, school or relevant training">
-                </div>
-                <div class="md:col-span-2">
-                    <label for="work_experience" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Work experience</label>
-                    <textarea name="work_experience" id="work_experience" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500" placeholder="Add roles or relevant experience, separated by new lines">{{ old('work_experience', implode("
-", $profile->work_experience ?? [])) }}</textarea>
-                </div>
-            </div>
-
-            <!-- Portfolio Links -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Portfolio Links
-                </label>
-                <div id="portfolio-container" class="space-y-2 mb-2">
-                    @php
-                        $portfolioArray = is_array($profile->portfolio_links) ? $profile->portfolio_links : (json_decode($profile->portfolio_links, true) ?: []);
-                    @endphp
-                    @if($portfolioArray)
-                        @foreach($portfolioArray as $link)
-                            <div class="flex gap-2">
-                                <input type="url" 
-                                    class="portfolio-link-input flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                    value="{{ $link }}"
-                                    placeholder="https://example.com/your-work">
-                                <button type="button" onclick="removePortfolioLink(this)"
-                                    class="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                <section class="marketplace-card p-5 sm:p-6">
+                    <div class="mb-5 border-b border-slate-800 pb-4"><p class="marketplace-eyebrow">Expertise</p><h2 class="mt-1 text-lg font-semibold text-white">Skills and background</h2><p class="mt-1 text-sm leading-6 text-slate-400">Use concise, relevant information that clients can scan quickly.</p></div>
+                    <div class="space-y-5">
+                        <div>
+                            <label for="skill-input" class="marketplace-label">Skills</label>
+                            <div id="skills-container" class="mb-3 flex flex-wrap gap-2">
+                                @foreach($skillsArray as $skill)
+                                    <span class="marketplace-chip skill-chip"><span class="skill-label">{{ $skill }}</span><button type="button" class="remove-skill text-slate-400 hover:text-white" aria-label="Remove {{ $skill }}"><i class="fas fa-times text-xs"></i></button></span>
+                                @endforeach
                             </div>
-                        @endforeach
-                    @endif
-                </div>
-                <button type="button" onclick="addPortfolioLink()"
-                    class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 text-sm flex items-center gap-1">
-                    <i class="fas fa-plus"></i> Add Portfolio Link
-                </button>
-                <input type="hidden" name="portfolio_links" id="portfolio-input" value="">
-            </div>
+                            <div class="flex flex-col gap-2 sm:flex-row"><input type="text" id="skill-input" maxlength="80" class="marketplace-input flex-1" placeholder="e.g. Laravel"><button type="button" id="add-skill" class="marketplace-btn-secondary shrink-0"><i class="fas fa-plus"></i>Add skill</button></div>
+                            <input type="hidden" name="skills" id="skills-input">
+                        </div>
+                        <div class="grid gap-5 sm:grid-cols-2">
+                            <div><label for="languages" class="marketplace-label">Languages</label><input type="text" name="languages" id="languages" value="{{ old('languages', implode(', ', $profile->languages ?? [])) }}" maxlength="1000" class="marketplace-input" placeholder="English, Yoruba"></div>
+                            <div><label for="education" class="marketplace-label">Education / training</label><input type="text" name="education" id="education" value="{{ old('education', implode(', ', $profile->education ?? [])) }}" maxlength="2000" class="marketplace-input" placeholder="Degree, school or relevant training"></div>
+                        </div>
+                        <div><label for="work_experience" class="marketplace-label">Work experience</label><textarea name="work_experience" id="work_experience" rows="5" maxlength="5000" class="marketplace-input resize-y" placeholder="Add relevant roles or experience, one per line.">{{ old('work_experience', implode("\n", $profile->work_experience ?? [])) }}</textarea></div>
+                    </div>
+                </section>
 
-            <!-- Certifications -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Certifications
-                </label>
-                <div id="certifications-container" class="space-y-2 mb-2">
-                    @php
-                        $certsArray = is_array($profile->certifications) ? $profile->certifications : (json_decode($profile->certifications, true) ?: []);
-                    @endphp
-                    @if($certsArray)
-                        @foreach($certsArray as $cert)
-                            <div class="flex gap-2">
-                                <input type="text" 
-                                    class="certification-input flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                    value="{{ $cert }}"
-                                    placeholder="e.g., Google Certified Digital Marketer">
-                                <button type="button" onclick="removeCertification(this)"
-                                    class="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                <section class="marketplace-card p-5 sm:p-6">
+                    <div class="mb-5 border-b border-slate-800 pb-4"><p class="marketplace-eyebrow">Evidence</p><h2 class="mt-1 text-lg font-semibold text-white">Portfolio and certifications</h2><p class="mt-1 text-sm leading-6 text-slate-400">Only add links and credentials you are comfortable showing publicly.</p></div>
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex items-center justify-between gap-3"><label class="marketplace-label mb-0">Portfolio links</label><button type="button" id="add-portfolio" class="text-sm font-semibold text-indigo-300 hover:text-indigo-200"><i class="fas fa-plus mr-1"></i>Add link</button></div>
+                            <div id="portfolio-container" class="mt-3 space-y-3">
+                                @foreach($portfolioArray as $link)
+                                    <div class="portfolio-row flex gap-2"><input type="url" class="portfolio-link-input marketplace-input flex-1" value="{{ $link }}" maxlength="2048" placeholder="https://example.com/project"><button type="button" class="remove-portfolio marketplace-btn-secondary !px-3 text-red-300" aria-label="Remove portfolio link"><i class="fas fa-trash"></i></button></div>
+                                @endforeach
                             </div>
-                        @endforeach
-                    @endif
-                </div>
-                <button type="button" onclick="addCertification()"
-                    class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 text-sm flex items-center gap-1">
-                    <i class="fas fa-plus"></i> Add Certification
-                </button>
-                <input type="hidden" name="certifications" id="certifications-input" value="">
+                            <input type="hidden" name="portfolio_links" id="portfolio-input">
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between gap-3"><label class="marketplace-label mb-0">Certifications</label><button type="button" id="add-certification" class="text-sm font-semibold text-indigo-300 hover:text-indigo-200"><i class="fas fa-plus mr-1"></i>Add certification</button></div>
+                            <div id="certifications-container" class="mt-3 space-y-3">
+                                @foreach($certsArray as $cert)
+                                    <div class="certification-row flex gap-2"><input type="text" class="certification-input marketplace-input flex-1" value="{{ $cert }}" maxlength="160" placeholder="Certification or credential"><button type="button" class="remove-certification marketplace-btn-secondary !px-3 text-red-300" aria-label="Remove certification"><i class="fas fa-trash"></i></button></div>
+                                @endforeach
+                            </div>
+                            <input type="hidden" name="certifications" id="certifications-input">
+                        </div>
+                    </div>
+                </section>
             </div>
 
-            <!-- Submit Button -->
-            <div class="flex justify-end">
-                <button type="submit"
-                    class="marketplace-btn-primary">
-                    <i class="fas fa-save mr-2"></i> Save Profile
-                </button>
-            </div>
+            <aside class="space-y-4 lg:sticky lg:top-24">
+                <div class="marketplace-card p-5">
+                    <div class="flex items-center justify-between gap-3"><h2 class="font-semibold text-white">Profile completeness</h2><span class="font-semibold text-indigo-300">{{ $profile->profile_completion }}%</span></div>
+                    <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-indigo-600" style="width: {{ max(0, min(100, $profile->profile_completion)) }}%"></div></div>
+                    <p class="mt-3 text-sm leading-6 text-slate-500">Completeness is calculated from real profile fields: title, bio, skills, rate, languages and portfolio links.</p>
+                </div>
+                <div class="marketplace-card p-5"><h2 class="font-semibold text-white">Public trust</h2><p class="mt-2 text-sm leading-6 text-slate-500">Ratings, reviews, completed work and verification are shown only when the platform has those records. This editor does not invent reputation signals.</p></div>
+                <button type="submit" class="marketplace-btn-primary w-full"><i class="fas fa-save"></i>Save profile</button>
+            </aside>
         </form>
     </div>
 </div>
 
 @push('scripts')
 <script>
-    // Handle form submission with AJAX
-document.getElementById('profile-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
+(function () {
+    const form = document.getElementById('profile-form');
+    const feedback = document.getElementById('profile-feedback');
+    const skillsContainer = document.getElementById('skills-container');
+    const skillInput = document.getElementById('skill-input');
+    const portfolioContainer = document.getElementById('portfolio-container');
+    const certificationsContainer = document.getElementById('certifications-container');
 
-    const form = this;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-
-    updateSkillsInput();
-    updatePortfolioInput();
-    updateCertificationsInput();
-
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
-
-    try {
-        const response = await fetch(form.action, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify(Object.fromEntries(new FormData(form)))
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: data.next_step_message || data.message,
-                    timer: 1500,
-                    showConfirmButton: false
-                }).then(() => {
-                    if (data.next_step_redirect) {
-                        window.location.href = data.next_step_redirect;
-                    }
-                });
-            } else {
-                alert(data.next_step_message || data.message);
-
-                if (data.next_step_redirect) {
-                    window.location.href = data.next_step_redirect;
-                }
-            }
-        } else {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.message || 'Failed to update profile'
-                });
-            } else {
-                alert(data.message || 'Failed to update profile');
-            }
-        }
-    } catch (error) {
-        console.error('Error:', error);
-
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'An error occurred. Please try again.'
-            });
-        } else {
-            alert('An error occurred. Please try again.');
-        }
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    }
-});
-    // Skills management
-    function addSkill() {
-        const input = document.getElementById('skill-input');
-        const skill = input.value.trim();
-        if (!skill) return;
-
-        const container = document.getElementById('skills-container');
-        const span = document.createElement('span');
-        span.className = 'inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-full text-sm';
-        span.innerHTML = `
-            ${skill}
-            <button type="button" onclick="removeSkill(this)" class="hover:text-indigo-900 dark:hover:text-indigo-100">
-                <i class="fas fa-times text-xs"></i>
-            </button>
-        `;
-        container.appendChild(span);
-        input.value = '';
-        updateSkillsInput();
-    }
-
-    function removeSkill(btn) {
-        btn.parentElement.remove();
-        updateSkillsInput();
+    function showError(message) {
+        feedback.textContent = message;
+        feedback.classList.remove('hidden');
+        feedback.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function updateSkillsInput() {
-        const skills = [];
-        document.querySelectorAll('#skills-container span').forEach(span => {
-            // Get text content without the remove button text
-            const text = span.childNodes[0].textContent.trim();
-            if (text) skills.push(text);
-        });
-        // Store as JSON array string - backend will handle it
-        document.getElementById('skills-input').value = JSON.stringify(skills);
+        document.getElementById('skills-input').value = JSON.stringify(Array.from(skillsContainer.querySelectorAll('.skill-label')).map((node) => node.textContent.trim()).filter(Boolean));
     }
-
-    // Portfolio links management
-    function addPortfolioLink() {
-        const container = document.getElementById('portfolio-container');
-        const div = document.createElement('div');
-        div.className = 'flex gap-2';
-        div.innerHTML = `
-            <input type="url" 
-                class="portfolio-link-input flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="https://example.com/your-work">
-            <button type="button" onclick="removePortfolioLink(this)"
-                class="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
-                <i class="fas fa-trash"></i>
-            </button>
-        `;
-        container.appendChild(div);
-    }
-
-    function removePortfolioLink(btn) {
-        btn.parentElement.remove();
-        updatePortfolioInput();
-    }
-
     function updatePortfolioInput() {
-        const links = [];
-        document.querySelectorAll('.portfolio-link-input').forEach(input => {
-            if (input.value.trim()) links.push(input.value.trim());
-        });
-        document.getElementById('portfolio-input').value = JSON.stringify(links);
+        document.getElementById('portfolio-input').value = JSON.stringify(Array.from(document.querySelectorAll('.portfolio-link-input')).map((input) => input.value.trim()).filter(Boolean));
     }
-
-    // Certifications management
-    function addCertification() {
-        const container = document.getElementById('certifications-container');
-        const div = document.createElement('div');
-        div.className = 'flex gap-2';
-        div.innerHTML = `
-            <input type="text" 
-                class="certification-input flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="e.g., Google Certified Digital Marketer">
-            <button type="button" onclick="removeCertification(this)"
-                class="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
-                <i class="fas fa-trash"></i>
-            </button>
-        `;
-        container.appendChild(div);
-    }
-
-    function removeCertification(btn) {
-        btn.parentElement.remove();
-        updateCertificationsInput();
-    }
-
     function updateCertificationsInput() {
-        const certs = [];
-        document.querySelectorAll('.certification-input').forEach(input => {
-            if (input.value.trim()) certs.push(input.value.trim());
-        });
-        document.getElementById('certifications-input').value = JSON.stringify(certs);
+        document.getElementById('certifications-input').value = JSON.stringify(Array.from(document.querySelectorAll('.certification-input')).map((input) => input.value.trim()).filter(Boolean));
     }
 
-    // Initialize inputs on page load
-    document.addEventListener('DOMContentLoaded', function() {
+    function bindSkillRemove(button) { button.addEventListener('click', () => { button.closest('.skill-chip').remove(); updateSkillsInput(); }); }
+    document.querySelectorAll('.remove-skill').forEach(bindSkillRemove);
+
+    document.getElementById('add-skill').addEventListener('click', () => {
+        const value = skillInput.value.trim();
+        if (!value || skillsContainer.querySelectorAll('.skill-chip').length >= 30) return;
+        const existing = Array.from(skillsContainer.querySelectorAll('.skill-label')).some((node) => node.textContent.trim().toLowerCase() === value.toLowerCase());
+        if (existing) { skillInput.value = ''; return; }
+        const chip = document.createElement('span');
+        chip.className = 'marketplace-chip skill-chip';
+        const label = document.createElement('span');
+        label.className = 'skill-label';
+        label.textContent = value;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'remove-skill text-slate-400 hover:text-white';
+        button.setAttribute('aria-label', 'Remove skill');
+        button.innerHTML = '<i class="fas fa-times text-xs"></i>';
+        chip.append(label, button);
+        skillsContainer.appendChild(chip);
+        bindSkillRemove(button);
+        skillInput.value = '';
         updateSkillsInput();
-        updatePortfolioInput();
-        updateCertificationsInput();
-        
-        // Add input listeners for real-time updates
-        document.querySelectorAll('.portfolio-link-input').forEach(input => {
-            input.addEventListener('input', updatePortfolioInput);
-        });
-        document.querySelectorAll('.certification-input').forEach(input => {
-            input.addEventListener('input', updateCertificationsInput);
-        });
+    });
+    skillInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); document.getElementById('add-skill').click(); } });
+
+    function bindPortfolioRemove(button) { button.addEventListener('click', () => { button.closest('.portfolio-row').remove(); updatePortfolioInput(); }); }
+    document.querySelectorAll('.remove-portfolio').forEach(bindPortfolioRemove);
+    document.getElementById('add-portfolio').addEventListener('click', () => {
+        if (portfolioContainer.children.length >= 10) return;
+        const row = document.createElement('div'); row.className = 'portfolio-row flex gap-2';
+        row.innerHTML = '<input type="url" class="portfolio-link-input marketplace-input flex-1" maxlength="2048" placeholder="https://example.com/project"><button type="button" class="remove-portfolio marketplace-btn-secondary !px-3 text-red-300" aria-label="Remove portfolio link"><i class="fas fa-trash"></i></button>';
+        portfolioContainer.appendChild(row); bindPortfolioRemove(row.querySelector('.remove-portfolio')); row.querySelector('input').addEventListener('input', updatePortfolioInput);
     });
 
-    // Handle Enter key for skills input
-    document.getElementById('skill-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addSkill();
-        }
+    function bindCertificationRemove(button) { button.addEventListener('click', () => { button.closest('.certification-row').remove(); updateCertificationsInput(); }); }
+    document.querySelectorAll('.remove-certification').forEach(bindCertificationRemove);
+    document.getElementById('add-certification').addEventListener('click', () => {
+        if (certificationsContainer.children.length >= 20) return;
+        const row = document.createElement('div'); row.className = 'certification-row flex gap-2';
+        row.innerHTML = '<input type="text" class="certification-input marketplace-input flex-1" maxlength="160" placeholder="Certification or credential"><button type="button" class="remove-certification marketplace-btn-secondary !px-3 text-red-300" aria-label="Remove certification"><i class="fas fa-trash"></i></button>';
+        certificationsContainer.appendChild(row); bindCertificationRemove(row.querySelector('.remove-certification')); row.querySelector('input').addEventListener('input', updateCertificationsInput);
     });
+
+    document.querySelectorAll('.portfolio-link-input').forEach((input) => input.addEventListener('input', updatePortfolioInput));
+    document.querySelectorAll('.certification-input').forEach((input) => input.addEventListener('input', updateCertificationsInput));
+    updateSkillsInput(); updatePortfolioInput(); updateCertificationsInput();
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        feedback.classList.add('hidden'); feedback.textContent = '';
+        updateSkillsInput(); updatePortfolioInput(); updateCertificationsInput();
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        const button = form.querySelector('button[type="submit"]');
+        const original = button.innerHTML; button.disabled = true; button.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>Saving…';
+        try {
+            const response = await fetch(form.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData(form) });
+            const data = await response.json().catch(() => ({ message: 'Unexpected server response.' }));
+            if (response.ok && data.success) {
+                if (data.next_step_redirect) { window.location.href = data.next_step_redirect; return; }
+                window.location.reload(); return;
+            }
+            let message = data.message || 'We could not save your profile.';
+            if (data.errors) message += ' ' + Object.values(data.errors).flat().join(' ');
+            showError(message);
+        } catch (error) { console.error(error); showError('Network error. Please check your connection and try again.'); }
+        finally { button.disabled = false; button.innerHTML = original; }
+    });
+})();
 </script>
 @endpush
 @endsection

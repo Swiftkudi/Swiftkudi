@@ -15,7 +15,7 @@
             <!-- Profile Card -->
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-lg shadow overflow-hidden">
-                    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-24"></div>
+                    <div class="bg-indigo-600 h-24"></div>
                     <div class="px-6 pb-6">
                         <div class="relative -mt-12 mb-4">
                             <div class="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
@@ -99,7 +99,7 @@
                             $progress = $user->getXpProgress();
                             $progressPercentage = max(0, min(100, (int) $progress['percentage']));
                         @endphp
-                        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-4 rounded-full transition-all profile-progress-bar" data-progress="{{ $progressPercentage }}"></div>
+                        <div class="bg-indigo-600 h-4 rounded-full transition-all profile-progress-bar" data-progress="{{ $progressPercentage }}"></div>
                     </div>
                     <div class="flex justify-between text-sm text-gray-500">
                         <span>{{ number_format($progress['xp_current']) }} XP</span>

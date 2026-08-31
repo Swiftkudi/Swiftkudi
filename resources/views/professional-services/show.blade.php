@@ -2,6 +2,15 @@
 
 @php
     $plainDescription = trim(preg_replace('/\s+/', ' ', strip_tags($service->description)) ?? '');
+    $seller = $service->seller;
+    $sellerProfile = optional($seller)->freelancerProfile;
+    $sellerProfileUrl = $sellerProfile && $sellerProfile->slug
+        ? route('freelancers.show', $sellerProfile->slug)
+        : ($seller ? route('professional-services.provider-profile', $seller->id) : null);
+    $portfolioReferences = collect($service->portfolio_links ?? [])->filter(function ($link) {
+        if (!is_string($link) || !filter_var($link, FILTER_VALIDATE_URL)) return false;
+        return in_array(strtolower((string) parse_url($link, PHP_URL_SCHEME)), ['http', 'https'], true);
+    })->values();
     $serviceSchema = [
         '@context' => 'https://schema.org',
         '@type' => 'Service',
@@ -10,7 +19,7 @@
         'url' => route('professional-services.show', $service),
         'provider' => [
             '@type' => 'Person',
-            'name' => $service->seller->name ?? 'Service provider',
+            'name' => $seller->name ?? 'Service provider',
         ],
         'offers' => [
             '@type' => 'Offer',
@@ -34,601 +43,247 @@
 @endpush
 
 @section('content')
-<div class="py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Breadcrumb -->
-        <nav class="flex items-center gap-2 text-sm mb-6">
-            <a href="{{ route('professional-services.index') }}" class="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                <i class="fas fa-briefcase mr-1"></i> Services
-            </a>
-            <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+<div class="marketplace-page">
+    <div class="marketplace-container">
+        <nav class="mb-6 flex min-w-0 flex-wrap items-center gap-2 text-sm text-gray-500" aria-label="Breadcrumb">
+            <a href="{{ route('professional-services.index') }}" class="hover:text-indigo-300">Services</a>
+            <i class="fas fa-chevron-right text-[9px]"></i>
             @if($service->category)
-                <a href="{{ route('professional-services.index', ['category' => $service->category->slug]) }}" class="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                    {{ $service->category->name }}
-                </a>
-                <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+                <a href="{{ route('professional-services.index', ['category' => $service->category->slug]) }}" class="hover:text-indigo-300">{{ $service->category->name }}</a>
+                <i class="fas fa-chevron-right text-[9px]"></i>
             @endif
-            <span class="text-gray-900 dark:text-gray-100 font-medium truncate max-w-[200px]">{{ $service->title }}</span>
+            <span class="max-w-[min(34rem,70vw)] truncate text-gray-400">{{ $service->title }}</span>
         </nav>
 
-        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_360px] gap-8">
-            <!-- Main Content -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Hero Section -->
-                <div class="relative bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl p-8 overflow-hidden">
-                    <!-- Decorative Elements -->
-                    <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                    <div class="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
-                    
-                    <div class="relative z-10">
-                        <!-- Status Badge -->
-                        <div class="flex flex-wrap items-center gap-3 mb-4">
-                            @if($service->category)
-                                <span class="px-3 py-1.5 bg-white/20 backdrop-blur-sm text-white text-sm font-medium rounded-full">
-                                    {{ $service->category->name }}
-                                </span>
-                            @endif
-                            @if($service->is_featured)
-                                <span class="px-3 py-1.5 bg-yellow-400 text-yellow-900 text-sm font-bold rounded-full flex items-center gap-1">
-                                    <i class="fas fa-star"></i> Featured
-                                </span>
-                            @endif
-                            @php
-                                $statusClass = $service->status === 'active' ? 'bg-green-400' : 'bg-gray-400';
-                            @endphp
-                            <span class="px-3 py-1.5 {{ $statusClass }} text-white text-sm font-medium rounded-full">
-                                {{ ucfirst($service->status) }}
-                            </span>
-                        </div>
-
-                        <!-- Title -->
-                        <h1 class="text-3xl md:text-4xl font-bold text-white mb-4">{{ $service->title }}</h1>
-                        
-                        <!-- Quick Stats -->
-                        <div class="grid gap-3 sm:grid-cols-3 text-white/90">
-                            <div class="rounded-3xl bg-white/10 p-4">
-                                <p class="text-sm uppercase tracking-[0.25em] text-white/70">Delivery</p>
-                                <p class="mt-2 font-semibold">{{ $service->delivery_days }} days</p>
-                            </div>
-                            <div class="rounded-3xl bg-white/10 p-4">
-                                <p class="text-sm uppercase tracking-[0.25em] text-white/70">Revisions</p>
-                                <p class="mt-2 font-semibold">{{ $service->revisions_included }}</p>
-                            </div>
-                            <div class="rounded-3xl bg-white/10 p-4">
-                                <p class="text-sm uppercase tracking-[0.25em] text-white/70">Rating</p>
-                                <p class="mt-2 font-semibold">{{ number_format($service->seller->seller_rating ?? 0, 1) }}</p>
-                            </div>
-                        </div>
+        <div class="grid gap-7 lg:grid-cols-[minmax(0,1fr)_350px]">
+            <main class="min-w-0 space-y-6 !pt-0">
+                <section class="marketplace-card p-5 sm:p-7">
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        @if($service->category)<span class="marketplace-pill">{{ $service->category->name }}</span>@endif
+                        @if($service->is_featured)<span class="marketplace-status marketplace-status-info"><i class="fas fa-star mr-1"></i>Featured</span>@endif
+                        <span class="marketplace-status {{ $service->status === 'active' ? 'marketplace-status-success' : 'marketplace-status-warning' }}">{{ ucfirst($service->status) }}</span>
                     </div>
-                </div>
-
-                <!-- Why Choose This Service -->
-                <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                        <i class="fas fa-bolt text-indigo-500"></i>
-                        Service terms
-                    </h2>
-                    <div class="grid gap-3 sm:grid-cols-3">
-                        <div class="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20">
-                            <p class="text-sm text-indigo-700 dark:text-indigo-200 font-semibold mb-2">Delivery target</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">The provider has listed a {{ $service->delivery_days }}-day delivery target for this service.</p>
-                        </div>
-                        <div class="p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20">
-                            <p class="text-sm text-purple-700 dark:text-purple-200 font-semibold mb-2">Included revisions</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">The listing includes {{ $service->revisions_included }} revision{{ $service->revisions_included == 1 ? '' : 's' }} within the agreed service scope.</p>
-                        </div>
-                        <div class="p-4 rounded-2xl bg-green-50 dark:bg-emerald-900/20">
-                            <p class="text-sm text-emerald-700 dark:text-emerald-200 font-semibold mb-2">Marketplace workflow</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Requirements, delivery, revisions and payment status stay connected to the marketplace order workflow.</p>
-                        </div>
+                    <h1 class="mt-4 max-w-4xl font-heading text-2xl font-bold leading-tight text-white sm:text-3xl lg:text-4xl">{{ $service->title }}</h1>
+                    <div class="mt-6 grid gap-3 sm:grid-cols-3">
+                        <div class="marketplace-option-card"><p class="text-xs font-semibold uppercase tracking-wide text-gray-600">Starting price</p><p class="mt-2 text-xl font-bold text-white">₦{{ number_format((float)$service->price, 0) }}</p></div>
+                        <div class="marketplace-option-card"><p class="text-xs font-semibold uppercase tracking-wide text-gray-600">Delivery</p><p class="mt-2 text-xl font-bold text-white">{{ $service->delivery_days }} day{{ $service->delivery_days == 1 ? '' : 's' }}</p></div>
+                        <div class="marketplace-option-card"><p class="text-xs font-semibold uppercase tracking-wide text-gray-600">Revisions</p><p class="mt-2 text-xl font-bold text-white">{{ $service->revisions_included }}</p></div>
                     </div>
-                </div>
+                </section>
 
-                <!-- Description Card -->
-                <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                        <i class="fas fa-align-left text-indigo-500"></i>
-                        About This Service
-                    </h2>
-                    <p class="text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">{{ $service->description }}</p>
-                </div>
-
-                <!-- Features Card -->
-                @if($service->portfolio_links && is_array($service->portfolio_links) && count($service->portfolio_links) > 0)
-                <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                        <i class="fas fa-check-circle text-green-500"></i>
-                        What's Included
-                    </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        @foreach($service->portfolio_links as $feature)
-                            <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl">
-                                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <i class="fas fa-check text-white text-sm"></i>
-                                </div>
-                                <span class="text-gray-700 dark:text-gray-300">{{ $feature }}</span>
-                            </div>
-                        @endforeach
+                <section class="marketplace-card p-5 sm:p-7">
+                    <span class="marketplace-eyebrow">What you are buying</span>
+                    <h2 class="mt-2 text-xl font-semibold text-white">Service scope</h2>
+                    <div class="mt-4 whitespace-pre-line text-[15px] leading-7 text-gray-400">{{ $service->description }}</div>
+                    <div class="mt-6 grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-xl border border-dark-700 bg-dark-950 p-4"><span class="marketplace-icon-box"><i class="far fa-clock"></i></span><h3 class="mt-3 text-sm font-semibold text-white">Delivery target</h3><p class="mt-1 text-sm leading-6 text-gray-500">The seller has listed {{ $service->delivery_days }} day{{ $service->delivery_days == 1 ? '' : 's' }} for this service.</p></div>
+                        <div class="rounded-xl border border-dark-700 bg-dark-950 p-4"><span class="marketplace-icon-box"><i class="fas fa-rotate-left"></i></span><h3 class="mt-3 text-sm font-semibold text-white">Revision allowance</h3><p class="mt-1 text-sm leading-6 text-gray-500">{{ $service->revisions_included }} revision{{ $service->revisions_included == 1 ? '' : 's' }} are recorded in the listing terms.</p></div>
+                        <div class="rounded-xl border border-dark-700 bg-dark-950 p-4"><span class="marketplace-icon-box"><i class="fas fa-shield-halved"></i></span><h3 class="mt-3 text-sm font-semibold text-white">Marketplace record</h3><p class="mt-1 text-sm leading-6 text-gray-500">Requirements, delivery, revisions and payment state remain attached to the order workflow.</p></div>
                     </div>
-                </div>
-                @endif
+                </section>
 
-                <!-- Add-ons Card -->
                 @if($service->addons && $service->addons->count() > 0)
-                <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                        <i class="fas fa-plus-circle text-purple-500"></i>
-                        Optional Add-ons
-                    </h2>
-                    <div class="space-y-3">
+                    <section class="marketplace-card overflow-hidden">
+                        <div class="border-b border-dark-700 px-5 py-4 sm:px-6"><h2 class="text-lg font-semibold text-white">Optional add-ons</h2><p class="mt-1 text-sm text-gray-500">Extras are optional and added to the order total only when selected.</p></div>
                         @foreach($service->addons as $addon)
-                            <div class="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-100 dark:border-purple-800">
-                                <div>
-                                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $addon->name }}</h3>
-                                    @if($addon->description)
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ $addon->description }}</p>
-                                    @endif
-                                </div>
-                                <span class="text-lg font-bold text-purple-600 dark:text-purple-400">+₦{{ number_format($addon->price) }}</span>
+                            <div class="marketplace-list-row">
+                                <span class="marketplace-icon-box flex-none"><i class="fas fa-plus"></i></span>
+                                <div class="min-w-0 flex-1"><div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"><div><h3 class="font-semibold text-white">{{ $addon->name }}</h3>@if($addon->description)<p class="mt-1 text-sm leading-6 text-gray-500">{{ $addon->description }}</p>@endif</div><span class="font-semibold text-white">+₦{{ number_format((float)$addon->price, 0) }}</span></div>@if($addon->delivery_days_extra)<p class="mt-2 text-xs text-gray-600">Adds {{ $addon->delivery_days_extra }} delivery day{{ $addon->delivery_days_extra == 1 ? '' : 's' }}</p>@endif</div>
                             </div>
                         @endforeach
-                    </div>
-                </div>
+                    </section>
                 @endif
 
-                <!-- Seller Card -->
-                <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 p-6">
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                        <i class="fas fa-user-circle text-indigo-500"></i>
-                        About the Seller
-                    </h2>
-                    <div class="flex items-center gap-4">
-                        <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">
-                            {{ substr($service->seller->name ?? 'U', 0, 1) }}
+                @if($portfolioReferences->isNotEmpty())
+                    <section class="marketplace-card p-5 sm:p-6">
+                        <h2 class="text-lg font-semibold text-white">Portfolio references</h2>
+                        <p class="mt-1 text-sm text-gray-500">External examples supplied with this listing. They are not SwiftKudi verification claims.</p>
+                        <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                            @foreach($portfolioReferences as $link)
+                                <a href="{{ $link }}" rel="nofollow noopener noreferrer" target="_blank" class="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-dark-700 bg-dark-950 px-4 py-3 text-sm text-gray-300 hover:border-indigo-500/40 hover:text-indigo-300"><span class="truncate">{{ parse_url($link, PHP_URL_HOST) ?: $link }}</span><i class="fas fa-arrow-up-right-from-square flex-none text-xs"></i></a>
+                            @endforeach
                         </div>
-                        <div class="flex-1">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $service->seller->name ?? 'Unknown' }}</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Service Provider</p>
-                            <div class="mt-3 flex flex-wrap gap-3 text-sm text-gray-500 dark:text-gray-400">
-                                <span class="inline-flex items-center gap-2"><i class="fas fa-star text-yellow-400"></i> {{ number_format($service->seller->seller_rating ?? 0, 1) }}</span>
-                                <span>{{ $service->seller->seller_rating_count ?? 0 }} reviews</span>
-                                @if($service->seller->marketplace_seller_verified)
-                                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-200">Verified seller</span>
-                                @endif
-                            </div>
-                        </div>
+                    </section>
+                @endif
+
+                <section class="marketplace-card overflow-hidden">
+                    <div class="flex flex-col gap-3 border-b border-dark-700 px-5 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-6">
+                        <div><h2 class="text-lg font-semibold text-white">Client feedback</h2><p class="mt-1 text-sm text-gray-500">Reviews tied to completed orders for this service.</p></div>
+                        @if($reviews->isNotEmpty())<p class="text-sm text-gray-400"><i class="fas fa-star mr-1 text-amber-400"></i>{{ number_format((float)$reviews->avg('rating'), 1) }} from {{ $reviews->count() }} shown</p>@endif
                     </div>
-                </div>
+                    @forelse($reviews as $review)
+                        <article class="marketplace-list-row">
+                            <span class="marketplace-avatar flex-none">{{ strtoupper(substr(optional($review->reviewer)->name ?: 'C', 0, 2)) }}</span>
+                            <div class="min-w-0 flex-1"><div class="flex flex-wrap items-center justify-between gap-2"><div><p class="font-semibold text-white">{{ optional($review->reviewer)->name ?: 'Client' }}</p><p class="mt-1 text-xs text-gray-600">{{ optional($review->created_at)->format('M Y') }}</p></div><span class="text-sm font-semibold text-gray-200"><i class="fas fa-star mr-1 text-amber-400"></i>{{ (int)$review->rating }}/5</span></div><p class="mt-3 whitespace-pre-line text-sm leading-6 text-gray-400">{{ $review->comment }}</p>@if($review->response)<div class="mt-3 rounded-lg border border-dark-700 bg-dark-950 p-3 text-sm leading-6 text-gray-500"><strong class="text-gray-300">Seller response:</strong> {{ $review->response }}</div>@endif</div>
+                        </article>
+                    @empty
+                        <div class="p-7 text-center text-sm text-gray-500">This service has no completed-order reviews yet.</div>
+                    @endforelse
+                </section>
 
-            <!-- Sidebar -->
-            <div class="lg:col-span-1">
-                <div class="sticky top-24 space-y-6">
-                    <!-- Pricing Card -->
-                    <div class="bg-white dark:bg-dark-900 rounded-2xl shadow-lg shadow-gray-200/50 dark:shadow-dark-950/50 border border-gray-100 dark:border-dark-700 overflow-hidden">
-                        <!-- Price Header -->
-                        <div class="bg-indigo-600 p-6 text-white">
-                            <div class="text-sm text-indigo-200 mb-1">Starting at</div>
-                            <div class="text-4xl font-bold">₦{{ number_format($service->price) }}</div>
-                        </div>
+                <section class="marketplace-card p-5 sm:p-6">
+                    <h2 class="text-lg font-semibold text-white">How the order works</h2>
+                    <div class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        @foreach([
+                            ['1','Share requirements','Describe the work and select any optional add-ons.'],
+                            ['2','Order is recorded','The marketplace records the order and applicable escrow/payment state.'],
+                            ['3','Review delivery','The seller delivers through the order workflow and revisions can be requested where allowed.'],
+                            ['4','Complete the work','Approved work and eligible feedback remain in marketplace history.'],
+                        ] as $step)
+                            <div><span class="flex h-8 w-8 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-xs font-bold text-indigo-300">{{ $step[0] }}</span><h3 class="mt-3 text-sm font-semibold text-white">{{ $step[1] }}</h3><p class="mt-1 text-sm leading-6 text-gray-500">{{ $step[2] }}</p></div>
+                        @endforeach
+                    </div>
+                </section>
+            </main>
 
-                        <!-- Delivery Info -->
-                        <div class="p-6 border-b border-gray-100 dark:border-dark-700">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="text-center p-3 bg-gray-50 dark:bg-dark-800 rounded-xl">
-                                    <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{{ $service->delivery_days }}</div>
-                                    <div class="text-sm text-gray-500 dark:text-gray-400">Days Delivery</div>
-                                </div>
-                                <div class="text-center p-3 bg-gray-50 dark:bg-dark-800 rounded-xl">
-                                    <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ $service->revisions_included }}</div>
-                                    <div class="text-sm text-gray-500 dark:text-gray-400">Revisions</div>
-                                </div>
-                            </div>
-                        </div>
+            <aside class="space-y-5 lg:sticky lg:top-24 lg:self-start">
+                <section class="marketplace-card p-5 sm:p-6">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-600">Starting at</p>
+                    <p class="mt-1 text-3xl font-bold text-white">₦{{ number_format((float)$service->price, 0) }}</p>
+                    <div class="mt-4 space-y-2 text-sm text-gray-400"><div class="flex justify-between gap-3"><span>Delivery</span><strong class="text-gray-200">{{ $service->delivery_days }} day{{ $service->delivery_days == 1 ? '' : 's' }}</strong></div><div class="flex justify-between gap-3"><span>Revisions</span><strong class="text-gray-200">{{ $service->revisions_included }}</strong></div>@if($service->addons && $service->addons->count())<div class="flex justify-between gap-3"><span>Optional add-ons</span><strong class="text-gray-200">{{ $service->addons->count() }}</strong></div>@endif</div>
 
-                        <!-- Action Button -->
-                        <div class="p-6">
-                            @if($service->status === 'active')
-                                <button onclick="showOrderModal()" 
-                                        class="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transform hover:-translate-y-0.5">
-                                    <i class="fas fa-shopping-cart mr-2"></i>
-                                    Order Now
-                                </button>
+                    @if($service->status === 'active')
+                        @auth
+                            @if(auth()->id() === $service->user_id)
+                                <a href="{{ route('professional-services.my-services') }}" class="marketplace-btn-primary mt-5 w-full"><i class="fas fa-pen"></i>Manage this service</a>
                             @else
-                                <div class="w-full py-4 bg-gray-200 dark:bg-dark-700 text-gray-500 dark:text-gray-400 text-center rounded-xl font-medium">
-                                    <i class="fas fa-lock mr-2"></i>
-                                    Currently unavailable
-                                </div>
+                                <button type="button" onclick="showOrderModal()" class="marketplace-btn-primary mt-5 w-full"><i class="fas fa-cart-shopping"></i>Order service</button>
+                                <button type="button" onclick="showContactModal()" class="marketplace-btn-secondary mt-2 w-full"><i class="far fa-comment"></i>Message seller</button>
+                                <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $service->id, 'participantId' => $service->user_id]) }}" class="marketplace-btn-secondary mt-2 w-full"><i class="fas fa-comments"></i>Open chat</a>
                             @endif
+                        @else
+                            <a href="{{ route('login') }}" class="marketplace-btn-primary mt-5 w-full">Log in to order</a>
+                            <p class="mt-2 text-center text-xs text-gray-600">Sign in before ordering or messaging a provider.</p>
+                        @endauth
+                    @else
+                        <div class="mt-5 rounded-lg border border-dark-700 bg-dark-950 p-3 text-center text-sm text-gray-500">This service is currently unavailable for new orders.</div>
+                    @endif
+                    @if($userHasOrder)<a href="{{ route('professional-services.orders.index') }}" class="mt-4 block text-center text-xs font-semibold text-indigo-300">View your existing order history</a>@endif
+                </section>
 
-                            <!-- Contact Seller -->
-                            @auth
-                                <button onclick="showContactModal()" class="mt-3 w-full py-3 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
-                                    <i class="fas fa-comment-dots"></i>
-                                    Contact seller
-                                </button>
-
-                                @if(auth()->id() !== $service->user_id)
-                                    <a href="{{ route('chat.open', ['type' => 'professional_service', 'referenceId' => $service->id, 'participantId' => $service->user_id]) }}" class="mt-3 w-full py-3 border-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
-                                        <i class="fas fa-comments"></i>
-                                        Open chat
-                                    </a>
-                                @else
-                                    <a href="{{ route('chat.index') }}" class="mt-3 w-full py-3 border-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
-                                        <i class="fas fa-comments"></i>
-                                        Open messages
-                                    </a>
-                                @endif
-                            @else
-                                <a href="{{ route('login') }}" class="mt-3 w-full py-3 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
-                                    <i class="fas fa-sign-in-alt"></i>
-                                    Login to contact
-                                </a>
-                            @endauth
-                        </div>
-                    </div>
-
-                    <!-- Marketplace workflow card -->
-                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-6 border border-green-200 dark:border-green-800">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                                <i class="fas fa-shield-alt text-white"></i>
-                            </div>
-                            <h3 class="font-bold text-green-800 dark:text-green-300">Marketplace order workflow</h3>
-                        </div>
-                        <ul class="space-y-2 text-sm text-green-700 dark:text-green-400">
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check"></i>
-                                Wallet / escrow handling where the order workflow applies
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check"></i>
-                                Order history, delivery and revision records
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <i class="fas fa-check"></i>
-                                Dispute workflow available for eligible marketplace orders
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+                <section class="marketplace-card p-5 sm:p-6">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-600">Service provider</p>
+                    <div class="mt-4 flex items-start gap-3"><span class="marketplace-avatar marketplace-avatar-lg">{{ strtoupper(substr(optional($seller)->name ?: 'S',0,2)) }}</span><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><h2 class="truncate font-semibold text-white">{{ optional($seller)->name ?: 'Service provider' }}</h2>@if(optional($seller)->marketplace_seller_verified)<i class="fas fa-circle-check text-xs text-indigo-300" title="Verified marketplace seller" aria-label="Verified marketplace seller"></i>@endif</div><p class="mt-1 line-clamp-2 text-sm text-gray-500">{{ optional($sellerProfile)->professional_title ?: 'Independent professional' }}</p></div></div>
+                    <div class="mt-4 grid grid-cols-2 gap-2 text-sm"><div class="rounded-lg border border-dark-700 bg-dark-950 p-3"><p class="text-xs text-gray-600">Rating</p>@if((optional($seller)->seller_rating_count ?? 0) > 0)<p class="mt-1 font-semibold text-white"><i class="fas fa-star mr-1 text-amber-400"></i>{{ number_format((float)$seller->seller_rating, 1) }}</p><p class="mt-1 text-[11px] text-gray-600">{{ $seller->seller_rating_count }} review{{ $seller->seller_rating_count === 1 ? '' : 's' }}</p>@else<p class="mt-1 text-sm font-semibold text-gray-300">No reviews yet</p>@endif</div><div class="rounded-lg border border-dark-700 bg-dark-950 p-3"><p class="text-xs text-gray-600">Completed</p><p class="mt-1 font-semibold text-white">{{ number_format((int)(optional($sellerProfile)->total_orders_completed ?? 0)) }}</p><p class="mt-1 text-[11px] text-gray-600">service order{{ (optional($sellerProfile)->total_orders_completed ?? 0) === 1 ? '' : 's' }}</p></div></div>
+                    @if($sellerProfileUrl)<a href="{{ $sellerProfileUrl }}" class="marketplace-btn-secondary mt-4 w-full">View freelancer profile</a>@endif
+                </section>
+            </aside>
         </div>
     </div>
 </div>
 
-<!-- Order Modal -->
 @if($service->status === 'active')
-<div id="order-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-dark-900 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-        <!-- Modal Header -->
-        <div class="bg-indigo-600 p-6 rounded-t-3xl">
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-bold text-white">Order Service</h2>
-                <button onclick="hideOrderModal()" class="text-white/80 hover:text-white transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <p class="text-indigo-200 mt-1">{{ $service->title }}</p>
-        </div>
-
-        <!-- Modal Body -->
-        <form id="order-form" class="p-6 space-y-6">
+<div id="order-modal" class="fixed inset-0 z-[300] hidden items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
+    <div class="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-dark-700 bg-dark-900 shadow-2xl">
+        <div class="flex items-start justify-between gap-4 border-b border-dark-700 px-5 py-4 sm:px-6"><div><h2 id="order-modal-title" class="text-lg font-semibold text-white">Order service</h2><p class="mt-1 line-clamp-1 text-sm text-gray-500">{{ $service->title }}</p></div><button type="button" onclick="hideOrderModal()" class="rounded-lg p-2 text-gray-500 hover:bg-dark-800 hover:text-white" aria-label="Close order form"><i class="fas fa-times"></i></button></div>
+        <form id="order-form" class="space-y-5 p-5 sm:p-6">
             @csrf
-            <!-- Requirements -->
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    <i class="fas fa-clipboard-list mr-2 text-indigo-500"></i>
-                    Your Requirements
-                </label>
-                <textarea name="requirements" rows="4" 
-                          class="w-full px-4 py-3 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                          placeholder="Describe what you need in detail..." required></textarea>
-            </div>
-
-            <!-- Add-ons -->
+            <div id="service-order-error-box" class="hidden rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300"></div>
+            <div><label for="service-requirements" class="marketplace-label">Your requirements</label><textarea id="service-requirements" name="requirements" rows="5" minlength="10" maxlength="5000" class="marketplace-input resize-y" placeholder="Describe the expected outcome, files, dimensions, audience, deadline or other details the seller needs." required></textarea><p class="mt-1.5 text-xs text-gray-600">Be specific so the seller can start from a clear brief.</p></div>
             @if($service->addons && $service->addons->count() > 0)
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                    <i class="fas fa-plus-circle mr-2 text-purple-500"></i>
-                    Optional Add-ons
-                </label>
-                <div class="space-y-2">
-                    @foreach($service->addons as $addon)
-                        <label class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-dark-800 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors">
-                            <input type="checkbox" name="addon_ids[]" value="{{ $addon->id }}" 
-                                   class="addon-checkbox w-5 h-5 rounded border-gray-300 dark:border-dark-600 text-indigo-600 focus:ring-indigo-500"
-                                   data-price="{{ $addon->price }}">
-                            <div class="flex-1">
-                                <span class="text-gray-900 dark:text-gray-100">{{ $addon->name }}</span>
-                                <span class="text-purple-600 dark:text-purple-400 font-medium ml-2">+₦{{ number_format($addon->price) }}</span>
-                            </div>
-                        </label>
-                    @endforeach
-                </div>
-            </div>
+                <fieldset><legend class="marketplace-label">Optional add-ons</legend><div class="space-y-2">@foreach($service->addons as $addon)<label class="flex cursor-pointer items-start gap-3 rounded-lg border border-dark-700 bg-dark-950 p-3 hover:border-indigo-500/40"><input type="checkbox" name="addon_ids[]" value="{{ $addon->id }}" class="addon-checkbox marketplace-checkbox mt-1 h-4 w-4" data-price="{{ $addon->price }}"><span class="min-w-0 flex-1"><span class="flex items-start justify-between gap-3"><strong class="text-sm text-gray-200">{{ $addon->name }}</strong><span class="whitespace-nowrap text-sm font-semibold text-white">+₦{{ number_format((float)$addon->price,0) }}</span></span>@if($addon->description)<span class="mt-1 block text-xs leading-5 text-gray-600">{{ $addon->description }}</span>@endif</span></label>@endforeach</div></fieldset>
             @endif
-
-            <!-- Price Summary -->
-            <div class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-dark-800 dark:to-dark-700 rounded-xl p-4 space-y-3">
-                <div class="flex justify-between text-gray-600 dark:text-gray-400">
-                    <span>Service Price</span>
-                    <span>₦{{ number_format($service->price) }}</span>
-                </div>
-                <div class="flex justify-between text-purple-600 dark:text-purple-400">
-                    <span>Add-ons</span>
-                    <span id="addons-total">₦0</span>
-                </div>
-                <div class="border-t border-gray-200 dark:border-dark-600 pt-3 flex justify-between text-lg font-bold text-gray-900 dark:text-gray-100">
-                    <span>Total</span>
-                    <span id="order-total">₦{{ number_format($service->price) }}</span>
-                </div>
-            </div>
-
-            <!-- Submit Buttons -->
-            <div class="flex gap-3">
-                <button type="button" onclick="hideOrderModal()" 
-                        class="flex-1 py-3 bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-300 dark:hover:bg-dark-600 transition-colors">
-                    Cancel
-                </button>
-                <button type="submit" 
-                        class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30">
-                    <i class="fas fa-lock mr-2"></i>Pay & Order
-                </button>
-            </div>
+            <div class="rounded-xl border border-dark-700 bg-dark-950 p-4"><div class="flex justify-between text-sm text-gray-500"><span>Service</span><span>₦{{ number_format((float)$service->price,0) }}</span></div><div class="mt-2 flex justify-between text-sm text-gray-500"><span>Add-ons</span><span id="addons-total">₦0</span></div><div class="mt-3 flex justify-between border-t border-dark-700 pt-3 text-base font-semibold text-white"><span>Total</span><span id="order-total">₦{{ number_format((float)$service->price,0) }}</span></div></div>
+            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onclick="hideOrderModal()" class="marketplace-btn-secondary">Cancel</button><button id="service-order-submit" type="submit" class="marketplace-btn-primary"><i class="fas fa-lock"></i>Place order</button></div>
         </form>
     </div>
 </div>
 @endif
 
-<!-- Contact Seller Modal -->
 @auth
-<div id="contact-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-dark-900 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-        <!-- Modal Header -->
-        <div class="bg-indigo-600 p-6 rounded-t-3xl">
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-bold text-white">Contact Seller</h2>
-                <button onclick="hideContactModal()" class="text-white/80 hover:text-white transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <p class="text-indigo-200 mt-1">Send a message to {{ $service->seller->name ?? 'the seller' }}</p>
-        </div>
-
-        <!-- Modal Body -->
-        <form id="contact-form" class="p-6 space-y-6">
+@if(auth()->id() !== $service->user_id)
+<div id="contact-modal" class="fixed inset-0 z-[300] hidden items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
+    <div class="w-full max-w-lg rounded-2xl border border-dark-700 bg-dark-900 shadow-2xl">
+        <div class="flex items-start justify-between gap-4 border-b border-dark-700 px-5 py-4 sm:px-6"><div><h2 id="contact-modal-title" class="text-lg font-semibold text-white">Message {{ optional($seller)->name ?: 'seller' }}</h2><p class="mt-1 text-sm text-gray-500">Ask a project question before ordering.</p></div><button type="button" onclick="hideContactModal()" class="rounded-lg p-2 text-gray-500 hover:bg-dark-800 hover:text-white" aria-label="Close message form"><i class="fas fa-times"></i></button></div>
+        <form id="contact-form" class="space-y-4 p-5 sm:p-6">
             @csrf
             <input type="hidden" name="recipient_id" value="{{ $service->user_id }}">
             <input type="hidden" name="service_id" value="{{ $service->id }}">
-            
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Subject
-                </label>
-                <input type="text" name="subject" 
-                       class="w-full px-4 py-3 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                       placeholder="What's this about?" required>
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Message
-                </label>
-                <textarea name="message" rows="5" 
-                          class="w-full px-4 py-3 bg-gray-50 dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                          placeholder="Write your message here..." required></textarea>
-            </div>
-
-            <div class="flex gap-3">
-                <button type="button" onclick="hideContactModal()" 
-                        class="flex-1 py-3 bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-300 dark:hover:bg-dark-600 transition-colors">
-                    Cancel
-                </button>
-                <button type="submit" 
-                        class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/30">
-                    <i class="fas fa-paper-plane mr-2"></i>Send
-                </button>
-            </div>
+            <div id="service-contact-error-box" class="hidden rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300"></div>
+            <div><label for="service-contact-subject" class="marketplace-label">Subject</label><input id="service-contact-subject" type="text" name="subject" minlength="3" maxlength="255" class="marketplace-input" placeholder="Project question" required></div>
+            <div><label for="service-contact-message" class="marketplace-label">Message</label><textarea id="service-contact-message" name="message" rows="5" minlength="10" maxlength="5000" class="marketplace-input resize-y" placeholder="Explain what you need and what you would like clarified." required></textarea></div>
+            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onclick="hideContactModal()" class="marketplace-btn-secondary">Cancel</button><button id="service-contact-submit" type="submit" class="marketplace-btn-primary"><i class="fas fa-paper-plane"></i>Send message</button></div>
         </form>
     </div>
 </div>
+@endif
 @endauth
 
-<div
-    id="service-show-config"
-    data-order-url="{{ route('professional-services.order', $service) }}"
-    data-contact-url="{{ route('professional-services.contact') }}"
-    data-base-price="{{ $service->price }}"
-></div>
+<div id="service-show-config" data-order-url="{{ route('professional-services.order', $service) }}" data-contact-url="{{ route('professional-services.contact') }}" data-base-price="{{ $service->price }}"></div>
 
 @push('scripts')
 <script>
+(() => {
     const serviceConfig = document.getElementById('service-show-config');
+    const orderModal = document.getElementById('order-modal');
+    const contactModal = document.getElementById('contact-modal');
+    const orderForm = document.getElementById('order-form');
+    const contactForm = document.getElementById('contact-form');
     const orderUrl = serviceConfig?.dataset?.orderUrl || '';
     const contactUrl = serviceConfig?.dataset?.contactUrl || '';
     const basePrice = Number(serviceConfig?.dataset?.basePrice || 0);
-    const canContact = !!document.getElementById('contact-modal');
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    function showOrderModal() {
-        document.getElementById('order-modal').classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
+    const openModal = modal => { if (!modal) return; modal.classList.remove('hidden'); modal.classList.add('flex'); document.body.style.overflow='hidden'; };
+    const closeModal = modal => { if (!modal) return; modal.classList.add('hidden'); modal.classList.remove('flex'); document.body.style.overflow=''; };
+    window.showOrderModal = () => openModal(orderModal);
+    window.hideOrderModal = () => closeModal(orderModal);
+    window.showContactModal = () => openModal(contactModal);
+    window.hideContactModal = () => closeModal(contactModal);
 
-    function hideOrderModal() {
-        document.getElementById('order-modal').classList.add('hidden');
-        document.body.style.overflow = '';
-    }
+    const addonCheckboxes = Array.from(document.querySelectorAll('.addon-checkbox'));
+    const updateTotal = () => {
+        const addonTotal = addonCheckboxes.reduce((sum, checkbox) => checkbox.checked ? sum + Number(checkbox.dataset.price || 0) : sum, 0);
+        const addonNode = document.getElementById('addons-total');
+        const totalNode = document.getElementById('order-total');
+        if (addonNode) addonNode.textContent = '₦' + addonTotal.toLocaleString();
+        if (totalNode) totalNode.textContent = '₦' + (basePrice + addonTotal).toLocaleString();
+    };
+    addonCheckboxes.forEach(checkbox => checkbox.addEventListener('change', updateTotal));
 
-    function showContactModal() {
-        const modal = document.getElementById('contact-modal');
-        if (!modal) return;
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function hideContactModal() {
-        const modal = document.getElementById('contact-modal');
-        if (!modal) return;
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
-    }
-
-    // Calculate add-ons total
-    const addonCheckboxes = document.querySelectorAll('.addon-checkbox');
-
-    addonCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateTotal);
-    });
-
-    function updateTotal() {
-        let addonsTotal = 0;
-        addonCheckboxes.forEach(checkbox => {
-            if (checkbox.checked) {
-                addonsTotal += parseInt(checkbox.dataset.price);
-            }
-        });
-        
-        document.getElementById('addons-total').textContent = '₦' + addonsTotal.toLocaleString();
-        document.getElementById('order-total').textContent = '₦' + (basePrice + addonsTotal).toLocaleString();
-    }
-
-    // Handle order form submission
-    document.getElementById('order-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const form = this;
-        const formData = new FormData(form);
-        
-        fetch(orderUrl, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            }
-            // Handle non-JSON responses (like redirects/HTML error pages)
-            return response.text().then(text => {
-                throw new Error('Unexpected response from server: ' + text.substring(0, 200));
-            });
-        })
-        .then(data => {
-            if (!data.success && data.redirect) {
-                window.location.href = data.redirect;
-                return;
-            }
-
-            if (data.redirect) {
-                window.location.href = data.redirect;
-            } else if (data.message) {
-                if (!data.success && (data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
-                    window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
-                        boxId: 'service-order-error-box',
-                    });
-                    return;
-                }
-                alert(data.message);
-                if (data.success) {
-                    hideOrderModal();
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            if (window.SwiftkudiFormFeedback) {
-                window.SwiftkudiFormFeedback.showValidationErrors(form, {
-                    message: 'An error occurred while placing your order. Please try again.',
-                }, {
-                    boxId: 'service-order-error-box',
-                });
-            } else {
-                alert('An error occurred. Please try again.');
-            }
-        });
-    });
-
-    // Handle contact form submission
-    if (canContact) {
-    document.getElementById('contact-form')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const form = this;
-        const formData = new FormData(form);
-        
-        fetch(contactUrl, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            }
-            return response.text().then(text => {
-                throw new Error('Unexpected response: ' + text.substring(0, 200));
-            });
-        })
-        .then(data => {
-            if (!data.success && (data.errors || data.error_list) && window.SwiftkudiFormFeedback) {
-                window.SwiftkudiFormFeedback.showValidationErrors(form, data, {
-                    boxId: 'service-contact-error-box',
-                });
-                return;
-            }
-
-            alert(data.message);
-            if (data.success) {
-                hideContactModal();
-                document.getElementById('contact-form').reset();
-                if (data.chat_url) {
-                    window.location.href = data.chat_url;
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            if (window.SwiftkudiFormFeedback) {
-                window.SwiftkudiFormFeedback.showValidationErrors(form, {
-                    message: 'An error occurred while sending your message. Please try again.',
-                }, {
-                    boxId: 'service-contact-error-box',
-                });
-            } else {
-                alert('An error occurred. Please try again.');
-            }
-        });
-    });
-    }
-
-    // Close modal on escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            hideOrderModal();
-            if (canContact) hideContactModal();
+    const showFormError = (form, boxId, data, fallback) => {
+        if (window.SwiftkudiFormFeedback) {
+            window.SwiftkudiFormFeedback.showValidationErrors(form, data || {message:fallback}, {boxId});
+            return;
         }
+        const box=document.getElementById(boxId); if(box){box.textContent=(data?.message||fallback);box.classList.remove('hidden');}
+    };
+
+    orderForm?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const submit = document.getElementById('service-order-submit');
+        if (submit) submit.disabled = true;
+        try {
+            const response = await fetch(orderUrl, {method:'POST',body:new FormData(orderForm),headers:{'X-CSRF-TOKEN':csrf,'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}});
+            const data = await response.json().catch(() => ({success:false,message:'The server returned an unexpected response.'}));
+            if (data.redirect) { window.location.href=data.redirect; return; }
+            if (!response.ok || !data.success) { showFormError(orderForm,'service-order-error-box',data,'The order could not be placed. Please review the form and retry.'); return; }
+            closeModal(orderModal);
+            if (data.redirect) window.location.href=data.redirect;
+            else window.location.href='{{ route('professional-services.orders.index') }}';
+        } catch (_) {
+            showFormError(orderForm,'service-order-error-box',null,'The order could not be placed. Check your connection and retry.');
+        } finally { if (submit) submit.disabled=false; }
     });
 
-    // Close modal on backdrop click
-    document.getElementById('order-modal')?.addEventListener('click', function(e) {
-        if (e.target === this) {
-            hideOrderModal();
-        }
+    contactForm?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const submit = document.getElementById('service-contact-submit');
+        if (submit) submit.disabled=true;
+        try {
+            const response = await fetch(contactUrl,{method:'POST',body:new FormData(contactForm),headers:{'X-CSRF-TOKEN':csrf,'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}});
+            const data = await response.json().catch(() => ({success:false,message:'The server returned an unexpected response.'}));
+            if (!response.ok || !data.success) { showFormError(contactForm,'service-contact-error-box',data,'Your message could not be sent. Please retry.'); return; }
+            contactForm.reset(); closeModal(contactModal);
+            if (data.chat_url) window.location.href=data.chat_url;
+        } catch (_) {
+            showFormError(contactForm,'service-contact-error-box',null,'Your message could not be sent. Check your connection and retry.');
+        } finally { if (submit) submit.disabled=false; }
     });
-    
-    document.getElementById('contact-modal')?.addEventListener('click', function(e) {
-        if (e.target === this) {
-            hideContactModal();
-        }
-    });
+
+    document.addEventListener('keydown', event => { if(event.key==='Escape'){ closeModal(orderModal); closeModal(contactModal); } });
+    [orderModal, contactModal].forEach(modal => modal?.addEventListener('click', event => { if(event.target===modal) closeModal(modal); }));
+})();
 </script>
 @endpush
 @endsection

@@ -53,7 +53,7 @@
 
         @if($conversation->status === 'active')
         <div class="border-t border-dark-700 bg-dark-900 p-4 sm:p-5">
-            <div id="chat-error" class="mb-3 hidden rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"></div>
+            <div id="chat-error" class="mb-3 hidden items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"><span id="chat-error-text"></span><button id="chat-retry-button" type="button" class="flex-none rounded-md border border-red-400/30 px-2.5 py-1 text-xs font-semibold text-red-200 hover:bg-red-500/10">Retry</button></div>
             <form id="message-form" class="flex items-end gap-2 sm:gap-3"><div class="flex-1"><textarea id="message-input" name="message" rows="1" maxlength="5000" class="marketplace-input max-h-40 resize-none" placeholder="Write a message…" oninput="autoResize(this)" onkeydown="handleKeyDown(event)"></textarea></div><label class="flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-lg border border-dark-600 text-gray-400 hover:bg-dark-800 hover:text-white" title="Attach file"><input type="file" id="attachment-input" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.zip,.txt" onchange="handleFileSelect(this)"><i class="fas fa-paperclip"></i></label><button id="send-button" type="submit" class="marketplace-btn-primary h-11 px-5"><span>Send</span><i class="fas fa-paper-plane text-xs"></i></button></form>
             <div id="selected-file" class="mt-2 hidden items-center justify-between rounded-lg border border-dark-700 bg-dark-950 px-3 py-2"><span id="file-name" class="truncate text-xs text-gray-400"></span><button type="button" onclick="clearFile()" class="text-gray-500 hover:text-red-300"><i class="fas fa-xmark"></i></button></div>
             <p class="mt-2 text-[11px] text-gray-600">Enter to send · Shift+Enter for a new line · attachments up to 10 MB</p>
@@ -70,6 +70,8 @@
     const input = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
     const errorBox = document.getElementById('chat-error');
+    const errorText = document.getElementById('chat-error-text');
+    const retryButton = document.getElementById('chat-retry-button');
     const container = document.getElementById('messages-container');
     if (!config || !container) return;
 
@@ -87,8 +89,9 @@
 
     const escapeHtml = value => String(value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     const formatTime = value => { try { return new Date(value).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); } catch (_) { return ''; } };
-    const showError = message => { if (!errorBox) return; errorBox.textContent = message; errorBox.classList.remove('hidden'); };
-    const clearError = () => errorBox?.classList.add('hidden');
+    const showError = message => { if (!errorBox) return; if (errorText) errorText.textContent = message; errorBox.classList.remove('hidden'); errorBox.classList.add('flex'); };
+    const clearError = () => { errorBox?.classList.add('hidden'); errorBox?.classList.remove('flex'); };
+    retryButton?.addEventListener('click', () => form?.requestSubmit());
 
     function appendMessage(message) {
         document.getElementById('chat-empty')?.remove();

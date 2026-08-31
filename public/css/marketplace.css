@@ -495,3 +495,198 @@ body.marketplace-guest {
     background-image: none !important;
     background-color: var(--sk-surface-3) !important;
 }
+
+/* 2026 marketplace UX benchmark pass: discovery, filters, work center and search */
+.marketplace-search-shell {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto auto;
+    gap:.625rem;
+    align-items:center;
+    padding:.625rem;
+    border:1px solid var(--sk-border);
+    border-radius:var(--sk-radius-lg);
+    background:var(--sk-surface);
+    box-shadow:0 1px 2px rgba(0,0,0,.12);
+}
+.marketplace-search-input-wrap {
+    min-width:0;
+    min-height:44px;
+    display:flex;
+    align-items:center;
+    gap:.75rem;
+    padding:0 .75rem;
+    border:1px solid transparent;
+    border-radius:.7rem;
+    background:#07101f;
+}
+.marketplace-search-input-wrap:focus-within { border-color:var(--sk-brand-500); box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+.marketplace-search-input-wrap input {
+    min-width:0;
+    width:100%;
+    border:0 !important;
+    padding:.55rem 0 !important;
+    background:transparent !important;
+    color:var(--sk-text) !important;
+    box-shadow:none !important;
+    outline:0 !important;
+}
+.marketplace-search-scope {
+    min-height:44px;
+    border:1px solid var(--sk-border-strong);
+    border-radius:.7rem;
+    background:#07101f;
+    color:var(--sk-text-soft);
+    padding:.55rem 2.2rem .55rem .8rem;
+    font-size:.875rem;
+    font-weight:600;
+}
+.marketplace-header-search {
+    width:min(31vw,360px);
+    min-width:220px;
+    height:40px;
+    align-items:center;
+    gap:.55rem;
+    border:1px solid var(--sk-border);
+    border-radius:999px;
+    background:#07101f;
+    padding:0 .7rem 0 .85rem;
+}
+.marketplace-header-search:focus-within { border-color:rgba(99,102,241,.65); box-shadow:0 0 0 3px rgba(99,102,241,.10); }
+.marketplace-header-search input {
+    min-width:0;
+    flex:1;
+    border:0 !important;
+    background:transparent !important;
+    color:var(--sk-text) !important;
+    padding:0 !important;
+    font-size:.82rem;
+    box-shadow:none !important;
+}
+.marketplace-header-search select {
+    width:auto;
+    border:0 !important;
+    background:transparent !important;
+    color:var(--sk-muted) !important;
+    padding:.2rem 1.2rem .2rem .35rem !important;
+    font-size:.72rem !important;
+    box-shadow:none !important;
+}
+.marketplace-mobile-search {
+    display:flex;
+    min-height:42px;
+    align-items:center;
+    gap:.65rem;
+    border:1px solid var(--sk-border);
+    border-radius:.75rem;
+    background:#07101f;
+    padding:0 .8rem;
+}
+.marketplace-mobile-search input { min-width:0; width:100%; border:0 !important; background:transparent !important; color:var(--sk-text) !important; padding:.55rem 0 !important; box-shadow:none !important; }
+.marketplace-mobile-filter {
+    overflow:hidden;
+    border:1px solid var(--sk-border);
+    border-radius:var(--sk-radius-lg);
+    background:var(--sk-surface);
+}
+.marketplace-mobile-filter > summary {
+    display:flex;
+    min-height:48px;
+    cursor:pointer;
+    list-style:none;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    padding:.75rem 1rem;
+    color:#e2e8f0;
+    font-size:.875rem;
+    font-weight:700;
+}
+.marketplace-mobile-filter > summary::-webkit-details-marker { display:none; }
+.marketplace-mobile-filter[open] > summary { border-bottom:1px solid var(--sk-border); }
+.marketplace-job-card,
+.marketplace-talent-card {
+    border:1px solid var(--sk-border);
+    border-radius:var(--sk-radius-lg);
+    background:var(--sk-surface);
+    padding:1.25rem;
+    box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.marketplace-job-card:hover,
+.marketplace-talent-card:hover { border-color:rgba(99,102,241,.48); background:#111c30; box-shadow:0 10px 28px rgba(2,6,23,.20); }
+.marketplace-save-button {
+    width:40px;
+    height:40px;
+    display:grid;
+    place-items:center;
+    border:1px solid var(--sk-border-strong);
+    border-radius:999px;
+    background:transparent;
+    color:var(--sk-muted);
+}
+.marketplace-save-button:hover,
+.marketplace-save-button-active { border-color:rgba(99,102,241,.58); color:var(--sk-brand-300); background:rgba(99,102,241,.08); }
+.marketplace-avatar {
+    display:inline-flex;
+    width:2.75rem;
+    height:2.75rem;
+    flex:none;
+    align-items:center;
+    justify-content:center;
+    border-radius:999px;
+    background:var(--sk-brand-600);
+    color:#fff;
+    font-size:.8rem;
+    font-weight:800;
+}
+.marketplace-avatar-lg { width:3.25rem; height:3.25rem; font-size:.9rem; }
+.marketplace-result-tabs {
+    display:flex;
+    max-width:100%;
+    gap:.25rem;
+    overflow-x:auto;
+    border-bottom:1px solid var(--sk-border);
+}
+.marketplace-result-tab {
+    flex:none;
+    border:0;
+    border-bottom:2px solid transparent;
+    background:transparent;
+    color:var(--sk-muted);
+    padding:.7rem .85rem;
+    font-size:.82rem;
+    font-weight:700;
+    text-decoration:none;
+}
+.marketplace-result-tab span { margin-left:.25rem; color:var(--sk-subtle); font-weight:600; }
+.marketplace-result-tab:hover { color:#fff; }
+.marketplace-result-tab-active { border-bottom-color:var(--sk-brand-500); color:var(--sk-brand-300); }
+.marketplace-stat-link { display:block; text-decoration:none; transition:border-color .16s ease, transform .16s ease; }
+.marketplace-stat-link:hover { border-color:rgba(99,102,241,.5); transform:translateY(-1px); }
+.marketplace-attention-item {
+    display:flex;
+    min-height:126px;
+    gap:.9rem;
+    align-items:flex-start;
+    padding:1.25rem;
+    border-top:1px solid var(--sk-border);
+    color:inherit;
+    text-decoration:none;
+}
+.marketplace-attention-item:hover { background:rgba(30,41,59,.38); }
+@media (min-width:768px) {
+    .marketplace-attention-item { border-top:0; border-left:1px solid var(--sk-border); }
+    .marketplace-attention-item:first-child { border-left:0; }
+}
+@media (max-width:1023px) {
+    .marketplace-search-shell { grid-template-columns:minmax(0,1fr) auto; }
+    .marketplace-search-shell .marketplace-search-scope { grid-column:1 / 2; }
+    .marketplace-search-shell > .marketplace-btn-primary { grid-column:2 / 3; grid-row:2; }
+}
+@media (max-width:639px) {
+    .marketplace-search-shell { grid-template-columns:1fr; padding:.5rem; }
+    .marketplace-search-shell .marketplace-search-input-wrap,
+    .marketplace-search-shell .marketplace-search-scope,
+    .marketplace-search-shell > .marketplace-btn-primary { grid-column:1; grid-row:auto; width:100%; }
+    .marketplace-job-card,.marketplace-talent-card { padding:1rem; border-radius:.9rem; }
+}

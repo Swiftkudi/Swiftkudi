@@ -45,29 +45,107 @@
             </section>
         @endif
 
-        <section class="marketplace-stat-grid mb-8" aria-label="Account overview">
-            <div class="marketplace-stat">
+        @php
+            $needsAttention = (int)($marketplaceStats['unreadMessages'] ?? 0)
+                + (int)($marketplaceStats['submittedForReviewCount'] ?? 0)
+                + (int)($marketplaceStats['revisionRequestedCount'] ?? 0)
+                + (int)($marketplaceStats['proposalsReceivedCount'] ?? 0);
+        @endphp
+
+        <section class="marketplace-stat-grid mb-8" aria-label="Marketplace overview">
+            <a href="{{ route('my-work.index') }}" class="marketplace-stat marketplace-stat-link">
+                <div class="flex items-center justify-between"><p class="marketplace-stat-label">Active contracts</p><span class="marketplace-icon-box"><i class="fas fa-file-contract"></i></span></div>
+                <p class="marketplace-stat-value">{{ number_format($marketplaceStats['activeContractsCount'] ?? 0) }}</p>
+                <p class="marketplace-stat-meta">Open your work center</p>
+            </a>
+            <a href="{{ route('chat.index') }}" class="marketplace-stat marketplace-stat-link">
+                <div class="flex items-center justify-between"><p class="marketplace-stat-label">Unread messages</p><span class="marketplace-icon-box"><i class="far fa-comments"></i></span></div>
+                <p class="marketplace-stat-value">{{ number_format($marketplaceStats['unreadMessages'] ?? 0) }}</p>
+                <p class="marketplace-stat-meta">Conversations needing your attention</p>
+            </a>
+            @if($marketplaceStats['is_client'] ?? false)
+                <a href="{{ route('jobs.my-jobs') }}" class="marketplace-stat marketplace-stat-link">
+                    <div class="flex items-center justify-between"><p class="marketplace-stat-label">Proposals to review</p><span class="marketplace-icon-box"><i class="fas fa-users"></i></span></div>
+                    <p class="marketplace-stat-value">{{ number_format($marketplaceStats['proposalsReceivedCount'] ?? 0) }}</p>
+                    <p class="marketplace-stat-meta">Across {{ number_format($marketplaceStats['activeJobsCount'] ?? 0) }} active job{{ ($marketplaceStats['activeJobsCount'] ?? 0) === 1 ? '' : 's' }}</p>
+                </a>
+            @else
+                <a href="{{ route('jobs.applications') }}" class="marketplace-stat marketplace-stat-link">
+                    <div class="flex items-center justify-between"><p class="marketplace-stat-label">Proposals sent</p><span class="marketplace-icon-box"><i class="fas fa-paper-plane"></i></span></div>
+                    <p class="marketplace-stat-value">{{ number_format($marketplaceStats['proposalsSentCount'] ?? 0) }}</p>
+                    <p class="marketplace-stat-meta">Track application status</p>
+                </a>
+            @endif
+            <a href="{{ route('wallet.index') }}" class="marketplace-stat marketplace-stat-link">
                 <div class="flex items-center justify-between"><p class="marketplace-stat-label">Wallet balance</p><span class="marketplace-icon-box"><i class="fas fa-wallet"></i></span></div>
                 <p class="marketplace-stat-value">₦{{ number_format($walletBalance, 2) }}</p>
                 <p class="marketplace-stat-meta">Available and promotional balance</p>
+            </a>
+        </section>
+
+        <section class="marketplace-card mb-8 overflow-hidden" aria-labelledby="dashboard-next-actions">
+            <div class="flex flex-col gap-3 border-b border-dark-700 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div>
+                    <h2 id="dashboard-next-actions" class="marketplace-section-title">What needs your attention</h2>
+                    <p class="marketplace-section-description">SwiftKudi surfaces work that may need an action instead of filling your dashboard with decorative charts.</p>
+                </div>
+                <a href="{{ route('my-work.index') }}" class="text-sm font-semibold text-indigo-300 hover:text-indigo-200">Open My Work <i class="fas fa-arrow-right ml-1 text-xs"></i></a>
             </div>
-            <div class="marketplace-stat">
-                <div class="flex items-center justify-between"><p class="marketplace-stat-label">Completed tasks</p><span class="marketplace-icon-box"><i class="fas fa-check"></i></span></div>
-                <p class="marketplace-stat-value">{{ number_format($stats['tasks_completed'] ?? 0) }}</p>
-                <p class="marketplace-stat-meta">{{ number_format($stats['pending_earnings'] ?? 0) }} pending review</p>
-            </div>
-            <div class="marketplace-stat">
-                <div class="flex items-center justify-between"><p class="marketplace-stat-label">Total earned</p><span class="marketplace-icon-box"><i class="fas fa-chart-line"></i></span></div>
-                <p class="marketplace-stat-value">₦{{ number_format($stats['total_earned'] ?? 0, 2) }}</p>
-                <p class="marketplace-stat-meta">Marketplace activity to date</p>
-            </div>
-            <div class="marketplace-stat">
-                <div class="flex items-center justify-between"><p class="marketplace-stat-label">Level {{ $user->level }}</p><span class="marketplace-icon-box"><i class="fas fa-star"></i></span></div>
-                <p class="marketplace-stat-value">{{ number_format($user->experience_points) }} XP</p>
-                <div class="mt-3 h-2 overflow-hidden rounded-full bg-dark-700"><div id="dashboard-level-progress" class="h-full rounded-full bg-indigo-500" data-progress="{{ (float) ($levelProgress['percentage'] ?? 0) }}"></div></div>
-                <p class="marketplace-stat-meta">{{ number_format($levelProgress['xp_progress'] ?? 0) }} / {{ number_format($levelProgress['xp_needed'] ?? 0) }} XP to next level</p>
+            <div class="grid md:grid-cols-2 xl:grid-cols-4">
+                <a href="{{ route('chat.index') }}" class="marketplace-attention-item">
+                    <span class="marketplace-icon-box"><i class="far fa-message"></i></span>
+                    <div><p class="font-semibold text-white">{{ number_format($marketplaceStats['unreadMessages'] ?? 0) }} unread message{{ ($marketplaceStats['unreadMessages'] ?? 0) === 1 ? '' : 's' }}</p><p class="mt-1 text-sm text-gray-500">Reply to clients and freelancers.</p></div>
+                </a>
+                @if($marketplaceStats['is_client'] ?? false)
+                    <a href="{{ route('jobs.my-jobs') }}" class="marketplace-attention-item">
+                        <span class="marketplace-icon-box"><i class="fas fa-user-check"></i></span>
+                        <div><p class="font-semibold text-white">{{ number_format($marketplaceStats['proposalsReceivedCount'] ?? 0) }} proposal{{ ($marketplaceStats['proposalsReceivedCount'] ?? 0) === 1 ? '' : 's' }} to review</p><p class="mt-1 text-sm text-gray-500">Compare applicants on your jobs.</p></div>
+                    </a>
+                    <a href="{{ route('my-work.index') }}" class="marketplace-attention-item">
+                        <span class="marketplace-icon-box"><i class="fas fa-clipboard-check"></i></span>
+                        <div><p class="font-semibold text-white">{{ number_format($marketplaceStats['submittedForReviewCount'] ?? 0) }} milestone{{ ($marketplaceStats['submittedForReviewCount'] ?? 0) === 1 ? '' : 's' }} awaiting review</p><p class="mt-1 text-sm text-gray-500">Approve delivery or request a revision.</p></div>
+                    </a>
+                @endif
+                @if($marketplaceStats['is_freelancer'] ?? false)
+                    <a href="{{ route('jobs.applications') }}" class="marketplace-attention-item">
+                        <span class="marketplace-icon-box"><i class="fas fa-paper-plane"></i></span>
+                        <div><p class="font-semibold text-white">{{ number_format($marketplaceStats['proposalsSentCount'] ?? 0) }} proposal{{ ($marketplaceStats['proposalsSentCount'] ?? 0) === 1 ? '' : 's' }} submitted</p><p class="mt-1 text-sm text-gray-500">Track hiring decisions and contracts.</p></div>
+                    </a>
+                    <a href="{{ route('my-work.index') }}" class="marketplace-attention-item">
+                        <span class="marketplace-icon-box"><i class="fas fa-rotate-left"></i></span>
+                        <div><p class="font-semibold text-white">{{ number_format($marketplaceStats['revisionRequestedCount'] ?? 0) }} revision request{{ ($marketplaceStats['revisionRequestedCount'] ?? 0) === 1 ? '' : 's' }}</p><p class="mt-1 text-sm text-gray-500">Return to submitted work that needs changes.</p></div>
+                    </a>
+                @endif
+                @if(!($marketplaceStats['is_client'] ?? false) && !($marketplaceStats['is_freelancer'] ?? false))
+                    <a href="{{ route('jobs.index') }}" class="marketplace-attention-item">
+                        <span class="marketplace-icon-box"><i class="fas fa-search"></i></span>
+                        <div><p class="font-semibold text-white">Explore freelance work</p><p class="mt-1 text-sm text-gray-500">Browse active opportunities that match your interests.</p></div>
+                    </a>
+                @endif
             </div>
         </section>
+
+        @if(($marketplaceStats['is_freelancer'] ?? false) && $recommendedJobs->isNotEmpty())
+            <section class="marketplace-card mb-8 overflow-hidden">
+                <div class="flex items-center justify-between border-b border-dark-700 px-5 py-4 sm:px-6"><div><h2 class="marketplace-section-title">New opportunities</h2><p class="marketplace-section-description">Recent active jobs you have not posted yourself.</p></div><a href="{{ route('jobs.index') }}" class="text-sm font-semibold text-indigo-300">Find work</a></div>
+                @foreach($recommendedJobs as $job)
+                    <a href="{{ route('jobs.show', $job) }}" class="marketplace-list-row">
+                        <div class="min-w-0 flex-1"><div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"><h3 class="font-semibold text-white">{{ $job->title }}</h3><span class="font-semibold text-gray-200">{{ $job->budget_range }}</span></div><p class="mt-1 line-clamp-2 text-sm text-gray-500">{{ \Illuminate\Support\Str::limit(strip_tags($job->description), 140) }}</p><div class="mt-2 flex flex-wrap gap-2"><span class="marketplace-pill">{{ $job->type_label }}</span>@if($job->category)<span class="marketplace-pill">{{ $job->category->name }}</span>@endif</div></div>
+                    </a>
+                @endforeach
+            </section>
+        @endif
+
+        @if(($marketplaceStats['is_client'] ?? false) && $recentClientJobs->isNotEmpty())
+            <section class="marketplace-card mb-8 overflow-hidden">
+                <div class="flex items-center justify-between border-b border-dark-700 px-5 py-4 sm:px-6"><div><h2 class="marketplace-section-title">Your recent jobs</h2><p class="marketplace-section-description">Open a job to review applicants or manage its status.</p></div><a href="{{ route('jobs.my-jobs') }}" class="text-sm font-semibold text-indigo-300">Manage jobs</a></div>
+                @foreach($recentClientJobs as $job)
+                    <a href="{{ route('jobs.show', $job) }}" class="marketplace-list-row">
+                        <div class="min-w-0 flex-1"><div class="flex items-center justify-between gap-3"><h3 class="truncate font-semibold text-white">{{ $job->title }}</h3><span class="marketplace-status {{ $job->status === 'active' ? 'marketplace-status-success' : 'marketplace-status-info' }}">{{ ucfirst($job->status) }}</span></div><p class="mt-1 text-sm text-gray-500">{{ number_format($job->applications_count ?? 0) }} proposal{{ ($job->applications_count ?? 0) === 1 ? '' : 's' }} · {{ $job->budget_range }}</p></div>
+                    </a>
+                @endforeach
+            </section>
+        @endif
 
         <section class="mb-8">
             <div class="mb-4 flex items-end justify-between gap-4">

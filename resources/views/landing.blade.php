@@ -18,20 +18,24 @@
                         Post a job, compare proposals, collaborate in one workroom and manage milestone payments. Freelancers can build a professional profile, discover opportunities and grow their reputation.
                     </p>
 
-                    <form action="{{ route('jobs.index') }}" method="GET" class="mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl border border-dark-700 bg-dark-900 p-3 sm:flex-row">
-                        <label class="sr-only" for="home-job-search">Search for work</label>
-                        <div class="relative flex-1">
-                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                            <input id="home-job-search" name="search" class="marketplace-input border-0 bg-transparent pl-11 focus:ring-0" placeholder="Search jobs, skills or keywords">
-                        </div>
-                        <button class="marketplace-btn-primary sm:min-w-[130px]" type="submit">Find work</button>
+                    <form action="{{ route('marketplace.search') }}" method="GET" class="marketplace-search-shell mt-8 max-w-3xl">
+                        <label class="marketplace-search-input-wrap" for="home-marketplace-search">
+                            <i class="fas fa-search text-gray-500"></i>
+                            <input id="home-marketplace-search" name="q" maxlength="120" placeholder="Search jobs, skills, talent or services">
+                        </label>
+                        <select name="scope" class="marketplace-search-scope" aria-label="Search type">
+                            <option value="all">Everything</option>
+                            <option value="jobs">Find work</option>
+                            <option value="talent">Find talent</option>
+                            <option value="services">Services</option>
+                        </select>
+                        <button class="marketplace-btn-primary" type="submit">Search</button>
                     </form>
 
-                    <div class="mt-5 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                        <span>Or</span>
-                        <a class="font-semibold text-indigo-400 hover:text-indigo-300" href="{{ route('freelancers.index') }}">browse freelancers</a>
-                        <span aria-hidden="true">•</span>
-                        <a class="font-semibold text-indigo-400 hover:text-indigo-300" href="{{ route('professional-services.index') }}">browse ready-to-buy services</a>
+                    <div class="mt-5 flex flex-wrap items-center gap-2">
+                        <a class="marketplace-btn-secondary" href="{{ route('jobs.index') }}"><i class="fas fa-briefcase"></i>Find work</a>
+                        <a class="marketplace-btn-secondary" href="{{ route('freelancers.index') }}"><i class="fas fa-user-tie"></i>Find talent</a>
+                        <a class="marketplace-btn-secondary" href="{{ route('professional-services.index') }}"><i class="fas fa-layer-group"></i>Browse services</a>
                     </div>
                 </div>
 
@@ -153,4 +157,16 @@
         </div>
     </section>
 </div>
+
+    <section class="border-y border-dark-700 bg-dark-900/30">
+        <div class="marketplace-container py-14 sm:py-16">
+            <div class="mb-8 max-w-2xl"><span class="marketplace-eyebrow">Built for real work</span><h2 class="marketplace-title mt-2">Clear marketplace signals without invented claims</h2><p class="marketplace-subtitle">SwiftKudi shows trust information only when the platform has the underlying record.</p></div>
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="marketplace-card p-5"><span class="marketplace-icon-box"><i class="fas fa-user-check"></i></span><h3 class="mt-4 font-semibold text-white">Professional profiles</h3><p class="mt-2 text-sm leading-6 text-gray-500">Compare titles, skills, availability, rates, completed work and reviews where those records exist.</p></div>
+                <div class="marketplace-card p-5"><span class="marketplace-icon-box"><i class="fas fa-comments"></i></span><h3 class="mt-4 font-semibold text-white">Connected messaging</h3><p class="mt-2 text-sm leading-6 text-gray-500">Keep job and service conversations attached to the marketplace context instead of scattered channels.</p></div>
+                <div class="marketplace-card p-5"><span class="marketplace-icon-box"><i class="fas fa-list-check"></i></span><h3 class="mt-4 font-semibold text-white">Milestone workrooms</h3><p class="mt-2 text-sm leading-6 text-gray-500">Fund, submit, request revisions and approve milestone work through the contract workflow.</p></div>
+                <div class="marketplace-card p-5"><span class="marketplace-icon-box"><i class="fas fa-star"></i></span><h3 class="mt-4 font-semibold text-white">Recorded reputation</h3><p class="mt-2 text-sm leading-6 text-gray-500">Ratings and review counts appear when SwiftKudi has real completed marketplace feedback.</p></div>
+            </div>
+        </div>
+    </section>
 @endsection

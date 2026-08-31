@@ -60,53 +60,19 @@
             </nav>
         @endauth
 
+        <details class="marketplace-mobile-filter mt-6 lg:hidden" {{ request()->hasAny(['category','min_price','max_price','delivery_days']) ? 'open' : '' }}>
+            <summary><span><i class="fas fa-sliders mr-2"></i>Filters</span><span class="text-xs text-gray-500">Refine services</span></summary>
+            <form action="{{ route('professional-services.index') }}" method="GET" class="space-y-4 p-4">
+                @if(request('search'))<input type="hidden" name="search" value="{{ request('search') }}">@endif
+                @include('professional-services.partials.service-filters', ['categories' => $categories, 'mobile' => true])
+            </form>
+        </details>
+
         <div class="mt-8 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <aside class="lg:sticky lg:top-24 lg:self-start">
+            <aside class="hidden lg:block lg:sticky lg:top-24 lg:self-start">
                 <form action="{{ route('professional-services.index') }}" method="GET" class="marketplace-panel space-y-5 p-5">
-                    @if(request('search'))
-                        <input type="hidden" name="search" value="{{ request('search') }}">
-                    @endif
-                    <div>
-                        <label for="filter-category" class="marketplace-label">Category</label>
-                        <select id="filter-category" name="category" class="marketplace-input mt-2">
-                            <option value="">All categories</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->slug }}" @selected(request('category') === $category->slug)>{{ $category->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label for="min-price" class="marketplace-label">Min price</label>
-                            <input id="min-price" class="marketplace-input mt-2" type="number" min="0" step="100" name="min_price" value="{{ request('min_price') }}" placeholder="₦0">
-                        </div>
-                        <div>
-                            <label for="max-price" class="marketplace-label">Max price</label>
-                            <input id="max-price" class="marketplace-input mt-2" type="number" min="0" step="100" name="max_price" value="{{ request('max_price') }}" placeholder="Any">
-                        </div>
-                    </div>
-                    <div>
-                        <label for="delivery-days" class="marketplace-label">Delivery within</label>
-                        <select id="delivery-days" name="delivery_days" class="marketplace-input mt-2">
-                            <option value="">Any time</option>
-                            @foreach([1 => '1 day', 3 => '3 days', 7 => '7 days', 14 => '14 days', 30 => '30 days'] as $days => $label)
-                                <option value="{{ $days }}" @selected((string) request('delivery_days') === (string) $days)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label for="service-sort" class="marketplace-label">Sort by</label>
-                        <select id="service-sort" name="sort" class="marketplace-input mt-2">
-                            <option value="recommended" @selected(request('sort', 'recommended') === 'recommended')>Recommended</option>
-                            <option value="newest" @selected(request('sort') === 'newest')>Newest</option>
-                            <option value="price_asc" @selected(request('sort') === 'price_asc')>Price: low to high</option>
-                            <option value="price_desc" @selected(request('sort') === 'price_desc')>Price: high to low</option>
-                        </select>
-                    </div>
-                    <div class="flex gap-2">
-                        <button type="submit" class="marketplace-button-primary flex-1 justify-center">Apply</button>
-                        <a href="{{ route('professional-services.index') }}" class="marketplace-button-secondary justify-center">Reset</a>
-                    </div>
+                    @if(request('search'))<input type="hidden" name="search" value="{{ request('search') }}">@endif
+                    @include('professional-services.partials.service-filters', ['categories' => $categories, 'mobile' => false])
                 </form>
             </aside>
 
@@ -143,7 +109,7 @@
                                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Starting at</p>
                                     <p class="mt-1 text-2xl font-bold text-slate-950 dark:text-white">₦{{ number_format((float) $service->price, 0) }}</p>
                                     <div class="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                                        <p class="font-semibold text-slate-900 dark:text-white">{{ $service->seller->name ?? 'Service provider' }}</p>
+                                        <p class="font-semibold text-slate-900 dark:text-white">{{ $service->seller->name ?? 'Service provider' }} @if(optional($service->seller)->marketplace_seller_verified)<i class="fas fa-circle-check ml-1 text-xs text-indigo-500" title="Verified marketplace seller" aria-label="Verified marketplace seller"></i>@endif</p>
                                         @if(($service->seller->seller_rating_count ?? 0) > 0)
                                             <p class="mt-1"><i class="fas fa-star text-amber-500"></i> {{ number_format((float) $service->seller->seller_rating, 1) }} <span class="text-slate-400">({{ $service->seller->seller_rating_count }} reviews)</span></p>
                                         @else

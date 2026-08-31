@@ -115,6 +115,10 @@ class ProfessionalServiceService
                     return ['success' => false, 'message' => 'Service seller not found'];
                 }
 
+                if ($service->user_id === $buyer->id) {
+                    return ['success' => false, 'message' => 'You cannot order your own service.'];
+                }
+
                 // Verify buyer has sufficient balance
                 $wallet = $buyer->wallet ?? Wallet::firstOrCreate(
                     ['user_id' => $buyer->id],

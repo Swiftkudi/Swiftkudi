@@ -26,6 +26,18 @@ class JobController extends Controller
      */
     public function index(Request $request)
     {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'category' => ['nullable', 'integer', 'exists:marketplace_categories,id'],
+            'type' => ['nullable', 'in:full-time,part-time,contract,internship'],
+            'level' => ['nullable', 'in:entry,intermediate,expert'],
+            'budget_min' => ['nullable', 'numeric', 'min:0', 'max:1000000000'],
+            'budget_max' => ['nullable', 'numeric', 'min:0', 'max:1000000000'],
+            'location' => ['nullable', 'string', 'max:120'],
+            'saved' => ['nullable', 'boolean'],
+            'sort' => ['nullable', 'in:newest,oldest,budget_high,budget_low'],
+        ]);
+
         $query = Job::with(['user', 'category'])
             ->where('status', 'active')
             ->where(function ($q) {
@@ -48,26 +60,29 @@ class JobController extends Controller
         }
 
         // Filter by category
-        if ($request->has('category') && $request->category) {
-            $query->where('category_id', $request->category);
+        if (!empty($validated['category'])) {
+            $query->where('category_id', $validated['category']);
         }
 
         // Filter by type
-        if ($request->has('type') && $request->type) {
-            $query->where('job_type', $request->type);
+        if (!empty($validated['type'])) {
+            $query->where('job_type', $validated['type']);
         }
 
         // Filter by experience level
-        if ($request->has('level') && $request->level) {
-            $query->where('experience_level', $request->level);
+        if (!empty($validated['level'])) {
+            $query->where('experience_level', $validated['level']);
         }
 
         // Budget filters
-        if ($request->filled('budget_min')) {
-            $query->where('budget_max', '>=', max(0, (float) $request->budget_min));
+        if (isset($validated['budget_min'])) {
+            $query->where('budget_max', '>=', (float) $validated['budget_min']);
         }
-        if ($request->filled('budget_max')) {
-            $query->where('budget_min', '<=', max(0, (float) $request->budget_max));
+        if (isset($validated['budget_max'])) {
+            $query->where('budget_min', '<=', (float) $validated['budget_max']);
+        }
+        if (!empty($validated['location'])) {
+            $query->where('location', 'like', '%' . trim($validated['location']) . '%');
         }
 
         // Saved jobs
@@ -76,15 +91,18 @@ class JobController extends Controller
         }
 
         // Search
-        if ($request->has('search') && $request->search) {
-            $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                    ->orWhere('description', 'like', '%' . $request->search . '%');
+        if (!empty($validated['search'])) {
+            $term = trim($validated['search']);
+            $query->where(function ($q) use ($term) {
+                $q->where('title', 'like', '%' . $term . '%')
+                    ->orWhere('description', 'like', '%' . $term . '%')
+                    ->orWhere('requirements', 'like', '%' . $term . '%')
+                    ->orWhereHas('category', fn ($category) => $category->where('name', 'like', '%' . $term . '%'));
             });
         }
 
         // Sort
-        $sort = $request->get('sort', 'newest');
+        $sort = $validated['sort'] ?? 'newest';
         switch ($sort) {
             case 'oldest':
                 $query->oldest();
